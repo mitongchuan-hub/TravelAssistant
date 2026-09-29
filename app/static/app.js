@@ -40,19 +40,16 @@ async function submitComposerMessage(form) {
     return;
   }
 
-  const member = selectedMember(form);
-  const isAgentMessage = isAgentMentionValue(body);
-  const pendingMessage = appendUserMessage(body, member);
+  const user = currentUser(form);
+  const pendingMessage = appendUserMessage(body, user);
   input.value = '';
   input.disabled = true;
   form.setAttribute('aria-busy', 'true');
   if (button) {
     button.disabled = true;
   }
-  if (isAgentMessage) {
-    await waitForNextPaint();
-    appendAgentThinkingMessage();
-  }
+  await waitForNextPaint();
+  appendAgentThinkingMessage();
   scrollChatToLatest();
 
   try {
@@ -102,12 +99,6 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  const copyButton = target.closest('[data-copy-button]');
-  if (copyButton instanceof HTMLButtonElement) {
-    copyInviteLink(copyButton);
-    return;
-  }
-
   const retryButton = target.closest('[data-retry-message]');
   if (retryButton instanceof HTMLButtonElement) {
     retryFailedMessage(retryButton);
@@ -120,30 +111,6 @@ document.addEventListener('keydown', (event) => {
     closeIdeaDetail();
   }
 });
-
-async function copyInviteLink(button) {
-  const source = document.querySelector('[data-copy-source]');
-  if (!(source instanceof HTMLInputElement)) {
-    return;
-  }
-
-  source.select();
-  source.setSelectionRange(0, source.value.length);
-  const originalText = button.textContent || button.dataset.copyLabel || '复制';
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(source.value);
-    } else {
-      document.execCommand('copy');
-    }
-    button.textContent = '已复制';
-  } catch (error) {
-    button.textContent = '请长按复制';
-  }
-  window.setTimeout(() => {
-    button.textContent = originalText;
-  }, 1600);
-}
 
 function openIdeaDetail(trigger) {
   const sheet = document.querySelector('[data-idea-detail-sheet]');
@@ -182,20 +149,6 @@ function setDetailText(selector, value) {
   });
 }
 
-function isAgentMentionSubmit(form) {
-  if (!form.classList.contains('composer')) {
-    return false;
-  }
-
-  const input = form.querySelector('input[name="body"]');
-  return input instanceof HTMLInputElement && isAgentMentionValue(input.value);
-}
-
-function isAgentMentionValue(value) {
-  const cleanValue = value.trim().toLowerCase();
-  return cleanValue.startsWith('@旅行助手') || cleanValue.startsWith('@agent') || cleanValue.startsWith('@ai');
-}
-
 function appendAgentThinkingMessage() {
   const chatList = document.querySelector('[data-chat-list]');
   if (!(chatList instanceof HTMLElement) || chatList.querySelector('[data-agent-thinking-message]')) {
@@ -220,7 +173,7 @@ function appendAgentThinkingMessage() {
   chatList.append(article);
 }
 
-function appendUserMessage(body, member = { initials: '林', name: '林夏' }) {
+function appendUserMessage(body, user = { initials: '我', name: '我' }) {
   const chatList = document.querySelector('.chat-list');
   if (!(chatList instanceof HTMLElement)) {
     return;
@@ -242,10 +195,10 @@ function appendUserMessage(body, member = { initials: '林', name: '林夏' }) {
   const avatar = article.querySelector('.avatar');
   const name = article.querySelector('.message-meta strong');
   if (avatar) {
-    avatar.textContent = member.initials || '我';
+    avatar.textContent = user.initials || '我';
   }
   if (name) {
-    name.textContent = member.name || '我';
+    name.textContent = user.name || '我';
   }
   const bubble = article.querySelector('.message-body > p');
   if (bubble) {
@@ -287,7 +240,7 @@ function retryFailedMessage(button) {
   form.requestSubmit();
 }
 
-function selectedMember(form) {
+function currentUser(form) {
   return {
     initials: form.dataset.currentInitials || '我',
     name: form.dataset.currentName || '我',

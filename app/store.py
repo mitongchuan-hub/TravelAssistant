@@ -7,13 +7,11 @@ from threading import RLock
 from itertools import count
 
 from .agent_client import generate_agent_reply
-from .models import AgentAction, AgentCard, IdeaCard, MemberPreference, Message, PlanVersion, TripDay, TripGroup, TripItem, TripPlan, User
-from .persistence import load_snapshot, restore_state, save_snapshot, serialize_state
+from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripDay, TripItem, TripPlan, User
+from .persistence import CURRENT_SCHEMA_VERSION, load_snapshot, restore_state, save_snapshot, serialize_state
 
 USERS = {
     "u1": User(id="u1", name="林夏", initials="林"),
-    "u2": User(id="u2", name="周予", initials="周"),
-    "u3": User(id="u3", name="陈安", initials="陈"),
     "agent": User(id="agent", name="旅行规划 Agent", initials="AI"),
 }
 
@@ -28,33 +26,24 @@ class DemoStore:
         self.db_path = db_path or os.getenv("TRAVEL_DB_PATH", ".cache/travelassistant.sqlite3")
         self.persistence_enabled = self._resolve_persistence_enabled(persistence_enabled)
         self._lock = RLock()
-        self.trips: dict[str, TripGroup] = {
-            "trip-hangzhou": TripGroup(
+        self.trips: dict[str, Trip] = {
+            "trip-hangzhou": Trip(
                 id="trip-hangzhou",
                 destination="杭州周末旅行",
                 date_range="8月24日 - 8月26日",
                 budget="人均 1500",
-                style="轻松、少排队、适合聊天",
-                note="想轻松一点，少排队，多留聊天时间。",
-                initiator=USERS["u1"],
-                member_initials=["林", "周", "陈"],
+                style="轻松、少排队、适合慢慢逛",
+                note="想轻松一点，少排队，多留自由时间。",
+                owner=USERS["u1"],
                 status="草案",
                 last_activity="Agent 已生成初版行程",
             )
         }
-        self.group_members: dict[str, list[str]] = {"trip-hangzhou": ["u1", "u2", "u3"]}
         self.messages: dict[str, list[Message]] = {"trip-hangzhou": self._seed_messages()}
         self.plans: dict[str, TripPlan] = {"trip-hangzhou": self._seed_plan()}
         self.plan_versions: dict[str, list[PlanVersion]] = {"trip-hangzhou": []}
         self._save_plan_version("trip-hangzhou", "初版行程草案")
-        self.preferences: dict[str, list[MemberPreference]] = {"trip-hangzhou": self._seed_preferences()}
         self.idea_cards: dict[str, list[IdeaCard]] = {"trip-hangzhou": self._seed_idea_cards()}
-        self.agent_steps = [
-            {"label": "听大家说想法", "state": "done", "detail": "4 条偏好"},
-            {"label": "整理偏好", "state": "done", "detail": "1 个提醒"},
-            {"label": "安排行程", "state": "active", "detail": "第 1 版"},
-            {"label": "等大家确认", "state": "idle", "detail": "继续聊"},
-        ]
         self._load_persisted_state()
 
     @staticmethod
@@ -72,65 +61,46 @@ class DemoStore:
         snapshot = load_snapshot(self.db_path)
         if not snapshot:
             return
+        legacy_snapshot = int(snapshot.get("schema_version", 1)) < CURRENT_SCHEMA_VERSION
         global _id_counter
         _id_counter = count(restore_state(self, snapshot, USERS))
+        if legacy_snapshot:
+            self._persist()
 
     def _persist(self) -> None:
         if self.persistence_enabled:
             save_snapshot(self.db_path, serialize_state(self, USERS))
 
-    def list_trips(self) -> list[TripGroup]:
-        return list(self.trips.values())
+    def list_trips(self, owner_id: str | None = None) -> list[Trip]:
+        trips = list(self.trips.values())
+        if owner_id is not None:
+            trips = [trip for trip in trips if trip.owner.id == owner_id]
+        return trips
 
-    def get_trip(self, trip_id: str) -> TripGroup:
+    def get_trip(self, trip_id: str) -> Trip:
         return self.trips[trip_id]
 
-    def member_choices(self) -> list[User]:
-        return [USERS["u1"], USERS["u2"], USERS["u3"]]
-
-    def trip_member_choices(self, trip_id: str) -> list[User]:
-        member_ids = self.group_members.get(trip_id) or ["u1"]
-        return [USERS[user_id] for user_id in member_ids if user_id in USERS]
-
-    def get_or_create_user(self, nickname: str) -> User:
-        clean_name = nickname.strip()[:12] or "旅行成员"
-        for user in USERS.values():
-            if user.name == clean_name and user.id != "agent":
-                return user
-        user_id = f"u{next(_id_counter)}"
-        user = User(id=user_id, name=clean_name, initials=clean_name[:1].upper())
-        USERS[user_id] = user
-        self._persist()
-        return user
-
-    def add_member(self, trip_id: str, user: User) -> None:
-        member_ids = self.group_members.setdefault(trip_id, [])
-        if user.id not in member_ids:
-            member_ids.append(user.id)
-        initials = [USERS[user_id].initials for user_id in member_ids if user_id in USERS]
-        self.trips[trip_id].member_initials = initials
-        if not any(preference.member.id == user.id for preference in self.preferences[trip_id]):
-            self.preferences[trip_id].append(
-                MemberPreference(member=user, known=[], missing=["预算", "出发时间", "想去的地方"], conflicts=[])
-            )
-        self._persist()
+    def create_user(self, display_name: str) -> User:
+        clean_name = display_name.strip()[:20] or "旅行者"
+        with self._lock:
+            user_id = f"u{next(_id_counter)}"
+            user = User(id=user_id, name=clean_name, initials=clean_name[:1].upper())
+            USERS[user_id] = user
+            self._persist()
+            return user
 
     def trip_metrics(self, trip_id: str) -> dict[str, int | str]:
-        preferences = self.preferences[trip_id]
+        cards = self.idea_cards[trip_id]
         plan = self.plans[trip_id]
         versions = self.plan_versions[trip_id]
-        confirmed_count = sum(len(preference.known) for preference in preferences)
-        missing_count = sum(len(preference.missing) for preference in preferences)
-        conflict_count = sum(len(preference.conflicts) for preference in preferences)
         plan_items = sum(len(day.items) for day in plan.days)
         latest_version = versions[-1].label if versions else "未生成"
         latest_change = versions[-1].change_summary if versions else "等待 Agent 生成第一版"
         return {
             "message_count": len(self.messages[trip_id]),
-            "idea_count": len(self.idea_cards[trip_id]),
-            "confirmed_count": confirmed_count,
-            "missing_count": missing_count,
-            "conflict_count": conflict_count,
+            "idea_count": len(cards),
+            "constraint_count": sum(card.kind != "待归类" for card in cards),
+            "reminder_count": sum(card.kind == "禁忌" or card.status == "冲突提醒" for card in cards),
             "plan_day_count": len(plan.days),
             "plan_item_count": plan_items,
             "version_count": len(versions),
@@ -138,51 +108,46 @@ class DemoStore:
             "latest_change": latest_change,
         }
 
-    def create_trip(self, destination: str, date_range: str, budget: str, style: str, note: str, initiator: User | None = None) -> TripGroup:
-        initiator = initiator or USERS["u1"]
+    def create_trip(self, destination: str, date_range: str, budget: str, style: str, note: str, owner: User | None = None) -> Trip:
+        owner = owner or USERS["u1"]
         trip_id = f"trip-{next(_id_counter)}"
-        trip = TripGroup(
+        trip = Trip(
             id=trip_id,
             destination=destination.strip() or "未命名旅行",
             date_range=date_range.strip() or "时间待定",
             budget=budget.strip() or "预算待定",
             style=style.strip() or "风格待定",
             note=note.strip(),
-            initiator=initiator,
-            member_initials=[initiator.initials],
+            owner=owner,
             status="未生成",
-            last_activity="旅行群已创建，等待成员补充需求",
+            last_activity="旅行已创建，开始和 Agent 对话",
         )
         self.trips[trip_id] = trip
-        self.group_members[trip_id] = [initiator.id]
         self.messages[trip_id] = [
             Message(
                 id=f"m-{next(_id_counter)}",
                 sender=USERS["agent"],
                 sender_type="agent",
-                body="旅行群已创建。大家可以先自由聊预算、时间、想去的地方和不能接受的安排；需要我整理时，在群里发 @旅行助手 就能叫醒我。",
+                body="旅行已经建好。告诉我你最在意的时间、预算、地点或节奏，我会边聊边整理。",
                 created_at=_now_label(),
                 agent_card=AgentCard(
                     kind="missing-info",
-                    title="先自由聊，@我整理",
-                    summary="普通聊天不会自动触发 Agent；发 @旅行助手 后，我再把大家的意见整理成计划约束。",
-                    bullets=["预算范围", "出发时间", "必须去和不想去的地方", "需要整理时发 @旅行助手"],
-                    actions=[AgentAction(label="查看成员偏好", target="members")],
+                    title="先从最确定的事聊起",
+                    summary="不必一次说完整，我会在每轮对话后更新旅行想法。",
+                    bullets=["大概什么时候出发", "预算范围", "最想去的地方", "不想接受的安排"],
+                    actions=[AgentAction(label="查看旅行想法", target="board")],
                 ),
             )
         ]
         self.plans[trip_id] = TripPlan(id="empty", title="还没有行程计划", status="未生成", days=[])
         self.plan_versions[trip_id] = []
-        self.preferences[trip_id] = [
-            MemberPreference(member=initiator, known=[], missing=["预算", "出发时间", "想去的地方"], conflicts=[])
-        ]
         self.idea_cards[trip_id] = [
             IdeaCard(
                 id=f"idea-{next(_id_counter)}",
                 kind="节奏",
-                title="先让大家说想法",
-                body="Agent 会把地点、预算、节奏和禁忌自动归类，等信息足够后再生成行程草案。",
-                author="AI",
+                title="从一句话开始",
+                body="Agent 会在对话中把地点、预算、节奏和禁忌整理成可执行的旅行约束。",
+                author="Agent",
                 status="待补充",
                 rotation=IDEA_ROTATIONS[0],
             )
@@ -193,8 +158,10 @@ class DemoStore:
     def add_user_message(self, trip_id: str, body: str, sender_id: str = "u1", process_agent: bool = True) -> Message:
         with self._lock:
             clean_body = body.strip()
-            sender = USERS.get(sender_id, USERS["u1"])
-            self.add_member(trip_id, sender)
+            owner = self.trips[trip_id].owner
+            sender = USERS.get(sender_id, owner)
+            if sender.id != owner.id:
+                sender = owner
             message = Message(
                 id=f"m-{next(_id_counter)}",
                 sender=sender,
@@ -203,17 +170,14 @@ class DemoStore:
                 created_at=_now_label(),
             )
             self.messages[trip_id].append(message)
-            if process_agent and self._should_trigger_agent(clean_body):
+            if process_agent:
                 self._append_agent_reply_for_message(trip_id, clean_body, sender)
             else:
-                self.trips[trip_id].last_activity = f"{sender.name} 有新群聊消息，等待 Agent 整理"
+                self.trips[trip_id].last_activity = "已发送消息，Agent 正在思考"
             self._persist()
             return message
 
-    def should_trigger_agent(self, body: str) -> bool:
-        return self._should_trigger_agent(body.strip())
-
-    def start_agent_task(self, trip_id: str, body: str, sender: User) -> Message:
+    def start_agent_task(self, trip_id: str) -> Message:
         with self._lock:
             thinking_message = Message(
                 id=f"m-{next(_id_counter)}",
@@ -230,7 +194,10 @@ class DemoStore:
 
     def finish_agent_task(self, trip_id: str, body: str, sender_id: str, thinking_message_id: str | None = None) -> None:
         with self._lock:
-            sender = USERS.get(sender_id, USERS["u1"])
+            owner = self.trips[trip_id].owner
+            sender = USERS.get(sender_id, owner)
+            if sender.id != owner.id:
+                sender = owner
             if thinking_message_id:
                 self.messages[trip_id] = [message for message in self.messages[trip_id] if message.id != thinking_message_id]
             else:
@@ -244,13 +211,13 @@ class DemoStore:
                 id=f"m-{next(_id_counter)}",
                 sender=USERS["agent"],
                 sender_type="agent",
-                body="我刚刚整理失败了，可以稍后再 @旅行助手 试一次。",
+                body="我刚刚没有完成回复，可以直接重新发送上一条消息。",
                 created_at=_now_label(),
                 agent_card=AgentCard(
                     kind="missing-info",
-                    title="Agent 暂时没整理成功",
-                    summary="你的群聊消息已经保留，只是这次整理没有完成。",
-                    bullets=["消息不会丢失", "稍后可以重新 @旅行助手", "也可以先继续补充旅行想法"],
+                    title="Agent 暂时没有回复成功",
+                    summary="你的消息已经保留，这次处理没有完成。",
+                    bullets=["消息不会丢失", "可以重新发送上一条消息", "也可以先继续补充旅行想法"],
                     actions=[AgentAction(label="继续聊天", target="chat")],
                 ),
             )
@@ -267,7 +234,7 @@ class DemoStore:
             self._persist()
 
     def _append_agent_reply_for_message(self, trip_id: str, clean_body: str, sender: User) -> None:
-        instruction = self._strip_agent_mention(clean_body)
+        instruction = clean_body.strip()
         if self._is_plan_command(instruction):
             self.messages[trip_id].append(self._agent_plan_message(trip_id, instruction, sender))
             self.trips[trip_id].status = "草案"
@@ -277,9 +244,9 @@ class DemoStore:
             self.trips[trip_id].last_activity = "Agent 已更新需求摘要"
 
     def summarize_chat(self, trip_id: str) -> Message:
-        message = self._agent_reply(trip_id, "请整理最近群聊里的旅行偏好、冲突和缺失信息。", self._latest_user_sender(trip_id))
+        message = self._agent_reply(trip_id, "请整理最近对话里的旅行偏好、限制和缺失信息。", self.trips[trip_id].owner)
         self.messages[trip_id].append(message)
-        self.trips[trip_id].last_activity = "Agent 已整理最近群聊"
+        self.trips[trip_id].last_activity = "Agent 已整理最近对话"
         self._persist()
         return message
 
@@ -289,8 +256,8 @@ class DemoStore:
             id=f"idea-{next(_id_counter)}",
             kind="待归类",
             title=body.strip(),
-            body="Agent 会结合群聊上下文判断它属于地点、预算、节奏还是禁忌。",
-            author=USERS["u1"].name,
+            body="Agent 会结合当前对话判断它属于地点、预算、节奏还是禁忌。",
+            author="你",
             status="待归类",
             rotation=rotation,
         )
@@ -345,13 +312,12 @@ class DemoStore:
                 kind=kind,
                 title=f"调整：{item_title}"[:24],
                 body=feedback,
-                author=sender.name,
+                author="你的反馈",
                 status="修改反馈",
                 rotation=rotation,
             )
         )
         self.idea_cards[trip_id] = self.idea_cards[trip_id][-MAX_IDEA_CARDS:]
-        self._sync_preferences_from_ideas(trip_id, [self.idea_cards[trip_id][-1]])
 
     @staticmethod
     def _feedback_kind(feedback: str) -> str:
@@ -368,7 +334,7 @@ class DemoStore:
         return f"第 {version_number} 版：根据对{item_title}的反馈调整：{feedback[:28]}"
 
     def generate_plan(self, trip_id: str) -> None:
-        self.messages[trip_id].append(self._agent_plan_message(trip_id, "请根据当前群聊和想法墙，生成一版结构化旅行行程。", self._latest_user_sender(trip_id)))
+        self.messages[trip_id].append(self._agent_plan_message(trip_id, "请根据当前对话和想法墙，生成一版结构化旅行行程。", self.trips[trip_id].owner))
         self.trips[trip_id].status = "草案"
         self.trips[trip_id].last_activity = "Agent 已生成行程草案"
         self._persist()
@@ -379,7 +345,7 @@ class DemoStore:
             return
         plan.status = "已确认"
         self.trips[trip_id].status = "已确认"
-        self.trips[trip_id].last_activity = "大家已确认当前行程"
+        self.trips[trip_id].last_activity = "你已确认当前行程"
         self._save_plan_version(trip_id, "确认当前行程")
         self.messages[trip_id].append(
             Message(
@@ -420,9 +386,8 @@ class DemoStore:
         reply = generate_agent_reply(
             self.trips[trip_id],
             self.messages[trip_id],
-            instruction or "请根据当前群聊和想法墙，生成一版结构化旅行行程。",
+            instruction or "请根据当前对话和想法墙，生成一版结构化旅行行程。",
             idea_cards=self.idea_cards[trip_id],
-            preferences=self.preferences[trip_id],
             plan=self.plans[trip_id],
             plan_versions=self.plan_versions[trip_id],
             metrics=self.trip_metrics(trip_id),
@@ -463,7 +428,6 @@ class DemoStore:
             self.messages[trip_id],
             body,
             idea_cards=self.idea_cards[trip_id],
-            preferences=self.preferences[trip_id],
             plan=self.plans[trip_id],
             plan_versions=self.plan_versions[trip_id],
             metrics=self.trip_metrics(trip_id),
@@ -493,7 +457,7 @@ class DemoStore:
                 title="预算约束已更新",
                 summary="我会把预算作为筛选住宿、餐饮和交通方式的重要约束。",
                 bullets=["优先公共交通和步行友好区域", "避免高价网红餐厅", "保留一段弹性支出"],
-                actions=[AgentAction(label="查看成员偏好", target="members")],
+                actions=[AgentAction(label="查看旅行想法", target="board")],
             )
         elif "改" in body or "不要" in body or "太累" in body or "累" in body:
             self._add_agent_idea_cards(
@@ -513,7 +477,7 @@ class DemoStore:
                 kind="itinerary-draft",
                 title="可以生成下一版行程",
                 summary="我已经有足够信息生成结构化计划。",
-                bullets=["按天安排", "标注地点与停留时间", "说明每个安排满足谁的需求"],
+                bullets=["按天安排", "标注地点与停留时间", "说明每个安排对应的旅行偏好"],
                 actions=[AgentAction(label="查看行程", target="itinerary")],
             )
         else:
@@ -526,8 +490,8 @@ class DemoStore:
                 kind="missing-info",
                 title="我记录了一条新偏好",
                 summary="继续补充预算、时间、忌口和不能接受的安排，会让计划更稳定。",
-                bullets=["谁提出了这个需求", "它影响哪一天", "是否和其他成员偏好冲突"],
-                actions=[AgentAction(label="查看成员偏好", target="members")],
+                bullets=["这项偏好是否必须满足", "它可能影响哪一天", "还有没有相关限制"],
+                actions=[AgentAction(label="查看旅行想法", target="board")],
             )
         return Message(
             id=f"m-{next(_id_counter)}",
@@ -542,107 +506,45 @@ class DemoStore:
         if not raw_cards:
             return
 
-        applied_cards = []
+        source = "对话" if sender else "Agent"
         for raw_card in raw_cards:
             kind = str(raw_card.get("kind") or "待归类")
             title = str(raw_card.get("title") or "新的旅行想法").strip()
             body = str(raw_card.get("body") or title).strip()
             status = str(raw_card.get("status") or "已整理").strip()
-            author = str(raw_card.get("author") or (sender.name if sender else "Agent")).strip()
             if not title or not body:
                 continue
             existing_index = self._find_similar_idea_index(trip_id, kind, title, body)
             if existing_index is not None:
                 previous = self.idea_cards[trip_id][existing_index]
-                updated_card = IdeaCard(
+                self.idea_cards[trip_id][existing_index] = IdeaCard(
                     id=previous.id,
                     kind=kind,
                     title=title,
                     body=body,
-                    author=author if author != "Agent" else previous.author,
+                    author=source,
                     status=status,
                     rotation=previous.rotation,
                 )
-                self.idea_cards[trip_id][existing_index] = updated_card
-                applied_cards.append(updated_card)
                 continue
             rotation = IDEA_ROTATIONS[len(self.idea_cards[trip_id]) % len(IDEA_ROTATIONS)]
-            new_card = IdeaCard(
-                id=f"idea-{next(_id_counter)}",
-                kind=kind,
-                title=title,
-                body=body,
-                author=author,
-                status=status,
-                rotation=rotation,
-            )
-            self.idea_cards[trip_id].append(new_card)
-            applied_cards.append(new_card)
-        self.idea_cards[trip_id] = self.idea_cards[trip_id][-MAX_IDEA_CARDS:]
-        self._sync_preferences_from_ideas(trip_id, applied_cards)
-
-    def _sync_preferences_from_ideas(self, trip_id: str, cards: list[IdeaCard]) -> None:
-        if not cards:
-            return
-        self._ensure_member_preferences(trip_id)
-
-        preferences_by_name = {preference.member.name: preference for preference in self.preferences[trip_id]}
-        updated_by_name = {}
-        for card in cards:
-            member = self._member_for_author(card.author)
-            preference = preferences_by_name.get(member.name) or MemberPreference(
-                member=member,
-                known=[],
-                missing=["预算", "出发时间", "想去的地方"],
-                conflicts=[],
-            )
-            known = list(preference.known)
-            missing = list(preference.missing)
-            conflicts = list(preference.conflicts)
-            summary = self._preference_summary_from_card(card)
-            if card.kind == "禁忌" or card.status == "冲突提醒":
-                if summary not in conflicts:
-                    conflicts.append(summary)
-            elif summary not in known:
-                known.append(summary)
-            missing = [item for item in missing if item not in self._missing_labels_for_kind(card.kind)]
-            updated_by_name[member.name] = MemberPreference(
-                member=member,
-                known=known[-8:],
-                missing=missing,
-                conflicts=conflicts[-4:],
-            )
-
-        self.preferences[trip_id] = [updated_by_name.get(preference.member.name, preference) for preference in self.preferences[trip_id]]
-
-    def _ensure_member_preferences(self, trip_id: str) -> None:
-        existing = {preference.member.id: preference for preference in self.preferences.get(trip_id, [])}
-        preferences = []
-        for member in self.member_choices():
-            preferences.append(
-                existing.get(
-                    member.id,
-                    MemberPreference(member=member, known=[], missing=["预算", "出发时间", "想去的地方"], conflicts=[]),
+            self.idea_cards[trip_id].append(
+                IdeaCard(
+                    id=f"idea-{next(_id_counter)}",
+                    kind=kind,
+                    title=title,
+                    body=body,
+                    author=source,
+                    status=status,
+                    rotation=rotation,
                 )
             )
-        self.preferences[trip_id] = preferences
-
-    def _member_for_author(self, author: str) -> User:
-        for member in self.member_choices():
-            if author == member.name or author == member.initials:
-                return member
-        return USERS["u1"]
-
-    def _latest_user_sender(self, trip_id: str) -> User:
-        for message in reversed(self.messages[trip_id]):
-            if message.sender_type == "user":
-                return message.sender
-        return USERS["u1"]
+        self.idea_cards[trip_id] = self.idea_cards[trip_id][-MAX_IDEA_CARDS:]
 
     def _local_summary_reply(self, trip_id: str) -> Message:
-        self._ensure_member_preferences(trip_id)
         recent_user_messages = [message for message in self.messages[trip_id][-12:] if message.sender_type == "user"]
         raw_cards = []
+        bullets = []
         for message in recent_user_messages:
             kind = self._kind_from_text(message.body)
             if not kind:
@@ -654,33 +556,26 @@ class DemoStore:
                     "title": self._title_from_text(kind, message.body),
                     "body": message.body,
                     "status": status,
-                    "author": message.sender.name,
                 }
             )
-        self._add_agent_idea_cards(trip_id, raw_cards)
-        bullets = self._summary_bullets_by_member(trip_id)
+            bullet = f"{kind}：{message.body[:36]}"
+            if bullet not in bullets:
+                bullets.append(bullet)
+        self._add_agent_idea_cards(trip_id, raw_cards, self.trips[trip_id].owner)
         return Message(
             id=f"m-{next(_id_counter)}",
             sender=USERS["agent"],
             sender_type="agent",
-            body="我按成员整理了最近的旅行需求。",
+            body="我整理了最近对话里的旅行需求。",
             created_at=_now_label(),
             agent_card=AgentCard(
                 kind="requirement-summary",
-                title="按成员整理好了",
-                summary="我把最近聊天拆成预算、地点、节奏和不能接受的安排。",
-                bullets=bullets,
-                actions=[AgentAction(label="查看成员偏好", target="members")],
+                title="旅行偏好整理好了",
+                summary="最近对话已拆成预算、地点、节奏和不能接受的安排。",
+                bullets=bullets[-4:] or ["先补充预算", "再确认想去地点", "最后补充不能接受的安排"],
+                actions=[AgentAction(label="查看旅行想法", target="board")],
             ),
         )
-
-    def _summary_bullets_by_member(self, trip_id: str) -> list[str]:
-        bullets = []
-        for preference in self.preferences[trip_id]:
-            details = preference.known[-2:] + preference.conflicts[-1:]
-            if details:
-                bullets.append(f"{preference.member.name}：{'；'.join(details[:2])}")
-        return bullets[:4] or ["先补充预算", "再确认想去地点", "最后处理不能接受的安排"]
 
     @staticmethod
     def _kind_from_text(body: str) -> str | None:
@@ -698,21 +593,6 @@ class DemoStore:
     def _title_from_text(kind: str, body: str) -> str:
         title_by_kind = {"预算": "预算约束", "地点": "地点偏好", "节奏": "节奏偏好", "禁忌": "不能接受"}
         return title_by_kind.get(kind, body.strip()[:12] or "新的旅行想法")
-
-    @staticmethod
-    def _preference_summary_from_card(card: IdeaCard) -> str:
-        if card.kind == "预算" or card.status == "冲突提醒":
-            return card.body
-        return card.title
-
-    @staticmethod
-    def _missing_labels_for_kind(kind: str) -> set[str]:
-        return {
-            "预算": {"预算", "预算范围"},
-            "地点": {"想去的地方", "目的地"},
-            "节奏": {"节奏", "旅行节奏"},
-            "禁忌": {"不能接受", "忌口", "禁忌"},
-        }.get(kind, set())
 
     def _find_similar_idea_index(self, trip_id: str, kind: str, title: str, body: str) -> int | None:
         normalized_title = _normalize_idea_text(title)
@@ -740,8 +620,8 @@ class DemoStore:
                         title=str(raw_item.get("title") or "待定安排"),
                         location=str(raw_item.get("location") or "地点待定"),
                         duration=str(raw_item.get("duration") or "时长待定"),
-                        reason=str(raw_item.get("reason") or "根据群聊偏好安排。"),
-                        notes=str(raw_item.get("notes") or "可继续在群聊里调整。"),
+                        reason=str(raw_item.get("reason") or "根据你的旅行偏好安排。"),
+                        notes=str(raw_item.get("notes") or "可以继续在对话里调整。"),
                         satisfies=[str(item) for item in raw_item.get("satisfies", [])],
                     )
                 )
@@ -759,7 +639,7 @@ class DemoStore:
     def _plan_change_summary(self, trip_id: str) -> str:
         version_number = len(self.plan_versions.get(trip_id, [])) + 1
         if version_number <= 1:
-            return "第一版：按群聊和想法墙生成基础行程"
+            return "第一版：按对话和想法墙生成基础行程"
         latest_cards = self.idea_cards[trip_id][-2:]
         if latest_cards:
             names = "、".join(card.title for card in latest_cards)
@@ -798,7 +678,7 @@ class DemoStore:
         pace_cards = [card.title for card in cards if card.kind == "节奏"][:2]
         budget_cards = [card.title for card in cards if card.kind == "预算"][:1]
         first_place = place_titles[0] if place_titles else "目的地核心区域"
-        second_place = place_titles[1] if len(place_titles) > 1 else "轻松散步和聊天时间"
+        second_place = place_titles[1] if len(place_titles) > 1 else "轻松散步和自由时间"
         return {
             "title": f"{trip.destination}行程草案",
             "status": "草案",
@@ -811,7 +691,7 @@ class DemoStore:
                             "title": first_place,
                             "location": trip.destination,
                             "duration": "2-3 小时",
-                            "reason": "优先满足群聊里明确提到的地点需求。",
+                            "reason": "优先满足对话里明确提到的地点需求。",
                             "notes": "具体交通和预约信息后续继续确认。",
                             "satisfies": ["地点偏好"],
                         },
@@ -821,7 +701,7 @@ class DemoStore:
                             "location": "同区域附近",
                             "duration": "2 小时",
                             "reason": "保持轻松节奏，减少来回移动。",
-                            "notes": "可按大家体力临时调整。",
+                            "notes": "可按当天体力临时调整。",
                             "satisfies": pace_cards or ["轻松节奏"],
                         },
                     ],
@@ -832,9 +712,9 @@ class DemoStore:
                         {
                             "time": "10:30",
                             "title": "补充候选地点",
-                            "location": "待大家确认",
+                            "location": "待确认",
                             "duration": "半天",
-                            "reason": "保留弹性，等待成员继续补充想法。",
+                            "reason": "保留弹性，等待你继续补充想法。",
                             "notes": "Agent 会根据新消息继续调整下一版。",
                             "satisfies": budget_cards or ["预算可控"],
                         }
@@ -844,11 +724,6 @@ class DemoStore:
         }
 
     @staticmethod
-    def _should_trigger_agent(body: str) -> bool:
-        normalized = body.strip().lower()
-        return normalized.startswith("@agent") or normalized.startswith("@ai") or body.strip().startswith("@旅行助手")
-
-    @staticmethod
     def _is_plan_command(body: str) -> bool:
         return any(keyword in body for keyword in ("生成", "行程", "计划", "安排", "第一版"))
 
@@ -856,55 +731,47 @@ class DemoStore:
     def _is_summary_command(body: str) -> bool:
         return any(keyword in body for keyword in ("整理", "总结", "需求", "偏好", "冲突", "缺失"))
 
-    @staticmethod
-    def _strip_agent_mention(body: str) -> str:
-        clean_body = body.strip()
-        for mention in ("@旅行助手", "@Agent", "@agent", "@AI", "@ai"):
-            if clean_body.startswith(mention):
-                return clean_body[len(mention) :].strip() or "请整理最近群聊里的旅行偏好。"
-        return clean_body
-
     def _seed_messages(self) -> list[Message]:
         return [
             Message(
                 id="m1",
                 sender=USERS["u1"],
                 sender_type="user",
-                body="大家 8 月底去杭州吧，我想安排两晚，节奏别太赶。",
+                body="我 8 月底想去杭州，安排两晚，节奏别太赶。",
                 created_at="19:10",
             ),
             Message(
                 id="m2",
-                sender=USERS["u2"],
+                sender=USERS["agent"],
+                sender_type="agent",
+                body="收到，我先按轻松的 3 天 2 晚来整理。",
+                created_at="19:11",
+                agent_card=AgentCard(
+                    kind="requirement-summary",
+                    title="旅行框架已经记下",
+                    summary="杭州、两晚、轻松节奏已经进入计划约束。",
+                    bullets=["8 月底出发", "安排两晚", "避免行程太赶", "还需要预算和必去地点"],
+                    actions=[AgentAction(label="查看旅行想法", target="board")],
+                ),
+            ),
+            Message(
+                id="m3",
+                sender=USERS["u1"],
                 sender_type="user",
                 body="我想去西湖和茶园，预算控制在人均 1500 左右。",
                 created_at="19:12",
             ),
             Message(
-                id="m3",
-                sender=USERS["agent"],
-                sender_type="agent",
-                body="我先把大家的需求整理成计划约束。",
-                created_at="19:13",
-                agent_card=AgentCard(
-                    kind="requirement-summary",
-                    title="已收集到 4 条关键需求",
-                    summary="目前适合做一个轻松的杭州 3 天 2 晚计划。",
-                    bullets=["节奏不要太赶", "预算约人均 1500", "想去西湖和茶园", "需要继续确认住宿偏好"],
-                    actions=[AgentAction(label="查看成员偏好", target="members")],
-                ),
-            ),
-            Message(
                 id="m4",
                 sender=USERS["agent"],
                 sender_type="agent",
-                body="我生成了第一版行程，可以先看结构再继续改。",
+                body="信息够用了，我生成了第一版行程。",
                 created_at="19:16",
                 agent_card=AgentCard(
                     kind="itinerary-draft",
                     title="杭州 3 天 2 晚初版行程",
                     summary="西湖、龙井茶园、运河街区，整体偏轻松。",
-                    bullets=["每天 2-3 个主要安排", "下午保留休息时间", "晚餐优先本地菜"],
+                    bullets=["每天 2-3 个主要安排", "下午保留休息时间", "预算按人均 1500 控制"],
                     actions=[AgentAction(label="查看行程", target="itinerary")],
                 ),
             ),
@@ -916,8 +783,8 @@ class DemoStore:
                 id="idea-place-1",
                 kind="地点",
                 title="西湖傍晚散步",
-                body="第一天傍晚去断桥和白堤，避开中午高温，也留出聊天时间。",
-                author="林夏",
+                body="第一天傍晚去断桥和白堤，避开中午高温，也留出自由时间。",
+                author="你",
                 status="已采纳",
                 rotation=IDEA_ROTATIONS[0],
             ),
@@ -925,8 +792,8 @@ class DemoStore:
                 id="idea-place-2",
                 kind="地点",
                 title="龙井茶园",
-                body="想安排半天慢一点的茶园体验，不要只打卡拍照。",
-                author="周予",
+                body="安排半天慢一点的茶园体验，不要只打卡拍照。",
+                author="对话",
                 status="候选",
                 rotation=IDEA_ROTATIONS[1],
             ),
@@ -935,7 +802,7 @@ class DemoStore:
                 kind="预算",
                 title="人均 1500 左右",
                 body="住宿、餐饮和交通都按轻松但不奢侈来筛选。",
-                author="周予",
+                author="对话",
                 status="约束",
                 rotation=IDEA_ROTATIONS[2],
             ),
@@ -944,7 +811,7 @@ class DemoStore:
                 kind="节奏",
                 title="不要每天太赶",
                 body="每天最多 2-3 个主要安排，下午保留休息窗口。",
-                author="林夏",
+                author="你",
                 status="已采纳",
                 rotation=IDEA_ROTATIONS[3],
             ),
@@ -976,8 +843,8 @@ class DemoStore:
                             location="湖滨商圈附近",
                             duration="1.5 小时",
                             reason="方便晚间步行到西湖，也便于第二天出发。",
-                            notes="住宿预算需要大家继续确认。",
-                            satisfies=["林夏"],
+                            notes="住宿预算还需要继续确认。",
+                            satisfies=["交通便利", "轻松节奏"],
                         ),
                         TripItem(
                             id="item-2",
@@ -987,7 +854,7 @@ class DemoStore:
                             duration="2 小时",
                             reason="符合轻松节奏，也满足西湖需求。",
                             notes="避开中午高温和人流。",
-                            satisfies=["林夏", "周予"],
+                            satisfies=["西湖", "轻松节奏"],
                         ),
                     ],
                 ),
@@ -1003,24 +870,12 @@ class DemoStore:
                             duration="3 小时",
                             reason="满足茶园偏好，适合慢节奏体验。",
                             notes="建议提前确认是否需要预约体验。",
-                            satisfies=["周予"],
+                            satisfies=["茶园体验", "预算可控"],
                         )
                     ],
                 ),
             ],
         )
-
-    def _seed_preferences(self) -> list[MemberPreference]:
-        return [
-            MemberPreference(member=USERS["u1"], known=["两晚", "轻松节奏", "少排队"], missing=["酒店预算"], conflicts=[]),
-            MemberPreference(member=USERS["u2"], known=["西湖", "茶园", "人均 1500"], missing=["出发时间"], conflicts=[]),
-            MemberPreference(
-                member=USERS["u3"],
-                known=["晚餐想吃本地菜"],
-                missing=["是否能早起", "忌口"],
-                conflicts=["可能不想安排太多步行"],
-            ),
-        ]
 
 
 def _now_label() -> str:

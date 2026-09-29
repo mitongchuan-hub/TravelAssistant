@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}我的旅行群{% endblock %}
+{% block title %}我的旅行{% endblock %}
 
 {% block content %}
 <section class="page-stack">
   <header class="page-header">
     <div>
-      <p class="muted">我的旅行群</p>
-      <h1>把下一次出行聊清楚</h1>
+      <p class="muted">我的旅行</p>
+      <h1>继续把下一次出行聊清楚</h1>
     </div>
     <div class="user-chip">
       <span>{{ current_user.initials }}</span>
       <strong>{{ current_user.name }}</strong>
       <form action="/logout" method="post"><button type="submit">退出</button></form>
     </div>
-    <a class="icon-action" href="/trips/new" aria-label="创建旅行群">+</a>
+    <a class="icon-action" href="/trips/new" aria-label="创建旅行">+</a>
   </header>
 
   {% if trips %}
@@ -32,20 +32,15 @@
           </div>
           <div class="trip-card-side">
             <em>{{ trip.status }}</em>
-            <div class="avatar-row">
-              {% for initial in trip.member_initials %}
-                <span>{{ initial }}</span>
-              {% endfor %}
-            </div>
           </div>
         </a>
       {% endfor %}
     </div>
   {% else %}
     <div class="empty-state">
-      <h2>还没有旅行群</h2>
-      <p>先创建一个群，把同行人拉进来一起说需求。</p>
-      <a class="primary-action compact" href="/trips/new">创建旅行群</a>
+      <h2>还没有旅行</h2>
+      <p>先建一个旅行主题，再和 Agent 一步步聊出计划。</p>
+      <a class="primary-action compact" href="/trips/new">创建旅行</a>
     </div>
   {% endif %}
 </section>

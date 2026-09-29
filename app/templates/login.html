@@ -1,37 +1,86 @@
 {% extends "base.html" %}
 
+{% block title %}{{ '创建账号' if mode == 'register' else '登录' }} · TravelAssistant{% endblock %}
+
 {% block content %}
-<section class="login-screen">
-  <div class="brand-lockup">
+<section class="login-screen auth-screen">
+  <header class="brand-lockup">
     <div class="brand-mark">TA</div>
     <div>
       <h1>TravelAssistant</h1>
-      <p>把群聊里的旅行想法，整理成大家都能确认的计划。</p>
+      <p>把下一次出发，慢慢聊清楚。</p>
     </div>
-  </div>
+  </header>
 
-  <div class="mechanism-panel">
-    <div class="mechanism-row">
-      <span>1</span>
-      <p>发起旅行群，邀请同行人加入。</p>
+  <section class="auth-idea-board" aria-hidden="true">
+    <div class="auth-board-title">
+      <span>旅行灵感</span>
+      <strong>下一站，出发</strong>
     </div>
-    <div class="mechanism-row">
-      <span>2</span>
-      <p>大家直接在群聊里说预算、偏好和禁忌。</p>
+    <svg class="auth-route" viewBox="0 0 360 210">
+      <path d="M18 162 C72 198, 92 46, 158 82 S248 192, 342 38" />
+      <circle cx="18" cy="162" r="5" />
+      <circle cx="342" cy="38" r="5" />
+    </svg>
+    <div class="auth-idea-note auth-idea-note--place">
+      <strong>海边日落</strong>
+      <span>地点</span>
     </div>
-    <div class="mechanism-row">
-      <span>3</span>
-      <p>Agent 把意见收敛成结构化行程。</p>
+    <div class="auth-idea-note auth-idea-note--pace">
+      <strong>慢慢逛</strong>
+      <span>节奏</span>
     </div>
-  </div>
+    <div class="auth-idea-note auth-idea-note--budget">
+      <strong>人均 2k</strong>
+      <span>预算</span>
+    </div>
+  </section>
 
-  <form class="login-card" action="/login" method="post">
+  <form class="login-card" action="{{ '/register' if mode == 'register' else '/login' }}" method="post">
+    <nav class="auth-mode-switch" aria-label="账号操作">
+      <a class="{{ 'active' if mode == 'login' else '' }}" href="/">登录</a>
+      <a class="{{ 'active' if mode == 'register' else '' }}" href="/?mode=register">注册</a>
+    </nav>
+
+    <div class="auth-heading">
+      <span>{{ '新的旅程' if mode == 'register' else '继续旅程' }}</span>
+      <h2>{{ '创建你的账号' if mode == 'register' else '欢迎回来' }}</h2>
+      <p>{{ '用邮箱保存每一次出发。' if mode == 'register' else '你的旅行想法还在这里。' }}</p>
+    </div>
+
+    {% if error %}
+      <p class="auth-error" role="alert">{{ error }}</p>
+    {% endif %}
+
     <label>
-      <span>你的昵称</span>
-      <input name="nickname" value="{{ current_user.name if current_user else '' }}" placeholder="例如：林夏" autocomplete="name" required />
+      <span>邮箱</span>
+      <input
+        type="email"
+        name="email"
+        value="{{ email }}"
+        placeholder="name@example.com"
+        autocomplete="email"
+        inputmode="email"
+        maxlength="254"
+        autofocus
+        required
+      />
     </label>
-    <button class="primary-action button-reset" type="submit">进入旅行群</button>
-    <small>先用昵称登录，后续可升级手机号或微信登录。</small>
+    <label>
+      <span>密码</span>
+      <input
+        type="password"
+        name="password"
+        placeholder="至少 8 个字符"
+        autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}"
+        minlength="8"
+        maxlength="72"
+        required
+      />
+    </label>
+    <button class="primary-action button-reset" type="submit">
+      {{ '创建账号' if mode == 'register' else '登录' }}
+    </button>
   </form>
 </section>
 {% endblock %}

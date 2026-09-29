@@ -1,19 +1,30 @@
-import hashlib
+import os
 import sqlite3
 from pathlib import Path
+from threading import Lock
 
 from fastapi import BackgroundTasks, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from .auth import (
+    SESSION_COOKIE_NAME,
+    SESSION_TTL_SECONDS,
+    AuthStore,
+    normalize_email,
+    validate_email,
+    validate_password,
+)
 from .models import AgentCard, Message, User
 from .store import USERS, store
 
 app = FastAPI(title="TravelAssistant Python H5")
+auth = AuthStore(store.db_path, store.persistence_enabled)
+registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20260815-quality-pass"
+templates.env.globals["static_version"] = "20260816-idea-auth"
 
 
 @app.exception_handler(404)
@@ -23,11 +34,11 @@ def not_found(request: Request, exc: HTTPException) -> HTMLResponse:
         "error.html",
         {
             "status_code": 404,
-            "title": "没有找到这个旅行群",
-            "message": "这个链接可能已经失效，或者服务重启前的旧旅行群不存在了。",
-            "hint": "可以回到旅行群列表，重新创建或打开一个新的邀请链接。",
+            "title": "没有找到这次旅行",
+            "message": "这次旅行不存在，或者它不属于当前账号。",
+            "hint": "可以回到我的旅行，打开已有计划或创建一次新旅行。",
             "action_href": "/trips",
-            "action_label": "回到旅行群",
+            "action_label": "回到我的旅行",
         },
         status_code=404,
     )
@@ -40,11 +51,11 @@ def forbidden(request: Request, exc: HTTPException) -> HTMLResponse:
         "error.html",
         {
             "status_code": 403,
-            "title": "这个邀请链接不可用",
-            "message": "邀请校验没有通过，可能是链接复制不完整。",
-            "hint": "请让发起人重新复制邀请页里的完整链接。",
+            "title": "没有访问权限",
+            "message": "当前账号不能访问这次旅行。",
+            "hint": "请返回我的旅行，选择属于当前账号的计划。",
             "action_href": "/trips",
-            "action_label": "回到旅行群",
+            "action_label": "回到我的旅行",
         },
         status_code=403,
     )
@@ -59,9 +70,9 @@ def server_error(request: Request, exc: Exception) -> HTMLResponse:
             "status_code": 500,
             "title": "页面暂时没加载出来",
             "message": "服务刚刚遇到一点问题，但你的旅行数据会尽量保留。",
-            "hint": "可以先返回旅行群列表，或者稍后刷新再试。",
+            "hint": "可以先返回我的旅行，或者稍后刷新再试。",
             "action_href": "/trips",
-            "action_label": "回到旅行群",
+            "action_label": "回到我的旅行",
         },
         status_code=500,
     )
@@ -111,47 +122,64 @@ def persistence_health() -> dict[str, str | bool]:
 
 
 def current_user(request: Request) -> User | None:
-    user_id = request.cookies.get("travel_user_id")
-    if user_id and user_id in USERS:
-        return USERS[user_id]
-    return None
+    session_token = request.cookies.get(SESSION_COOKIE_NAME, "")
+    user_id = auth.user_id_for_session(session_token)
+    return USERS.get(user_id) if user_id else None
 
 
-def require_user(request: Request) -> User:
-    user = current_user(request)
-    if not user:
-        raise HTTPException(status_code=401, detail="请先登录")
-    return user
+def get_owned_trip_or_404(trip_id: str, user: User):
+    trip = store.trips.get(trip_id)
+    if not trip or trip.owner.id != user.id:
+        raise HTTPException(status_code=404, detail="旅行不存在")
+    return trip
 
 
-def get_trip_or_404(trip_id: str):
-    if trip_id not in store.trips:
-        raise HTTPException(status_code=404, detail="旅行群不存在")
-    return store.get_trip(trip_id)
+def _secure_cookie(request: Request) -> bool:
+    configured = os.getenv("TRAVEL_COOKIE_SECURE", "").strip().lower()
+    if configured:
+        return configured in {"1", "true", "yes", "on"}
+    return request.url.scheme == "https"
 
 
-def invite_token_for(trip_id: str) -> str:
-    trip = get_trip_or_404(trip_id)
-    raw = f"{trip.id}:{trip.initiator.id}:travelassistant-invite"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+def _auth_page(
+    request: Request,
+    mode: str = "login",
+    email: str = "",
+    error: str = "",
+    status_code: int = 200,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {
+            "mode": "register" if mode == "register" else "login",
+            "email": email,
+            "error": error,
+        },
+        status_code=status_code,
+    )
 
 
-def valid_invite_token(trip_id: str, token: str) -> bool:
-    return token == invite_token_for(trip_id)
-
-
-def redirect_with_user(url: str, user: User, status_code: int = 303) -> RedirectResponse:
+def redirect_with_session(request: Request, url: str, user: User, status_code: int = 303) -> RedirectResponse:
+    session_token = auth.create_session(user.id)
     response = RedirectResponse(url=url, status_code=status_code)
-    response.set_cookie("travel_user_id", user.id, max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax")
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        session_token,
+        max_age=SESSION_TTL_SECONDS,
+        httponly=True,
+        secure=_secure_cookie(request),
+        samesite="lax",
+        path="/",
+    )
     return response
 
 
 @app.get("/", response_class=HTMLResponse)
-def login(request: Request, switch: str = "") -> Response:
-    user = current_user(request)
-    if user and not switch:
+def login(request: Request, mode: str = "login") -> Response:
+    if current_user(request):
         return RedirectResponse(url="/trips", status_code=303)
-    return templates.TemplateResponse(request, "login.html", {"current_user": user})
+    return _auth_page(request, mode=mode)
 
 
 @app.get("/favicon.ico")
@@ -160,17 +188,63 @@ def favicon() -> Response:
 
 
 @app.post("/login")
-def login_submit(nickname: str = Form("")) -> RedirectResponse:
-    if not nickname.strip():
-        return RedirectResponse(url="/", status_code=303)
-    user = store.get_or_create_user(nickname)
-    return redirect_with_user("/trips", user)
+def login_submit(request: Request, email: str = Form(""), password: str = Form("")) -> Response:
+    normalized_email = normalize_email(email)
+    user_id = None
+    if not validate_email(normalized_email) and password:
+        user_id = auth.authenticate(normalized_email, password)
+    user = USERS.get(user_id) if user_id else None
+    if not user:
+        return _auth_page(
+            request,
+            mode="login",
+            email=normalized_email,
+            error="邮箱或密码不正确",
+            status_code=401,
+        )
+    return redirect_with_session(request, "/trips", user)
+
+
+@app.post("/register")
+def register_submit(request: Request, email: str = Form(""), password: str = Form("")) -> Response:
+    normalized_email = normalize_email(email)
+    error = validate_email(normalized_email) or validate_password(password)
+    if error:
+        return _auth_page(request, mode="register", email=normalized_email, error=error, status_code=400)
+    with registration_lock:
+        if auth.email_exists(normalized_email):
+            return _auth_page(
+                request,
+                mode="register",
+                email=normalized_email,
+                error="该邮箱已注册，请直接登录",
+                status_code=400,
+            )
+
+        display_name = normalized_email.split("@", 1)[0][:20] or "旅行者"
+        user = store.create_user(display_name)
+        if not auth.create_account(normalized_email, user.id, password):
+            return _auth_page(
+                request,
+                mode="register",
+                email=normalized_email,
+                error="该邮箱已注册，请直接登录",
+                status_code=400,
+            )
+    return redirect_with_session(request, "/trips", user)
 
 
 @app.post("/logout")
-def logout() -> RedirectResponse:
+def logout(request: Request) -> RedirectResponse:
+    auth.revoke_session(request.cookies.get(SESSION_COOKIE_NAME, ""))
     response = RedirectResponse(url="/", status_code=303)
-    response.delete_cookie("travel_user_id")
+    response.delete_cookie(
+        SESSION_COOKIE_NAME,
+        httponly=True,
+        secure=_secure_cookie(request),
+        samesite="lax",
+        path="/",
+    )
     return response
 
 
@@ -194,7 +268,7 @@ def trips(request: Request) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse(request, "trips.html", {"trips": store.list_trips(), "current_user": user})
+    return templates.TemplateResponse(request, "trips.html", {"trips": store.list_trips(user.id), "current_user": user})
 
 
 @app.get("/trips/new", response_class=HTMLResponse)
@@ -218,53 +292,27 @@ def create_trip(
     if not user:
         return RedirectResponse(url="/", status_code=303)
     trip = store.create_trip(destination, date_range, budget, style, note, user)
-    return RedirectResponse(url=f"/invite/{trip.id}", status_code=303)
-
-
-@app.get("/invite/{trip_id}", response_class=HTMLResponse)
-def invite(request: Request, trip_id: str) -> HTMLResponse:
-    trip = get_trip_or_404(trip_id)
-    invite_token = invite_token_for(trip_id)
-    invite_url = f'{request.url_for("invite", trip_id=trip_id)}?token={invite_token}'
-    return templates.TemplateResponse(
-        request,
-        "invite.html",
-        {"trip": trip, "current_user": current_user(request), "invite_url": invite_url, "invite_token": invite_token},
-    )
-
-
-@app.post("/invite/{trip_id}/join")
-def join_invite(request: Request, trip_id: str, token: str = Form("")) -> RedirectResponse:
-    get_trip_or_404(trip_id)
-    user = current_user(request)
-    if not user:
-        return RedirectResponse(url="/", status_code=303)
-    if not valid_invite_token(trip_id, token):
-        raise HTTPException(status_code=403, detail="邀请链接不可用")
-    store.add_member(trip_id, user)
-    return redirect_with_user(f"/workspace/{trip_id}?tab=chat", user)
+    return RedirectResponse(url=f"/workspace/{trip.id}?tab=chat", status_code=303)
 
 
 @app.get("/workspace/{trip_id}", response_class=HTMLResponse)
-def workspace(request: Request, trip_id: str, tab: str = "board") -> Response:
-    trip = get_trip_or_404(trip_id)
+def workspace(request: Request, trip_id: str, tab: str = "chat") -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
+    trip = get_owned_trip_or_404(trip_id, user)
+    active_tab = tab if tab in {"chat", "board", "itinerary"} else "chat"
     return templates.TemplateResponse(
         request,
         "workspace.html",
         {
             "trip": trip,
-            "tab": tab,
+            "tab": active_tab,
             "messages": store.messages[trip_id],
             "idea_cards": store.idea_cards[trip_id],
             "plan": store.plans[trip_id],
             "plan_versions": store.plan_versions[trip_id],
-            "preferences": store.preferences[trip_id],
             "metrics": store.trip_metrics(trip_id),
-            "agent_steps": store.agent_steps,
-            "member_choices": store.trip_member_choices(trip_id),
             "current_user": user,
         },
     )
@@ -272,9 +320,10 @@ def workspace(request: Request, trip_id: str, tab: str = "board") -> Response:
 
 @app.get("/api/trips/{trip_id}/messages")
 def api_messages(request: Request, trip_id: str, after: str = "") -> Response:
-    get_trip_or_404(trip_id)
-    if not current_user(request):
+    user = current_user(request)
+    if not user:
         return JSONResponse({"error": "请先登录"}, status_code=401)
+    get_owned_trip_or_404(trip_id, user)
     messages = store.messages[trip_id]
     if after:
         try:
@@ -287,28 +336,26 @@ def api_messages(request: Request, trip_id: str, after: str = "") -> Response:
 
 @app.post("/api/trips/{trip_id}/messages")
 async def api_add_message(request: Request, trip_id: str, background_tasks: BackgroundTasks) -> Response:
-    get_trip_or_404(trip_id)
     user = current_user(request)
     if not user:
         return JSONResponse({"error": "请先登录"}, status_code=401)
+    get_owned_trip_or_404(trip_id, user)
     data = await request.json()
     body = str(data.get("body") or "").strip()
     if not body:
         return JSONResponse({"error": "消息不能为空"}, status_code=400)
     message = store.add_user_message(trip_id, body, user.id, process_agent=False)
-    response_messages = [message]
-    if store.should_trigger_agent(body):
-        thinking = store.start_agent_task(trip_id, body, user)
-        response_messages.append(thinking)
-        background_tasks.add_task(finish_agent_message_task, trip_id, body, user.id, thinking.id)
-    return JSONResponse({"messages": [message_to_dict(item) for item in response_messages]})
+    thinking = store.start_agent_task(trip_id)
+    background_tasks.add_task(finish_agent_message_task, trip_id, body, user.id, thinking.id)
+    return JSONResponse({"messages": [message_to_dict(message), message_to_dict(thinking)]})
 
 
 @app.get("/workspace/{trip_id}/messages/partial", response_class=HTMLResponse)
 def messages_partial(request: Request, trip_id: str) -> Response:
-    trip = get_trip_or_404(trip_id)
-    if not current_user(request):
+    user = current_user(request)
+    if not user:
         return RedirectResponse(url="/", status_code=303)
+    trip = get_owned_trip_or_404(trip_id, user)
     return templates.TemplateResponse(
         request,
         "partials/chat_messages.html",
@@ -317,22 +364,22 @@ def messages_partial(request: Request, trip_id: str) -> Response:
 
 
 @app.post("/workspace/{trip_id}/messages")
-def add_message(request: Request, trip_id: str, body: str = Form(""), sender_id: str | None = Form(None)) -> RedirectResponse:
-    get_trip_or_404(trip_id)
+def add_message(request: Request, trip_id: str, body: str = Form("")) -> RedirectResponse:
+    user = current_user(request)
+    if not user:
+        return RedirectResponse(url="/", status_code=303)
+    get_owned_trip_or_404(trip_id, user)
     if body.strip():
-        current = current_user(request)
-        if not current:
-            return RedirectResponse(url="/", status_code=303)
-        user = current if sender_id is None else USERS.get(sender_id, current)
         store.add_user_message(trip_id, body, user.id)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=chat", status_code=303)
 
 
 @app.post("/workspace/{trip_id}/ideas")
 def add_idea(request: Request, trip_id: str, body: str = Form("")) -> RedirectResponse:
-    get_trip_or_404(trip_id)
-    if not current_user(request):
+    user = current_user(request)
+    if not user:
         return RedirectResponse(url="/", status_code=303)
+    get_owned_trip_or_404(trip_id, user)
     if body.strip():
         store.add_idea(trip_id, body)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=board", status_code=303)
@@ -340,37 +387,40 @@ def add_idea(request: Request, trip_id: str, body: str = Form("")) -> RedirectRe
 
 @app.post("/workspace/{trip_id}/revision")
 def request_revision(request: Request, trip_id: str, item_id: str | None = Form(None), feedback: str = Form("")) -> RedirectResponse:
-    get_trip_or_404(trip_id)
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
+    get_owned_trip_or_404(trip_id, user)
     store.request_revision(trip_id, item_id, feedback, user)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary", status_code=303)
 
 
 @app.post("/workspace/{trip_id}/plan")
 def generate_plan(request: Request, trip_id: str) -> RedirectResponse:
-    get_trip_or_404(trip_id)
-    if not current_user(request):
+    user = current_user(request)
+    if not user:
         return RedirectResponse(url="/", status_code=303)
+    get_owned_trip_or_404(trip_id, user)
     store.generate_plan(trip_id)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary", status_code=303)
 
 
 @app.post("/workspace/{trip_id}/plan/confirm")
 def confirm_plan(request: Request, trip_id: str) -> RedirectResponse:
-    get_trip_or_404(trip_id)
-    if not current_user(request):
+    user = current_user(request)
+    if not user:
         return RedirectResponse(url="/", status_code=303)
+    get_owned_trip_or_404(trip_id, user)
     store.confirm_plan(trip_id)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary", status_code=303)
 
 
 @app.post("/workspace/{trip_id}/plan/restore")
 def restore_plan(request: Request, trip_id: str, version_id: str = Form("")) -> RedirectResponse:
-    get_trip_or_404(trip_id)
-    if not current_user(request):
+    user = current_user(request)
+    if not user:
         return RedirectResponse(url="/", status_code=303)
+    get_owned_trip_or_404(trip_id, user)
     if version_id:
         store.restore_plan_version(trip_id, version_id)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary", status_code=303)

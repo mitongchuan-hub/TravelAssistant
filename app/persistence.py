@@ -7,9 +7,10 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .models import AgentAction, AgentCard, IdeaCard, MemberPreference, Message, PlanVersion, TripDay, TripGroup, TripItem, TripPlan, User
+from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripDay, TripItem, TripPlan, User
 
 SNAPSHOT_KEY = "demo_store_v1"
+CURRENT_SCHEMA_VERSION = 2
 
 
 
@@ -17,6 +18,12 @@ def ensure_relational_schema(db_path: str | Path) -> None:
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(path) as connection:
+        trip_columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(trips)").fetchall()
+        }
+        if trip_columns and "owner_id" not in trip_columns:
+            connection.execute("DROP TABLE trips")
+        connection.execute("DROP TABLE IF EXISTS trip_members")
         connection.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -25,6 +32,20 @@ def ensure_relational_schema(db_path: str | Path) -> None:
                 initials TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS auth_accounts (
+                email TEXT PRIMARY KEY COLLATE NOCASE,
+                user_id TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS auth_sessions (
+                token_hash TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL,
+                expires_at INTEGER NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions (user_id);
+            CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions (expires_at);
             CREATE TABLE IF NOT EXISTS trips (
                 id TEXT PRIMARY KEY,
                 destination TEXT NOT NULL,
@@ -32,17 +53,10 @@ def ensure_relational_schema(db_path: str | Path) -> None:
                 budget TEXT NOT NULL,
                 style TEXT NOT NULL,
                 note TEXT NOT NULL DEFAULT '',
-                initiator_id TEXT NOT NULL,
+                owner_id TEXT NOT NULL,
                 status TEXT NOT NULL,
                 last_activity TEXT NOT NULL,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS trip_members (
-                trip_id TEXT NOT NULL,
-                user_id TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'member',
-                joined_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (trip_id, user_id)
             );
             CREATE TABLE IF NOT EXISTS messages (
                 id TEXT PRIMARY KEY,
@@ -88,7 +102,6 @@ def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, A
         DELETE FROM plans;
         DELETE FROM ideas;
         DELETE FROM messages;
-        DELETE FROM trip_members;
         DELETE FROM trips;
         DELETE FROM users;
         """
@@ -101,7 +114,7 @@ def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, A
     for trip_id, trip in snapshot.get("trips", {}).items():
         connection.execute(
             """
-            INSERT INTO trips (id, destination, date_range, budget, style, note, initiator_id, status, last_activity)
+            INSERT INTO trips (id, destination, date_range, budget, style, note, owner_id, status, last_activity)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -111,17 +124,11 @@ def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, A
                 trip["budget"],
                 trip["style"],
                 trip.get("note", ""),
-                trip["initiator"]["id"],
+                trip["owner"]["id"],
                 trip["status"],
                 trip["last_activity"],
             ),
         )
-    for trip_id, member_ids in snapshot.get("group_members", {}).items():
-        for user_id in member_ids:
-            connection.execute(
-                "INSERT OR IGNORE INTO trip_members (trip_id, user_id) VALUES (?, ?)",
-                (trip_id, user_id),
-            )
     for trip_id, messages in snapshot.get("messages", {}).items():
         for message in messages:
             connection.execute(
@@ -202,41 +209,49 @@ def load_snapshot(db_path: str | Path) -> dict[str, Any] | None:
 
 def serialize_state(store: Any, users: dict[str, User]) -> dict[str, Any]:
     return {
+        "schema_version": CURRENT_SCHEMA_VERSION,
         "users": {user_id: asdict(user) for user_id, user in users.items()},
         "trips": {trip_id: asdict(trip) for trip_id, trip in store.trips.items()},
-        "group_members": store.group_members,
         "messages": {trip_id: [asdict(message) for message in messages] for trip_id, messages in store.messages.items()},
         "plans": {trip_id: asdict(plan) for trip_id, plan in store.plans.items()},
         "plan_versions": {trip_id: [asdict(version) for version in versions] for trip_id, versions in store.plan_versions.items()},
-        "preferences": {trip_id: [asdict(preference) for preference in preferences] for trip_id, preferences in store.preferences.items()},
         "idea_cards": {trip_id: [asdict(card) for card in cards] for trip_id, cards in store.idea_cards.items()},
     }
 
 
 def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) -> int:
+    legacy = int(snapshot.get("schema_version", 1)) < CURRENT_SCHEMA_VERSION
     users.clear()
     users.update({user_id: _user(raw_user) for user_id, raw_user in snapshot.get("users", {}).items()})
     if "agent" not in users:
         users["agent"] = User(id="agent", name="旅行规划 Agent", initials="AI")
 
-    store.trips = {trip_id: _trip(raw_trip) for trip_id, raw_trip in snapshot.get("trips", {}).items()}
-    store.group_members = {trip_id: list(member_ids) for trip_id, member_ids in snapshot.get("group_members", {}).items()}
-    store.messages = {
-        trip_id: [_message(raw_message) for raw_message in raw_messages]
-        for trip_id, raw_messages in snapshot.get("messages", {}).items()
+    store.trips = {trip_id: _trip(raw_trip, legacy) for trip_id, raw_trip in snapshot.get("trips", {}).items()}
+    store.messages = {}
+    for trip_id, trip in store.trips.items():
+        restored_messages = []
+        for raw_message in snapshot.get("messages", {}).get(trip_id, []):
+            sender_type = str(raw_message.get("sender_type", "user"))
+            sender_id = str(raw_message.get("sender", {}).get("id", ""))
+            if legacy and sender_type == "user" and sender_id != trip.owner.id:
+                continue
+            restored_messages.append(_message(raw_message, trip.owner if legacy else None, legacy))
+        store.messages[trip_id] = restored_messages
+
+    store.plans = {
+        trip_id: _plan(raw_plan, legacy)
+        for trip_id, raw_plan in snapshot.get("plans", {}).items()
+        if trip_id in store.trips
     }
-    store.plans = {trip_id: _plan(raw_plan) for trip_id, raw_plan in snapshot.get("plans", {}).items()}
     store.plan_versions = {
-        trip_id: [_version(raw_version) for raw_version in raw_versions]
+        trip_id: [_version(raw_version, legacy) for raw_version in raw_versions]
         for trip_id, raw_versions in snapshot.get("plan_versions", {}).items()
-    }
-    store.preferences = {
-        trip_id: [_preference(raw_preference) for raw_preference in raw_preferences]
-        for trip_id, raw_preferences in snapshot.get("preferences", {}).items()
+        if trip_id in store.trips
     }
     store.idea_cards = {
-        trip_id: [_idea(raw_card) for raw_card in raw_cards]
+        trip_id: [_idea(raw_card, legacy) for raw_card in raw_cards]
         for trip_id, raw_cards in snapshot.get("idea_cards", {}).items()
+        if trip_id in store.trips
     }
     return _next_numeric_id(snapshot)
 
@@ -245,101 +260,134 @@ def _user(raw: dict[str, Any]) -> User:
     return User(id=str(raw["id"]), name=str(raw["name"]), initials=str(raw["initials"]))
 
 
-def _trip(raw: dict[str, Any]) -> TripGroup:
-    return TripGroup(
+def _trip(raw: dict[str, Any], legacy: bool = False) -> Trip:
+    owner = raw.get("owner") or raw.get("initiator")
+    if not isinstance(owner, dict):
+        raise ValueError("Trip snapshot is missing its owner")
+    return Trip(
         id=str(raw["id"]),
         destination=str(raw["destination"]),
         date_range=str(raw["date_range"]),
         budget=str(raw["budget"]),
         style=str(raw["style"]),
-        note=str(raw["note"]),
-        initiator=_user(raw["initiator"]),
-        member_initials=list(raw["member_initials"]),
+        note=str(raw.get("note", "")),
+        owner=_user(owner),
         status=str(raw["status"]),
-        last_activity=str(raw["last_activity"]),
+        last_activity=_solo_text(str(raw["last_activity"])) if legacy else str(raw["last_activity"]),
     )
 
 
-def _action(raw: dict[str, Any]) -> AgentAction:
-    return AgentAction(label=str(raw["label"]), target=str(raw["target"]))
+def _action(raw: dict[str, Any], legacy: bool = False) -> AgentAction:
+    target = str(raw["target"])
+    label = str(raw["label"])
+    if legacy and target == "members":
+        return AgentAction(label="查看旅行想法", target="board")
+    return AgentAction(label=_solo_text(label) if legacy else label, target=target)
 
 
-def _card(raw: dict[str, Any] | None) -> AgentCard | None:
+def _card(raw: dict[str, Any] | None, legacy: bool = False) -> AgentCard | None:
     if not raw:
         return None
     return AgentCard(
         kind=str(raw["kind"]),
-        title=str(raw["title"]),
-        summary=str(raw["summary"]),
-        bullets=list(raw["bullets"]),
-        actions=[_action(action) for action in raw["actions"]],
+        title=_solo_text(str(raw["title"])) if legacy else str(raw["title"]),
+        summary=_solo_text(str(raw["summary"])) if legacy else str(raw["summary"]),
+        bullets=[_solo_text(str(item)) if legacy else str(item) for item in raw["bullets"]],
+        actions=[_action(action, legacy) for action in raw["actions"]],
     )
 
 
-def _message(raw: dict[str, Any]) -> Message:
+def _message(raw: dict[str, Any], owner: User | None = None, legacy: bool = False) -> Message:
+    sender_type = str(raw["sender_type"])
+    sender = owner if owner and sender_type == "user" else _user(raw["sender"])
+    body = str(raw["body"])
     return Message(
         id=str(raw["id"]),
-        sender=_user(raw["sender"]),
-        sender_type=str(raw["sender_type"]),
-        body=str(raw["body"]),
+        sender=sender,
+        sender_type=sender_type,
+        body=_solo_text(body) if legacy else body,
         created_at=str(raw["created_at"]),
         status=str(raw.get("status", "sent")),
-        agent_card=_card(raw.get("agent_card")),
+        agent_card=_card(raw.get("agent_card"), legacy),
     )
 
 
-def _item(raw: dict[str, Any]) -> TripItem:
+def _item(raw: dict[str, Any], legacy: bool = False) -> TripItem:
+    satisfies = [str(item) for item in raw.get("satisfies", [])]
+    if legacy and satisfies:
+        satisfies = ["你的偏好"]
     return TripItem(
         id=str(raw["id"]),
         time=str(raw["time"]),
         title=str(raw["title"]),
         location=str(raw["location"]),
         duration=str(raw["duration"]),
-        reason=str(raw["reason"]),
-        notes=str(raw["notes"]),
-        satisfies=list(raw.get("satisfies", [])),
+        reason=_solo_text(str(raw["reason"])) if legacy else str(raw["reason"]),
+        notes=_solo_text(str(raw["notes"])) if legacy else str(raw["notes"]),
+        satisfies=satisfies,
     )
 
 
-def _day(raw: dict[str, Any]) -> TripDay:
-    return TripDay(id=str(raw["id"]), label=str(raw["label"]), items=[_item(item) for item in raw.get("items", [])])
+def _day(raw: dict[str, Any], legacy: bool = False) -> TripDay:
+    return TripDay(
+        id=str(raw["id"]),
+        label=str(raw["label"]),
+        items=[_item(item, legacy) for item in raw.get("items", [])],
+    )
 
 
-def _plan(raw: dict[str, Any]) -> TripPlan:
-    return TripPlan(id=str(raw["id"]), title=str(raw["title"]), status=str(raw["status"]), days=[_day(day) for day in raw.get("days", [])])
+def _plan(raw: dict[str, Any], legacy: bool = False) -> TripPlan:
+    return TripPlan(
+        id=str(raw["id"]),
+        title=str(raw["title"]),
+        status=str(raw["status"]),
+        days=[_day(day, legacy) for day in raw.get("days", [])],
+    )
 
 
-def _version(raw: dict[str, Any]) -> PlanVersion:
+def _version(raw: dict[str, Any], legacy: bool = False) -> PlanVersion:
+    change_summary = str(raw["change_summary"])
     return PlanVersion(
         id=str(raw["id"]),
         label=str(raw["label"]),
         title=str(raw["title"]),
         status=str(raw["status"]),
         created_at=str(raw["created_at"]),
-        change_summary=str(raw["change_summary"]),
-        days=[_day(day) for day in raw.get("days", [])],
+        change_summary=_solo_text(change_summary) if legacy else change_summary,
+        days=[_day(day, legacy) for day in raw.get("days", [])],
     )
 
 
-def _idea(raw: dict[str, Any]) -> IdeaCard:
+def _idea(raw: dict[str, Any], legacy: bool = False) -> IdeaCard:
+    author = str(raw.get("author", "Agent"))
+    if legacy:
+        author = "Agent" if author.lower() in {"agent", "ai", "旅行规划 agent"} else "你"
+    title = str(raw["title"])
+    body = str(raw["body"])
     return IdeaCard(
         id=str(raw["id"]),
         kind=str(raw["kind"]),
-        title=str(raw["title"]),
-        body=str(raw["body"]),
-        author=str(raw["author"]),
+        title=_solo_text(title) if legacy else title,
+        body=_solo_text(body) if legacy else body,
+        author=author,
         status=str(raw["status"]),
         rotation=str(raw.get("rotation", "0deg")),
     )
 
 
-def _preference(raw: dict[str, Any]) -> MemberPreference:
-    return MemberPreference(
-        member=_user(raw["member"]),
-        known=list(raw.get("known", [])),
-        missing=list(raw.get("missing", [])),
-        conflicts=list(raw.get("conflicts", [])),
+def _solo_text(value: str) -> str:
+    value = re.sub(r"大家\s*(.+?)吧，我想", r"我 \1，想", value)
+    replacements = (
+        ("旅行群", "旅行"),
+        ("群聊", "对话"),
+        ("成员偏好", "旅行想法"),
+        ("大家的", "你的"),
+        ("大家", "你"),
+        ("同行人", "出行偏好"),
     )
+    for old, new in replacements:
+        value = value.replace(old, new)
+    return value
 
 
 def _next_numeric_id(snapshot: dict[str, Any]) -> int:

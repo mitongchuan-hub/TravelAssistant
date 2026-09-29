@@ -9,15 +9,14 @@ class User:
 
 
 @dataclass
-class TripGroup:
+class Trip:
     id: str
     destination: str
     date_range: str
     budget: str
     style: str
     note: str
-    initiator: User
-    member_initials: list[str]
+    owner: User
     status: str
     last_activity: str
 
@@ -95,11 +94,3 @@ class IdeaCard:
     author: str
     status: str
     rotation: str = "0deg"
-
-
-@dataclass(frozen=True)
-class MemberPreference:
-    member: User
-    known: list[str]
-    missing: list[str]
-    conflicts: list[str]

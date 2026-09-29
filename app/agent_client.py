@@ -7,7 +7,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from .models import AgentAction, AgentCard, IdeaCard, MemberPreference, Message, PlanVersion, TripGroup, TripPlan
+from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripPlan
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -27,26 +27,26 @@ VALID_IDEA_KINDS = {"地点", "预算", "节奏", "禁忌", "待归类"}
 
 
 SYSTEM_PROMPT = """
-你是 TravelAssistant 旅行群聊里的规划 Agent。你的任务不是闲聊，而是把成员在群聊里的旅行想法收敛成可执行计划约束。
+你是 TravelAssistant 的私人旅行规划 Agent。当前对话只有一位用户和你，用户发送每条消息后都期待你的直接回复，不需要使用 @ 唤醒你。
 
-请始终使用简体中文，语气轻松、陪伴、像私人旅行助手，避免办公化措辞。
-你需要根据用户最新消息、旅行群基础信息、最近聊天记录、想法墙、成员偏好、当前行程和版本历史，形成全局视角后返回一个 JSON 对象，不要输出 Markdown。
+请始终使用简体中文，语气轻松、具体，像可靠的私人旅行助手，避免办公化措辞。
+你既要自然回答旅行问题，也要把对话中明确的时间、预算、地点、节奏和禁忌整理成可执行约束。请结合旅行基础信息、最近对话、想法墙、当前行程和版本历史，返回一个 JSON 对象，不要输出 Markdown。
 
 JSON 格式：
 {
-  "body": "一句适合显示在聊天气泡里的回复，40 字以内",
+  "body": "一句适合显示在聊天气泡里的直接回复，60 字以内",
   "card": {
     "kind": "requirement-summary | missing-info | conflict | itinerary-draft | revision 之一",
     "title": "卡片标题，18 字以内",
     "summary": "卡片摘要，60 字以内",
     "bullets": ["要点 1", "要点 2", "要点 3"],
-    "action_target": "members 或 itinerary"
+    "action_target": "board 或 itinerary"
   },
   "idea_cards": [
     {
       "kind": "地点 | 预算 | 节奏 | 禁忌 | 待归类 之一",
       "title": "适合贴到想法墙的短标题，14 字以内",
-      "body": "把群聊原话整理成一条可执行约束，60 字以内",
+      "body": "把用户原话整理成一条可执行约束，60 字以内",
       "status": "已整理 | 约束 | 候选 | 冲突提醒 | 待补充 之一"
     }
   ],
@@ -64,7 +64,7 @@ JSON 格式：
             "duration": "停留时长",
             "reason": "为什么这样安排",
             "notes": "提醒或待确认事项",
-            "satisfies": ["成员名或需求"]
+            "satisfies": ["对应的偏好或约束"]
           }
         ]
       }
@@ -73,12 +73,12 @@ JSON 格式：
 }
 
 选择规则：
-- 提到预算、时间、地点、饮食、同行人偏好：kind 用 requirement-summary 或 missing-info。
+- 提到预算、时间、地点、饮食或旅行偏好：kind 用 requirement-summary 或 missing-info。
 - 提到不要、太累、冲突、不能接受：kind 用 conflict。
-- 明确要求生成、调整、查看行程：kind 用 itinerary-draft 或 revision。
-- 信息不足时，不要假装已生成完整行程，应该追问缺失信息。
-- idea_cards 最多返回 3 条，只抽取最新消息或最近群聊里明确的预算、地点、节奏、禁忌，不要重复空泛内容。
-- 只有用户明确要求生成、修改、安排、查看行程时才返回 plan；否则 plan 为 null 或省略。
+- 明确要求生成、调整或查看行程：kind 用 itinerary-draft 或 revision。
+- 信息不足时不要假装已生成完整行程，应直接追问最关键的一项信息。
+- idea_cards 最多返回 3 条，只抽取最新消息或最近对话里明确的约束，不要重复空泛内容。
+- 只有用户明确要求生成、修改、安排或查看行程时才返回 plan；否则 plan 为 null 或省略。
 """.strip()
 
 
@@ -89,11 +89,10 @@ def is_llm_enabled() -> bool:
 
 
 def generate_agent_reply(
-    trip: TripGroup,
+    trip: Trip,
     messages: list[Message],
     user_body: str,
     idea_cards: list[IdeaCard] | None = None,
-    preferences: list[MemberPreference] | None = None,
     plan: TripPlan | None = None,
     plan_versions: list[PlanVersion] | None = None,
     metrics: dict[str, int | str] | None = None,
@@ -121,7 +120,6 @@ def generate_agent_reply(
                         messages,
                         user_body,
                         idea_cards=idea_cards,
-                        preferences=preferences,
                         plan=plan,
                         plan_versions=plan_versions,
                         metrics=metrics,
@@ -131,15 +129,15 @@ def generate_agent_reply(
         )
         content = response.choices[0].message.content or ""
         return _parse_reply(content)
-    except Exception as exc:
+    except Exception:
         return AgentReply(
             body="我这边暂时没连上模型，先按本地规则记录。",
             card=AgentCard(
                 kind="missing-info",
                 title="模型调用暂时失败",
                 summary="消息已保留，可以检查 API Key、Base URL 和模型名后再试。",
-                bullets=[str(exc)[:80], "当前不会丢失群聊内容", "稍后可继续补充旅行偏好"],
-                actions=[AgentAction(label="查看成员偏好", target="members")],
+                bullets=["消息已经保留", "请检查模型服务配置", "稍后可以直接重新发送"],
+                actions=[AgentAction(label="查看旅行想法", target="board")],
             ),
             idea_cards=[],
             plan=None,
@@ -147,27 +145,23 @@ def generate_agent_reply(
 
 
 def _build_context(
-    trip: TripGroup,
+    trip: Trip,
     messages: list[Message],
     user_body: str,
     idea_cards: list[IdeaCard] | None = None,
-    preferences: list[MemberPreference] | None = None,
     plan: TripPlan | None = None,
     plan_versions: list[PlanVersion] | None = None,
     metrics: dict[str, int | str] | None = None,
 ) -> str:
     recent_messages = messages[-20:]
-    chat_lines = [f"{message.sender.name}: {message.body}" for message in recent_messages]
+    chat_lines = [
+        f"{'用户' if message.sender_type == 'user' else 'Agent'}: {message.body}"
+        for message in recent_messages
+    ]
     idea_lines = [
-        f"- [{card.kind}/{card.status}] {card.title}｜{card.author}：{card.body}"
+        f"- [{card.kind}/{card.status}] {card.title}｜来源={card.author}：{card.body}"
         for card in (idea_cards or [])[-8:]
     ]
-    preference_lines = []
-    for preference in preferences or []:
-        known = "、".join(preference.known) or "暂无"
-        missing = "、".join(preference.missing) or "暂无"
-        conflicts = "、".join(preference.conflicts) or "暂无"
-        preference_lines.append(f"- {preference.member.name}：已确认={known}；待确认={missing}；冲突/禁忌={conflicts}")
     plan_lines = _plan_context_lines(plan)
     version_lines = [
         f"- {version.label}｜{version.status}｜{version.change_summary}"
@@ -177,9 +171,10 @@ def _build_context(
 
     return "\n".join(
         [
-            "你现在拥有 TravelAssistant 四个导航页的全局上下文：想法、聊天、行程、成员。回答和生成计划时必须综合这些信息，不要只看最新一句话。",
+            "你拥有 TravelAssistant 三个导航页的全局上下文：聊天、想法、行程。回答和生成计划时必须综合这些信息，不要只看最新一句话。",
+            "当前是用户与你的一对一私人对话，只包含用户和 Agent。",
             "",
-            "旅行群信息：",
+            "旅行信息：",
             f"目的地/标题：{trip.destination}",
             f"时间：{trip.date_range}",
             f"预算：{trip.budget}",
@@ -192,8 +187,8 @@ def _build_context(
             "想法页 / 想法墙：",
             *(idea_lines or ["- 暂无想法卡"]),
             "",
-            "聊天页 / 最近消息：",
-            *(chat_lines or ["- 暂无聊天消息"]),
+            "聊天页 / 最近对话：",
+            *(chat_lines or ["- 暂无对话"]),
             "",
             "行程页 / 当前计划：",
             *(plan_lines or ["- 暂无行程"]),
@@ -201,10 +196,7 @@ def _build_context(
             "行程页 / 版本历史：",
             *(version_lines or ["- 暂无版本历史"]),
             "",
-            "成员页 / 成员偏好：",
-            *(preference_lines or ["- 暂无成员偏好"]),
-            "",
-            f"最新消息：{user_body.strip()}",
+            f"用户最新消息：{user_body.strip()}",
         ]
     )
 
@@ -233,18 +225,18 @@ def _parse_reply(content: str) -> AgentReply:
     if not clean_bullets:
         clean_bullets = ["继续补充时间、预算和必去地点", "我会把新消息整理进计划约束"]
 
-    action_target = str(card_data.get("action_target") or "members")
-    if action_target not in {"members", "itinerary"}:
-        action_target = "itinerary" if kind in {"itinerary-draft", "revision", "conflict"} else "members"
+    action_target = str(card_data.get("action_target") or "board")
+    if action_target not in {"board", "itinerary"}:
+        action_target = "itinerary" if kind in {"itinerary-draft", "revision", "conflict"} else "board"
 
     return AgentReply(
         body=str(data.get("body") or "我已把这条消息纳入旅行计划约束。").strip()[:120],
         card=AgentCard(
             kind=kind,
             title=str(card_data.get("title") or "偏好已更新").strip()[:40],
-            summary=str(card_data.get("summary") or "我会结合群聊上下文继续整理大家的旅行需求。").strip()[:120],
+            summary=str(card_data.get("summary") or "我会结合当前对话继续整理你的旅行需求。").strip()[:120],
             bullets=clean_bullets,
-            actions=[AgentAction(label="查看行程" if action_target == "itinerary" else "查看成员偏好", target=action_target)],
+            actions=[AgentAction(label="查看行程" if action_target == "itinerary" else "查看旅行想法", target=action_target)],
         ),
         idea_cards=_parse_idea_cards(data.get("idea_cards")),
         plan=_parse_plan(data.get("plan")),
@@ -300,8 +292,8 @@ def _parse_plan(raw_plan: object) -> dict | None:
                     "title": title,
                     "location": str(raw_item.get("location") or "地点待定").strip()[:40],
                     "duration": str(raw_item.get("duration") or "时长待定").strip()[:24],
-                    "reason": str(raw_item.get("reason") or "根据群聊偏好安排。").strip()[:120],
-                    "notes": str(raw_item.get("notes") or "可继续在群聊里调整。").strip()[:120],
+                    "reason": str(raw_item.get("reason") or "根据你的旅行偏好安排。").strip()[:120],
+                    "notes": str(raw_item.get("notes") or "可以继续在对话里调整。").strip()[:120],
                     "satisfies": [str(item).strip()[:16] for item in satisfies if str(item).strip()][:4],
                 }
             )
