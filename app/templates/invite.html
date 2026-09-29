@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}加入旅行群{% endblock %}
+
+{% block content %}
+<section class="page-stack">
+  <header class="page-header">
+    <a class="text-link" href="/trips">返回</a>
+    <div>
+      <p class="muted">邀请加入</p>
+      <h1>{{ trip.destination }}</h1>
+    </div>
+  </header>
+
+  <div class="invite-panel">
+    <div class="avatar-large">{{ trip.initiator.initials }}</div>
+    <h2>{{ trip.initiator.name }} 发起了旅行群</h2>
+    <p>{{ trip.date_range }} · {{ trip.budget }} · {{ trip.style }}</p>
+    {% if trip.note %}
+      <blockquote>{{ trip.note }}</blockquote>
+    {% endif %}
+    <div class="avatar-row centered">
+      {% for initial in trip.member_initials %}
+        <span>{{ initial }}</span>
+      {% endfor %}
+    </div>
+  </div>
+
+  <section class="share-card" aria-label="分享邀请">
+    <div>
+      <strong>分享给同行人</strong>
+      <p>复制这个链接发给朋友，对方输入昵称后就能加入。</p>
+    </div>
+    <div class="copy-row">
+      <input value="{{ invite_url }}" readonly data-copy-source aria-label="邀请链接" />
+      <button type="button" data-copy-button data-copy-label="复制链接">复制</button>
+    </div>
+  </section>
+
+  {% if current_user %}
+    <form class="join-card" action="/invite/{{ trip.id }}/join" method="post">
+      <input type="hidden" name="token" value="{{ invite_token }}" />
+      <p>将以 <strong>{{ current_user.name }}</strong> 的身份加入。</p>
+      <button class="primary-action button-reset" type="submit">加入群聊</button>
+      <a class="secondary-action compact" href="/?switch=1">换个昵称</a>
+    </form>
+  {% else %}
+    <div class="join-card">
+      <p>先输入昵称，再加入这个旅行群。</p>
+      <a class="primary-action compact" href="/">去登录</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

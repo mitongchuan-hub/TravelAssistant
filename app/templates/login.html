@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="login-screen">
+  <div class="brand-lockup">
+    <div class="brand-mark">TA</div>
+    <div>
+      <h1>TravelAssistant</h1>
+      <p>把群聊里的旅行想法，整理成大家都能确认的计划。</p>
+    </div>
+  </div>
+
+  <div class="mechanism-panel">
+    <div class="mechanism-row">
+      <span>1</span>
+      <p>发起旅行群，邀请同行人加入。</p>
+    </div>
+    <div class="mechanism-row">
+      <span>2</span>
+      <p>大家直接在群聊里说预算、偏好和禁忌。</p>
+    </div>
+    <div class="mechanism-row">
+      <span>3</span>
+      <p>Agent 把意见收敛成结构化行程。</p>
+    </div>
+  </div>
+
+  <form class="login-card" action="/login" method="post">
+    <label>
+      <span>你的昵称</span>
+      <input name="nickname" value="{{ current_user.name if current_user else '' }}" placeholder="例如：林夏" autocomplete="name" required />
+    </label>
+    <button class="primary-action button-reset" type="submit">进入旅行群</button>
+    <small>先用昵称登录，后续可升级手机号或微信登录。</small>
+  </form>
+</section>
+{% endblock %}

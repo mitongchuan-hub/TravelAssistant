@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% macro bottom_nav(trip, active_tab) -%}
+  <nav class="bottom-nav" aria-label="底部导航">
+    <a class="{{ 'active' if active_tab == 'board' else '' }}" href="/workspace/{{ trip.id }}?tab=board"><span>✦</span>想法</a>
+    <a class="{{ 'active' if active_tab == 'chat' else '' }}" href="/workspace/{{ trip.id }}?tab=chat"><span>⌁</span>聊天</a>
+    <a class="{{ 'active' if active_tab == 'itinerary' else '' }}" href="/workspace/{{ trip.id }}?tab=itinerary"><span>⌖</span>行程</a>
+    <a class="{{ 'active' if active_tab == 'members' else '' }}" href="/workspace/{{ trip.id }}?tab=members"><span>◡</span>成员</a>
+  </nav>
+{%- endmacro %}
+
+{% macro progress_strip(metrics, mode="default") -%}
+  <section class="progress-strip {{ mode }}" aria-label="旅行整理进度">
+    <article>
+      <strong>{{ metrics.idea_count }}</strong>
+      <span>想法</span>
+    </article>
+    <article>
+      <strong>{{ metrics.confirmed_count }}</strong>
+      <span>已确认</span>
+    </article>
+    <article>
+      <strong>{{ metrics.conflict_count }}</strong>
+      <span>提醒</span>
+    </article>
+    <article>
+      <strong>{{ metrics.latest_version }}</strong>
+      <span>版本</span>
+    </article>
+  </section>
+{%- endmacro %}
+
+{% block title %}{{ trip.destination }}{% endblock %}
+
+{% block content %}
+<section class="workspace {{ 'workspace--board' if tab == 'board' else '' }}">
+  {% if tab == "board" %}
+    <section class="idea-wall-screen">
+      <header class="idea-wall-top">
+        <a href="/trips"><span>旅行想法</span>{{ trip.destination | replace("周末旅行", "想法墙") }}</a>
+        <form action="/workspace/{{ trip.id }}/plan" method="post">
+          <button class="generate-plan" type="submit">生成计划</button>
+        </form>
+      </header>
+
+      <section class="idea-wall-canvas" data-route-board data-card-count="{{ idea_cards | length }}" aria-label="旅行想法白板">
+        <h2 class="sr-only">旅行想法白板</h2>
+        <div class="idea-wall-legend" aria-label="想法类型">
+          <span class="legend-place">地点</span>
+          <span class="legend-budget">预算</span>
+          <span class="legend-pace">节奏</span>
+          <span class="legend-taboo">禁忌</span>
+        </div>
+        <svg class="travel-route" viewBox="0 0 260 360" aria-hidden="true">
+          <path data-route-path />
+        </svg>
+        {% for card in idea_cards %}
+          <button
+            class="floating-idea kind-{{ card.kind }}"
+            type="button"
+            data-route-index="{{ loop.index0 }}"
+            data-idea-detail-trigger
+            data-title="{{ card.title }}"
+            data-kind="{{ card.kind }}"
+            data-body="{{ card.body }}"
+            data-author="{{ card.author }}"
+            data-status="{{ card.status }}"
+            style="--rotate: {{ card.rotation }}"
+          >
+            <strong>{{ card.title }}</strong>
+            <span>{{ card.kind }}</span>
+          </button>
+        {% endfor %}
+      </section>
+
+      <section class="idea-detail-sheet" aria-label="想法详情" aria-hidden="true" data-idea-detail-sheet>
+        <button class="sheet-scrim" type="button" aria-label="关闭想法详情" data-idea-detail-close></button>
+        <article class="idea-detail-panel" role="dialog" aria-modal="true" aria-labelledby="idea-detail-title">
+          <div class="sheet-handle" aria-hidden="true"></div>
+          <div class="idea-detail-heading">
+            <span data-idea-detail-kind>地点</span>
+            <button type="button" data-idea-detail-close>关闭</button>
+          </div>
+          <h2 id="idea-detail-title" data-idea-detail-title>想法</h2>
+          <p data-idea-detail-body></p>
+          <div class="idea-detail-statusbar">
+            <strong data-idea-detail-status></strong>
+            <span data-idea-detail-author></span>
+          </div>
+          <dl>
+            <div>
+              <dt>提出人</dt>
+              <dd data-idea-detail-author></dd>
+            </div>
+            <div>
+              <dt>采纳状态</dt>
+              <dd data-idea-detail-status></dd>
+            </div>
+          </dl>
+        </article>
+      </section>
+
+      <form class="wall-quick-add" action="/workspace/{{ trip.id }}/ideas" method="post">
+        <input name="body" placeholder="写一个旅行想法" autocomplete="off" required />
+        <button type="submit">添加</button>
+      </form>
+
+      {{ bottom_nav(trip, "board") }}
+    </section>
+  {% elif tab == "chat" %}
+    <section class="travel-tab-screen chat-screen">
+      <header class="travel-page-top">
+        <a href="/trips">旅行群</a>
+        <div>
+          <span>群聊输入</span>
+          <h1>{{ trip.destination | replace("周末旅行", "聊天") }}</h1>
+          <p>{{ trip.date_range }} · {{ trip.member_initials | length }} 人同行</p>
+        </div>
+      </header>
+
+      <section class="chat-list" aria-live="polite" aria-label="群聊记录" data-chat-list data-messages-url="/workspace/{{ trip.id }}/messages/partial">
+        {% include "partials/chat_messages.html" %}
+      </section>
+      <section class="chat-dock" aria-label="聊天输入区">
+        <form class="composer" action="/workspace/{{ trip.id }}/messages" method="post" data-api-url="/api/trips/{{ trip.id }}/messages" data-current-name="{{ current_user.name }}" data-current-initials="{{ current_user.initials }}">
+          <input name="body" placeholder="发消息，或输入 @旅行助手 叫醒 Agent" autocomplete="off" required />
+          <button type="submit">发送</button>
+        </form>
+      </section>
+      {{ bottom_nav(trip, "chat") }}
+    </section>
+  {% elif tab == "itinerary" %}
+    <section class="travel-tab-screen">
+      <header class="travel-page-top">
+        <a href="/trips">旅行群</a>
+        <div>
+          <span>结构化计划</span>
+          <h1>{{ trip.destination | replace("周末旅行", "行程") }}</h1>
+          <p>{{ trip.date_range }} · {{ plan.status }}</p>
+        </div>
+      </header>
+
+      <section class="itinerary-panel">
+        <div class="travel-section-title">
+          <div>
+            <p class="muted">Agent 草案</p>
+            <h2>{{ plan.title }}</h2>
+            {% if plan_versions %}
+              <small class="version-line">当前版本 {{ plan_versions[-1].label }} · {{ plan_versions[-1].change_summary }}</small>
+            {% endif %}
+          </div>
+          <span class="status-pill">{{ plan.status }}</span>
+        </div>
+        {% if plan.days %}
+          <section class="version-summary-card" aria-label="当前版本变化">
+            <span>{{ metrics.latest_version }}</span>
+            <p>{{ metrics.latest_change }}</p>
+            <small>{{ metrics.plan_day_count }} 天 · {{ metrics.plan_item_count }} 个安排 · {{ metrics.version_count }} 个版本</small>
+          </section>
+          <form class="confirm-plan" action="/workspace/{{ trip.id }}/plan/confirm" method="post">
+            <button type="submit">确认这版计划</button>
+            <small>确认后，后续调整会作为新草案记录。</small>
+          </form>
+        {% endif %}
+        {% if plan.days %}
+          {% for day in plan.days %}
+            <section class="day-block">
+              <h3>{{ day.label }}</h3>
+              {% for item in day.items %}
+                <article class="timeline-item">
+                  <time>{{ item.time }}</time>
+                  <div>
+                    <h4>{{ item.title }}</h4>
+                    <p class="item-location">{{ item.location }} · {{ item.duration }}</p>
+                    {% if item.satisfies %}
+                      <div class="satisfies">
+                        <strong>满足需求</strong>
+                        {% for name in item.satisfies %}
+                          <span>{{ name }}</span>
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                    <p>{{ item.reason }}</p>
+                    <small>{{ item.notes }}</small>
+                    <details class="revision-drawer">
+                      <summary>让 Agent 调整这项</summary>
+                      <form class="revision-form" action="/workspace/{{ trip.id }}/revision" method="post">
+                        <input type="hidden" name="item_id" value="{{ item.id }}" />
+                        <textarea name="feedback" placeholder="比如：这个太赶，换成室内或留休息时间" required></textarea>
+                        <button type="submit">提交修改意见</button>
+                      </form>
+                    </details>
+                  </div>
+                </article>
+              {% endfor %}
+            </section>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <h2>还没有行程</h2>
+            <p>先在群聊里让成员补充需求，再让 Agent 生成第一版计划。</p>
+            <form action="/workspace/{{ trip.id }}/plan" method="post">
+              <button class="primary-action compact" type="submit">让 Agent 生成第一版</button>
+            </form>
+            <a class="secondary-action compact" href="/workspace/{{ trip.id }}?tab=chat">回到群聊补充需求</a>
+          </div>
+        {% endif %}
+        {% if plan_versions | length > 1 %}
+          <details class="version-history" aria-label="行程版本历史">
+            <summary>版本记录 · {{ plan_versions | length }} 个版本</summary>
+            {% for version in plan_versions | reverse %}
+              <article>
+                <strong>{{ version.label }}</strong>
+                <span>{{ version.created_at }}</span>
+                <p>{{ version.change_summary }}</p>
+                <form action="/workspace/{{ trip.id }}/plan/restore" method="post">
+                  <input type="hidden" name="version_id" value="{{ version.id }}" />
+                  <button type="submit">恢复这版</button>
+                </form>
+              </article>
+            {% endfor %}
+          </details>
+        {% endif %}
+      </section>
+      {{ bottom_nav(trip, "itinerary") }}
+    </section>
+  {% else %}
+    <section class="travel-tab-screen">
+      <header class="travel-page-top">
+        <a href="/trips">旅行群</a>
+        <div>
+          <span>成员偏好</span>
+          <h1>{{ trip.destination | replace("周末旅行", "成员") }}</h1>
+          <p>{{ trip.date_range }} · {{ trip.member_initials | length }} 人同行</p>
+        </div>
+      </header>
+
+      <section class="preference-list">
+        {% if preferences %}
+          <div class="travel-section-title">
+            <div>
+              <p class="muted">大家的想法</p>
+              <h2>把每个人在意的事放在明处</h2>
+            </div>
+          </div>
+          {{ progress_strip(metrics, "member-progress") }}
+          {% for preference in preferences %}
+            <article class="preference-card member-card">
+              <header class="member-card-head">
+                <span class="avatar">{{ preference.member.initials }}</span>
+                <div>
+                  <h2>{{ preference.member.name }}</h2>
+                  <p>{{ preference.known | length }} 条已确认 · {{ preference.missing | length }} 项待确认</p>
+                </div>
+                {% if preference.conflicts %}
+                  <em>有提醒</em>
+                {% else %}
+                  <em class="calm">顺畅</em>
+                {% endif %}
+              </header>
+              <section class="member-preference-section confirmed">
+                <strong>已确认</strong>
+                <div class="chips">
+                  {% for item in preference.known %}
+                    <span>{{ item }}</span>
+                  {% else %}
+                    <span class="quiet-chip">等 Ta 在群聊里补充</span>
+                  {% endfor %}
+                </div>
+              </section>
+              <section class="member-preference-section missing">
+                <strong>待确认</strong>
+                <div class="chips missing">
+                  {% for item in preference.missing %}
+                    <span>{{ item }}</span>
+                  {% else %}
+                    <span class="quiet-chip">暂时没有缺失项</span>
+                  {% endfor %}
+                </div>
+              </section>
+              {% if preference.conflicts %}
+                <section class="member-preference-section conflicts">
+                  <strong>需要协调</strong>
+                  {% for conflict in preference.conflicts %}
+                    <p class="conflict">{{ conflict }}</p>
+                  {% endfor %}
+                </section>
+              {% endif %}
+            </article>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <h2>还没有成员偏好</h2>
+            <p>成员在群聊里发言后，Agent 会逐步整理偏好和冲突。</p>
+          </div>
+        {% endif %}
+      </section>
+      {{ bottom_nav(trip, "members") }}
+    </section>
+  {% endif %}
+</section>
+{% endblock %}

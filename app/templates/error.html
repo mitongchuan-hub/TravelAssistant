@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="page-stack error-screen">
+  <header class="page-header">
+    <a class="text-link" href="/trips">返回</a>
+    <div>
+      <p class="muted">{{ status_code }}</p>
+      <h1>{{ title }}</h1>
+    </div>
+  </header>
+
+  <section class="empty-state error-card">
+    <h2>{{ message }}</h2>
+    <p>{{ hint }}</p>
+    <a class="primary-action compact" href="{{ action_href }}">{{ action_label }}</a>
+  </section>
+</section>
+{% endblock %}
