@@ -48,6 +48,15 @@ class Message:
 
 
 @dataclass(frozen=True)
+class MealRecommendation:
+    meal_type: str
+    recommendation: str
+    cuisine: str
+    budget: str
+    reservation: str = "待确认"
+
+
+@dataclass(frozen=True)
 class TripItem:
     id: str
     time: str
@@ -57,6 +66,8 @@ class TripItem:
     reason: str
     notes: str
     satisfies: list[str] = field(default_factory=list)
+    category: str = "activity"
+    meal: MealRecommendation | None = None
 
 
 @dataclass(frozen=True)
@@ -66,12 +77,26 @@ class TripDay:
     items: list[TripItem]
 
 
+@dataclass(frozen=True)
+class PreparationItem:
+    title: str
+    body: str
+    status: str = "待确认"
+
+
+@dataclass
+class TravelPreparation:
+    clothing: list[PreparationItem] = field(default_factory=list)
+    accommodation: list[PreparationItem] = field(default_factory=list)
+
+
 @dataclass
 class TripPlan:
     id: str
     title: str
     status: str
     days: list[TripDay] = field(default_factory=list)
+    preparation: TravelPreparation = field(default_factory=TravelPreparation)
 
 
 @dataclass(frozen=True)
@@ -83,6 +108,7 @@ class PlanVersion:
     created_at: str
     change_summary: str
     days: list[TripDay] = field(default_factory=list)
+    preparation: TravelPreparation = field(default_factory=TravelPreparation)
 
 
 @dataclass(frozen=True)

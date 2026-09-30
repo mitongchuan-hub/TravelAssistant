@@ -4068,3 +4068,68 @@ blockquote {
     border-radius: 18px;
   }
 }
+
+.preparation-panel {
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgb(55 53 47 / 12%);
+  border-radius: 16px;
+  background: rgb(255 252 245 / 78%);
+}
+
+.preparation-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.preparation-item {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 72%);
+}
+
+.preparation-item span,
+.item-category {
+  color: #8b5e34;
+  font-size: 12px;
+}
+
+.preparation-item h4 {
+  margin: 4px 0;
+}
+
+.preparation-item p {
+  margin: 0;
+  color: #6b665d;
+  font-size: 13px;
+}
+
+.meal-recommendation {
+  display: grid;
+  gap: 3px;
+  margin: 8px 0;
+  padding: 9px 11px;
+  border-left: 3px solid #c47a45;
+  border-radius: 8px;
+  background: rgb(250 239 224 / 68%);
+  color: #70472d;
+}
+
+.meal-recommendation span {
+  color: #856b59;
+  font-size: 12px;
+}
+
+.item-category {
+  display: inline-block;
+  margin-bottom: 3px;
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .preparation-columns {
+    grid-template-columns: 1fr;
+  }
+}

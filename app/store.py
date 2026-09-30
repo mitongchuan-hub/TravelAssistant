@@ -9,7 +9,21 @@ from threading import RLock
 from itertools import count
 
 from .agent_client import AgentReply, generate_agent_reply
-from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripDay, TripItem, TripPlan, User
+from .models import (
+    AgentAction,
+    AgentCard,
+    IdeaCard,
+    Message,
+    MealRecommendation,
+    PlanVersion,
+    PreparationItem,
+    Trip,
+    TripDay,
+    TripItem,
+    TripPlan,
+    TravelPreparation,
+    User,
+)
 from .persistence import CURRENT_SCHEMA_VERSION, load_snapshot, restore_state, save_snapshot, serialize_state
 
 USERS = {
@@ -30,6 +44,39 @@ def _state_locked(method):
         with self._lock:
             return method(self, *args, **kwargs)
     return wrapped
+
+
+def _meal_from_raw(raw: object) -> MealRecommendation | None:
+    if not isinstance(raw, dict):
+        return None
+    return MealRecommendation(
+        meal_type=str(raw.get("meal_type") or "用餐"),
+        recommendation=str(raw.get("recommendation") or "当地特色餐食待确认"),
+        cuisine=str(raw.get("cuisine") or "当地菜"),
+        budget=str(raw.get("budget") or "预算待确认"),
+        reservation=str(raw.get("reservation") or "待确认"),
+    )
+
+
+def _preparation_from_raw(raw: object) -> TravelPreparation:
+    if not isinstance(raw, dict):
+        return TravelPreparation()
+
+    def items(key: str) -> list[PreparationItem]:
+        values = raw.get(key)
+        if not isinstance(values, list):
+            return []
+        return [
+            PreparationItem(
+                title=str(item.get("title") or "待确认事项"),
+                body=str(item.get("body") or "可以在生成行程后继续补充。"),
+                status=str(item.get("status") or "待确认"),
+            )
+            for item in values[:8]
+            if isinstance(item, dict)
+        ]
+
+    return TravelPreparation(clothing=items("clothing"), accommodation=items("accommodation"))
 
 
 class DemoStore:
@@ -241,7 +288,21 @@ class DemoStore:
                 "metrics": self.trip_metrics(trip_id),
             })
         # Network calls must never hold the global store lock.
-        return generate_agent_reply(user_body=body, **context)
+        # A first draft can still be created from the stored ideas when the provider
+        # times out or returns malformed structured output. Never replace a confirmed plan.
+        reply = generate_agent_reply(
+            user_body=body,
+            planning_mode=self._is_plan_command(body),
+            **context,
+        )
+        if (
+            reply
+            and reply.plan is None
+            and reply.card.title in {"模型调用暂时失败", "模型响应超时", "模型服务暂时限流"}
+            and (not self._is_plan_command(body) or self.plans[trip_id].status != "已确认")
+        ):
+            return None
+        return reply
 
     def finish_agent_task(self, trip_id: str, body: str, sender_id: str, thinking_message_id: str | None = None) -> None:
         with self._agent_lock(trip_id):
@@ -449,6 +510,7 @@ class DemoStore:
             title=version.title,
             status="草案",
             days=version.days,
+            preparation=version.preparation,
         )
         self.trips[trip_id].status = "草案"
         self.trips[trip_id].last_activity = f"已回退到 {version.label}"
@@ -678,6 +740,8 @@ class DemoStore:
                         reason=str(raw_item.get("reason") or "根据你的旅行偏好安排。"),
                         notes=str(raw_item.get("notes") or "可以继续在对话里调整。"),
                         satisfies=[str(item) for item in raw_item.get("satisfies", [])],
+                        category=str(raw_item.get("category") or "activity"),
+                        meal=_meal_from_raw(raw_item.get("meal")),
                     )
                 )
             if items:
@@ -688,6 +752,7 @@ class DemoStore:
                 title=str(raw_plan.get("title") or f"{self.trips[trip_id].destination}行程草案"),
                 status=str(raw_plan.get("status") or "草案"),
                 days=days,
+                preparation=_preparation_from_raw(raw_plan.get("preparation")),
             )
             self.trips[trip_id].status = self.plans[trip_id].status
             self._save_plan_version(trip_id, change_summary or self._plan_change_summary(trip_id))
@@ -725,6 +790,7 @@ class DemoStore:
             created_at=_now_label(),
             change_summary=change_summary,
             days=plan.days,
+            preparation=plan.preparation,
         )
 
     def _fallback_plan_from_ideas(self, trip_id: str) -> dict:
@@ -738,6 +804,10 @@ class DemoStore:
         return {
             "title": f"{trip.destination}行程草案",
             "status": "草案",
+            "preparation": {
+                "clothing": [{"title": "根据天气准备衣物", "body": "温度和降雨待确认，建议准备舒适鞋和方便增减的外套。", "status": "待确认"}],
+                "accommodation": [{"title": "住宿区域待确认", "body": "建议选择靠近主要景点且方便公共交通的区域。", "status": "待确认"}],
+            },
             "days": [
                 {
                     "label": "Day 1",
@@ -750,6 +820,24 @@ class DemoStore:
                             "reason": "优先满足对话里明确提到的地点需求。",
                             "notes": "具体交通和预约信息后续继续确认。",
                             "satisfies": ["地点偏好"],
+                            "category": "activity",
+                        },
+                        {
+                            "time": "12:30",
+                            "title": "当地特色午餐",
+                            "location": "第一处景点附近",
+                            "duration": "1 小时",
+                            "reason": "在景点附近用餐，减少往返移动。",
+                            "notes": "具体菜品、忌口和预算待确认。",
+                            "satisfies": budget_cards or ["预算可控"],
+                            "category": "meal",
+                            "meal": {
+                                "meal_type": "午餐",
+                                "recommendation": "当地特色菜（待确认）",
+                                "cuisine": "当地菜",
+                                "budget": "预算待确认",
+                                "reservation": "待确认",
+                            },
                         },
                         {
                             "time": "15:00",
@@ -759,6 +847,7 @@ class DemoStore:
                             "reason": "保持轻松节奏，减少来回移动。",
                             "notes": "可按当天体力临时调整。",
                             "satisfies": pace_cards or ["轻松节奏"],
+                            "category": "activity",
                         },
                     ],
                 },
@@ -773,6 +862,7 @@ class DemoStore:
                             "reason": "保留弹性，等待你继续补充想法。",
                             "notes": "Agent 会根据新消息继续调整下一版。",
                             "satisfies": budget_cards or ["预算可控"],
+                            "category": "activity",
                         }
                     ],
                 },

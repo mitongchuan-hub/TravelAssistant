@@ -7,7 +7,21 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripDay, TripItem, TripPlan, User
+from .models import (
+    AgentAction,
+    AgentCard,
+    IdeaCard,
+    Message,
+    MealRecommendation,
+    PlanVersion,
+    PreparationItem,
+    Trip,
+    TripDay,
+    TripItem,
+    TripPlan,
+    TravelPreparation,
+    User,
+)
 
 SNAPSHOT_KEY = "demo_store_v1"
 CURRENT_SCHEMA_VERSION = 2
@@ -310,6 +324,18 @@ def _message(raw: dict[str, Any], owner: User | None = None, legacy: bool = Fals
     )
 
 
+def _meal(raw: dict[str, Any] | None) -> MealRecommendation | None:
+    if not isinstance(raw, dict):
+        return None
+    return MealRecommendation(
+        meal_type=str(raw.get("meal_type") or "用餐"),
+        recommendation=str(raw.get("recommendation") or "当地特色餐食待确认"),
+        cuisine=str(raw.get("cuisine") or "当地菜"),
+        budget=str(raw.get("budget") or "预算待确认"),
+        reservation=str(raw.get("reservation") or "待确认"),
+    )
+
+
 def _item(raw: dict[str, Any], legacy: bool = False) -> TripItem:
     satisfies = [str(item) for item in raw.get("satisfies", [])]
     if legacy and satisfies:
@@ -323,6 +349,8 @@ def _item(raw: dict[str, Any], legacy: bool = False) -> TripItem:
         reason=_solo_text(str(raw["reason"])) if legacy else str(raw["reason"]),
         notes=_solo_text(str(raw["notes"])) if legacy else str(raw["notes"]),
         satisfies=satisfies,
+        category=str(raw.get("category") or "activity"),
+        meal=_meal(raw.get("meal")),
     )
 
 
@@ -334,12 +362,29 @@ def _day(raw: dict[str, Any], legacy: bool = False) -> TripDay:
     )
 
 
+def _preparation_item(raw: dict[str, Any]) -> PreparationItem:
+    return PreparationItem(
+        title=str(raw.get("title") or "待确认事项"),
+        body=str(raw.get("body") or "可以在生成行程后继续补充。"),
+        status=str(raw.get("status") or "待确认"),
+    )
+
+
+def _preparation(raw: dict[str, Any] | None) -> TravelPreparation:
+    raw = raw or {}
+    return TravelPreparation(
+        clothing=[_preparation_item(item) for item in raw.get("clothing", []) if isinstance(item, dict)],
+        accommodation=[_preparation_item(item) for item in raw.get("accommodation", []) if isinstance(item, dict)],
+    )
+
+
 def _plan(raw: dict[str, Any], legacy: bool = False) -> TripPlan:
     return TripPlan(
         id=str(raw["id"]),
         title=str(raw["title"]),
         status=str(raw["status"]),
         days=[_day(day, legacy) for day in raw.get("days", [])],
+        preparation=_preparation(raw.get("preparation")),
     )
 
 
@@ -353,6 +398,7 @@ def _version(raw: dict[str, Any], legacy: bool = False) -> PlanVersion:
         created_at=str(raw["created_at"]),
         change_summary=_solo_text(change_summary) if legacy else change_summary,
         days=[_day(day, legacy) for day in raw.get("days", [])],
+        preparation=_preparation(raw.get("preparation")),
     )
 
 

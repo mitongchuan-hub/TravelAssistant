@@ -9,6 +9,9 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripPlan
+from .prompts import BASE_SYSTEM_PROMPT, FINALIZE_TRIP_PLAN_PROMPT, GATHER_TRIP_INFORMATION_PROMPT
+from .tools import run_tool, tool_specs
+from .response_schema import TRAVEL_RESULT_RESPONSE_FORMAT
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -28,60 +31,10 @@ VALID_CARD_KINDS = {"requirement-summary", "missing-info", "conflict", "itinerar
 VALID_IDEA_KINDS = {"地点", "预算", "节奏", "禁忌", "待归类"}
 
 
-SYSTEM_PROMPT = """
-你是 TravelAssistant 的私人旅行规划 Agent。当前对话只有一位用户和你，用户发送每条消息后都期待你的直接回复，不需要使用 @ 唤醒你。
+MAX_TOOL_ROUNDS = 1
 
-请始终使用简体中文，语气轻松、具体，像可靠的私人旅行助手，避免办公化措辞。
-你既要自然回答旅行问题，也要把对话中明确的时间、预算、地点、节奏和禁忌整理成可执行约束。请结合旅行基础信息、最近对话、想法墙、当前行程和版本历史，返回一个 JSON 对象，不要输出 Markdown。
 
-JSON 格式：
-{
-  "body": "一句适合显示在聊天气泡里的直接回复，60 字以内",
-  "card": {
-    "kind": "requirement-summary | missing-info | conflict | itinerary-draft | revision 之一",
-    "title": "卡片标题，18 字以内",
-    "summary": "卡片摘要，60 字以内",
-    "bullets": ["要点 1", "要点 2", "要点 3"],
-    "action_target": "board 或 itinerary"
-  },
-  "idea_cards": [
-    {
-      "kind": "地点 | 预算 | 节奏 | 禁忌 | 待归类 之一",
-      "title": "适合贴到想法墙的短标题，14 字以内",
-      "body": "把用户原话整理成一条可执行约束，60 字以内",
-      "status": "已整理 | 约束 | 候选 | 冲突提醒 | 待补充 之一"
-    }
-  ],
-  "plan": {
-    "title": "行程标题",
-    "status": "草案 | 已修改",
-    "days": [
-      {
-        "label": "Day 1",
-        "items": [
-          {
-            "time": "09:30",
-            "title": "安排标题",
-            "location": "地点",
-            "duration": "停留时长",
-            "reason": "为什么这样安排",
-            "notes": "提醒或待确认事项",
-            "satisfies": ["对应的偏好或约束"]
-          }
-        ]
-      }
-    ]
-  }
-}
-
-选择规则：
-- 提到预算、时间、地点、饮食或旅行偏好：kind 用 requirement-summary 或 missing-info。
-- 提到不要、太累、冲突、不能接受：kind 用 conflict。
-- 明确要求生成、调整或查看行程：kind 用 itinerary-draft 或 revision。
-- 信息不足时不要假装已生成完整行程，应直接追问最关键的一项信息。
-- idea_cards 最多返回 3 条，只抽取最新消息或最近对话里明确的约束，不要重复空泛内容。
-- 只有用户明确要求生成、修改、安排或查看行程时才返回 plan；否则 plan 为 null 或省略。
-""".strip()
+SYSTEM_PROMPT = BASE_SYSTEM_PROMPT
 
 
 def is_llm_enabled() -> bool:
@@ -99,39 +52,40 @@ def generate_agent_reply(
     plan: TripPlan | None = None,
     plan_versions: list[PlanVersion] | None = None,
     metrics: dict[str, int | str] | None = None,
+    planning_mode: bool = False,
 ) -> AgentReply | None:
     if not is_llm_enabled():
         return None
 
     try:
-        from openai import OpenAI
+        from openai import BadRequestError, OpenAI
 
         client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY"),
             base_url=os.getenv("OPENAI_BASE_URL") or None,
-            timeout=45.0,
+            timeout=float(os.getenv("OPENAI_TIMEOUT_SECONDS", "180.0")),
             max_retries=0,
         )
         model = os.getenv("OPENAI_MODEL") or os.getenv("MODEL_ID") or "qwen-plus"
-        response = _create_chat_completion(
-            client,
-            model,
-            [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": _build_context(
-                        trip,
-                        messages,
-                        user_body,
-                        idea_cards=idea_cards,
-                        plan=plan,
-                        plan_versions=plan_versions,
-                        metrics=metrics,
-                    ),
-                },
-            ],
+        context = _build_context(
+            trip,
+            messages,
+            user_body,
+            idea_cards=idea_cards,
+            plan=plan,
+            plan_versions=plan_versions,
+            metrics=metrics,
         )
+
+        try:
+            response = _request_model(client, model, context, planning_mode)
+        except Exception as exc:
+            fallback_model = os.getenv("OPENAI_FALLBACK_MODEL", "qwen-plus").strip()
+            if not _is_rate_limit_error(exc) or not fallback_model or fallback_model == model:
+                raise
+            logger.warning("Primary model was rate limited; trying fallback model")
+            response = _request_model(client, fallback_model, context, planning_mode)
+
         content = (response.choices[0].message.content or "").strip()
         if not content:
             raise ValueError("Empty model response")
@@ -155,7 +109,34 @@ def generate_agent_reply(
             )
     except Exception as exc:
         # Do not log provider responses, credentials, or conversation contents.
-        logger.warning("Agent reply failed (%s)", type(exc).__name__)
+        status_code = getattr(exc, "status_code", None)
+        logger.warning("Agent reply failed (%s, status=%s)", type(exc).__name__, status_code)
+        if type(exc).__name__ == "RateLimitError" or status_code == 429:
+            return AgentReply(
+                body="模型服务当前比较繁忙，你的消息已保留，请稍后再试。",
+                card=AgentCard(
+                    kind="missing-info",
+                    title="模型服务暂时限流",
+                    summary="上游模型当前请求过多，不是你的 API Key 配置错误。",
+                    bullets=["消息已经保留", "稍后可以重新生成", "也可以先继续补充饮食和穿衣偏好"],
+                    actions=[AgentAction(label="稍后重试", target="chat")],
+                ),
+                idea_cards=[],
+                plan=None,
+            )
+        if "timeout" in type(exc).__name__.lower():
+            return AgentReply(
+                body="模型服务响应超时，你的消息已保留，请稍后重试。",
+                card=AgentCard(
+                    kind="missing-info",
+                    title="模型响应超时",
+                    summary="请求超过等待时间，消息没有丢失。",
+                    bullets=["消息已经保留", "稍后可以重新生成", "复杂行程可能需要更长时间"],
+                    actions=[AgentAction(label="稍后重试", target="chat")],
+                ),
+                idea_cards=[],
+                plan=None,
+            )
         return AgentReply(
             body="这次模型回复没有完成，你的消息已保留，请稍后重试。",
             card=AgentCard(
@@ -170,18 +151,137 @@ def generate_agent_reply(
         )
 
 
-def _create_chat_completion(client, model: str, messages: list[dict]) -> object:
+def _request_model(client, model: str, context: str, planning_mode: bool) -> object:
+    if planning_mode:
+        tool_messages = []
+        try:
+            tool_messages = _collect_tool_messages(client, model, context)
+        except Exception as exc:
+            # Some OpenAI-compatible providers expose chat completions but not tools.
+            # The final structured call can still produce a useful plan without weather.
+            if _looks_like_unsupported_tools(exc) and type(exc).__name__ == "BadRequestError":
+                logger.info("Model does not support tool calls; continuing without tools")
+            else:
+                raise
+        return _create_chat_completion(
+            client,
+            model,
+            [
+                {"role": "system", "content": f"{BASE_SYSTEM_PROMPT}\n\n{FINALIZE_TRIP_PLAN_PROMPT}"},
+                {"role": "user", "content": context},
+                *tool_messages,
+            ],
+            response_format=TRAVEL_RESULT_RESPONSE_FORMAT,
+        )
+    return _create_chat_completion(
+        client,
+        model,
+        [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": context},
+        ],
+    )
+
+
+def _is_rate_limit_error(exc: Exception) -> bool:
+    return type(exc).__name__ == "RateLimitError" or getattr(exc, "status_code", None) == 429
+
+
+def _collect_tool_messages(client, model: str, context: str) -> list[dict]:
+    messages: list[dict] = [
+        {"role": "system", "content": f"{BASE_SYSTEM_PROMPT}\n\n{GATHER_TRIP_INFORMATION_PROMPT}"},
+        {"role": "user", "content": context},
+    ]
+    tool_messages: list[dict] = []
+    for _ in range(MAX_TOOL_ROUNDS):
+        response = _create_chat_completion(client, model, messages, tools=tool_specs())
+        assistant = response.choices[0].message
+        calls = list(getattr(assistant, "tool_calls", None) or [])
+        if not calls:
+            break
+        assistant_message = {"role": "assistant", "content": getattr(assistant, "content", None) or ""}
+        assistant_message["tool_calls"] = []
+        for call in calls:
+            function = getattr(call, "function", None)
+            assistant_message["tool_calls"].append({
+                "id": getattr(call, "id", "tool-call"),
+                "type": "function",
+                "function": {
+                    "name": getattr(function, "name", ""),
+                    "arguments": getattr(function, "arguments", "{}") or "{}",
+                },
+            })
+        messages.append(assistant_message)
+        tool_messages.append(assistant_message)
+        for call in calls:
+            function = getattr(call, "function", None)
+            name = getattr(function, "name", "")
+            raw_arguments = getattr(function, "arguments", "{}") or "{}"
+            try:
+                arguments = json.loads(raw_arguments)
+                if not isinstance(arguments, dict):
+                    raise ValueError("tool arguments must be an object")
+                result = run_tool(name, arguments)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                result = {"status": "unavailable", "reason": "工具参数无法解析，结果待确认。"}
+            tool_message = {
+                "role": "tool",
+                "tool_call_id": getattr(call, "id", "tool-call"),
+                "name": name,
+                "content": json.dumps(result, ensure_ascii=False),
+            }
+            messages.append(tool_message)
+            tool_messages.append(tool_message)
+    return tool_messages
+
+
+def _looks_like_unsupported_tools(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return any(word in text for word in ("tool", "function", "unsupported", "not support"))
+
+
+def _create_chat_completion(
+    client,
+    model: str,
+    messages: list[dict],
+    *,
+    tools: list[dict] | None = None,
+    response_format: dict | None = None,
+) -> object:
     from openai import BadRequestError
 
     params: dict[str, object] = {"model": model, "temperature": 0.4, "messages": messages}
-    try:
-        return client.chat.completions.create(**params)
-    except BadRequestError as exc:
-        text = str(exc).lower()
-        if "temperature" in text and "not supported" in text:
-            params.pop("temperature", None)
+    if tools:
+        params["tools"] = tools
+    if response_format:
+        params["response_format"] = response_format
+
+    while True:
+        try:
             return client.chat.completions.create(**params)
-        raise
+        except BadRequestError as exc:
+            text = str(exc).lower()
+            if "temperature" in params and "temperature" in text and "not supported" in text:
+                params.pop("temperature", None)
+                continue
+            if "response_format" in params and _looks_like_unsupported_response_format(text):
+                if isinstance(params["response_format"], dict) and params["response_format"].get("type") == "json_schema":
+                    params["response_format"] = {"type": "json_object"}
+                else:
+                    params.pop("response_format", None)
+                continue
+            if "tools" in params and _looks_like_unsupported_tools(exc):
+                raise
+            raise
+
+
+def _looks_like_unsupported_response_format(text: str) -> bool:
+    return (
+        "response_format" in text
+        or "json_schema" in text
+        or "structured output" in text
+        or ("json" in text and ("not supported" in text or "unsupported" in text))
+    )
 
 
 def _build_context(
@@ -245,6 +345,10 @@ def _plan_context_lines(plan: TripPlan | None) -> list[str]:
     if not plan:
         return []
     lines = [f"- 当前行程：{plan.title}｜{plan.status}"]
+    for item in plan.preparation.clothing[:4]:
+        lines.append(f"- 旅行准备/衣物：{item.title}｜{item.status}｜{item.body}")
+    for item in plan.preparation.accommodation[:4]:
+        lines.append(f"- 旅行准备/住宿：{item.title}｜{item.status}｜{item.body}")
     for day in plan.days[:5]:
         item_titles = "、".join(f"{item.time} {item.title}@{item.location}" for item in day.items[:6])
         lines.append(f"- {day.label}：{item_titles or '暂无安排'}")
@@ -329,6 +433,9 @@ def _parse_plan(raw_plan: object) -> dict | None:
             satisfies = raw_item.get("satisfies")
             if not isinstance(satisfies, list):
                 satisfies = []
+            category = str(raw_item.get("category") or "activity").strip()
+            if category not in {"activity", "meal", "transport", "accommodation", "rest"}:
+                category = "activity"
             items.append(
                 {
                     "time": str(raw_item.get("time") or "待定").strip()[:16],
@@ -338,6 +445,8 @@ def _parse_plan(raw_plan: object) -> dict | None:
                     "reason": str(raw_item.get("reason") or "根据你的旅行偏好安排。").strip()[:120],
                     "notes": str(raw_item.get("notes") or "可以继续在对话里调整。").strip()[:120],
                     "satisfies": [str(item).strip()[:16] for item in satisfies if str(item).strip()][:4],
+                    "category": category,
+                    "meal": _parse_meal(raw_item.get("meal")),
                 }
             )
         if items:
@@ -347,7 +456,45 @@ def _parse_plan(raw_plan: object) -> dict | None:
     return {
         "title": str(raw_plan.get("title") or "旅行行程草案").strip()[:60],
         "status": str(raw_plan.get("status") or "草案").strip()[:16],
+        "preparation": _parse_preparation(raw_plan.get("preparation")),
         "days": days,
+    }
+
+
+def _parse_meal(raw_meal: object) -> dict | None:
+    if not isinstance(raw_meal, dict):
+        return None
+    return {
+        "meal_type": str(raw_meal.get("meal_type") or "用餐").strip()[:16],
+        "recommendation": str(raw_meal.get("recommendation") or "当地特色餐食待确认").strip()[:80],
+        "cuisine": str(raw_meal.get("cuisine") or "当地菜").strip()[:40],
+        "budget": str(raw_meal.get("budget") or "预算待确认").strip()[:32],
+        "reservation": str(raw_meal.get("reservation") or "待确认").strip()[:24],
+    }
+
+
+def _parse_preparation(raw_preparation: object) -> dict:
+    if not isinstance(raw_preparation, dict):
+        return {"clothing": [], "accommodation": []}
+
+    def parse_items(key: str) -> list[dict]:
+        raw_items = raw_preparation.get(key)
+        if not isinstance(raw_items, list):
+            return []
+        items = []
+        for raw_item in raw_items[:6]:
+            if not isinstance(raw_item, dict):
+                continue
+            title = str(raw_item.get("title") or "待确认事项").strip()[:40]
+            body = str(raw_item.get("body") or "可以在生成行程后继续补充。").strip()[:140]
+            status = str(raw_item.get("status") or "待确认").strip()[:16]
+            if title and body:
+                items.append({"title": title, "body": body, "status": status})
+        return items
+
+    return {
+        "clothing": parse_items("clothing"),
+        "accommodation": parse_items("accommodation"),
     }
 
 

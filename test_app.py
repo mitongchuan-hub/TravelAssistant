@@ -689,3 +689,109 @@ def test_itinerary_page_renders_requirement_labels_not_member_names():
     assert "对应偏好" in response.text
     assert "茶园体验" in response.text
     assert "满足需求" not in response.text
+
+
+# --- search_food tool (Amap) ---
+
+from urllib.error import URLError
+
+from app.tools import food
+from app.tools.registry import run_tool
+
+
+FAKE_AMAP_PAYLOAD = {
+    "status": "1",
+    "infocode": "10000",
+    "pois": [
+        {
+            "name": "评分最高店",
+            "address": "某路 1 号",
+            "adname": "武侯区",
+            "business_area": "紫荆",
+            "atag": "牛肉,毛肚",
+            "tel": "028-12345678",
+            "biz_ext": {"rating": "4.9", "cost": "82.00", "opentime2": "周一至周日 11:00-23:00"},
+        },
+        {
+            "name": "评分次高店",
+            "address": "某路 2 号",
+            "adname": "锦江区",
+            "business_area": "海椒市",
+            "atag": "兔腰",
+            "tel": "",
+            "biz_ext": {"rating": "4.8", "cost": "99.00", "opentime2": ""},
+        },
+        {
+            "name": "无评分店",
+            "address": "某路 3 号",
+            "biz_ext": {},
+        },
+    ],
+}
+
+
+def test_search_food_sorts_by_rating_and_skips_unrated(monkeypatch):
+    monkeypatch.setenv("AMAP_MAP_KEY", "test-key")
+    monkeypatch.setattr(food, "_fetch_json", lambda params: FAKE_AMAP_PAYLOAD)
+
+    result = run_tool("search_food", {"city": "成都", "keywords": "火锅", "max_results": 2})
+
+    assert result["status"] == "available"
+    assert [item["name"] for item in result["recommendations"]] == ["评分最高店", "评分次高店"]
+    assert result["recommendations"][0]["rating"] == "4.9"
+    assert result["recommendations"][0]["cost_per_person_cny"] == 82.0
+    assert result["recommendations"][1]["tel"] is None
+    assert result["total_matched"] == 3
+
+
+def test_search_food_clamps_max_results(monkeypatch):
+    monkeypatch.setenv("AMAP_MAP_KEY", "test-key")
+    monkeypatch.setattr(food, "_fetch_json", lambda params: FAKE_AMAP_PAYLOAD)
+
+    result = run_tool("search_food", {"city": "成都", "max_results": 999})
+
+    assert result["status"] == "available"
+    assert len(result["recommendations"]) <= 10
+
+
+def test_search_food_requires_city(monkeypatch):
+    monkeypatch.setenv("AMAP_MAP_KEY", "test-key")
+
+    result = run_tool("search_food", {"city": "  "})
+
+    assert result["status"] == "unavailable"
+    assert "城市" in result["reason"]
+
+
+def test_search_food_without_amap_key_is_unavailable(monkeypatch):
+    monkeypatch.delenv("AMAP_MAP_KEY", raising=False)
+
+    result = run_tool("search_food", {"city": "成都"})
+
+    assert result["status"] == "unavailable"
+    assert "AMAP_MAP_KEY" in result["reason"]
+
+
+def test_search_food_handles_network_error(monkeypatch):
+    monkeypatch.setenv("AMAP_MAP_KEY", "test-key")
+
+    def boom(params):
+        raise URLError("connection refused")
+
+    monkeypatch.setattr(food, "_fetch_json", boom)
+
+    result = run_tool("search_food", {"city": "成都", "keywords": "火锅"})
+
+    assert result["status"] == "unavailable"
+    assert result["city"] == "成都"
+    assert "再次确认" in result["reason"]
+
+
+def test_search_food_reports_amap_failure(monkeypatch):
+    monkeypatch.setenv("AMAP_MAP_KEY", "test-key")
+    monkeypatch.setattr(food, "_fetch_json", lambda params: {"status": "0", "info": "INVALID_USER_KEY"})
+
+    result = run_tool("search_food", {"city": "成都"})
+
+    assert result["status"] == "unavailable"
+    assert "INVALID_USER_KEY" in result["reason"]

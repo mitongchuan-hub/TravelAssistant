@@ -2,8 +2,8 @@
 
 {% macro bottom_nav(trip, active_tab) -%}
   <nav class="bottom-nav" aria-label="底部导航">
-    <a class="{{ 'active' if active_tab == 'chat' else '' }}" href="/workspace/{{ trip.id }}?tab=chat"><span aria-hidden="true">✉</span>聊天</a>
     <a class="{{ 'active' if active_tab == 'board' else '' }}" href="/workspace/{{ trip.id }}?tab=board"><span aria-hidden="true">✦</span>想法</a>
+    <a class="{{ 'active' if active_tab == 'chat' else '' }}" href="/workspace/{{ trip.id }}?tab=chat"><span aria-hidden="true">✉</span>聊天</a>
     <a class="{{ 'active' if active_tab == 'itinerary' else '' }}" href="/workspace/{{ trip.id }}?tab=itinerary"><span aria-hidden="true">⌖</span>行程</a>
   </nav>
 {%- endmacro %}
@@ -135,6 +135,42 @@
             <p>{{ metrics.latest_change }}</p>
             <small>{{ metrics.plan_day_count }} 天 · {{ metrics.plan_item_count }} 个安排 · {{ metrics.version_count }} 个版本</small>
           </section>
+          {% if plan.preparation.clothing or plan.preparation.accommodation %}
+            <section class="preparation-panel" aria-label="旅行准备">
+              <div class="travel-section-title">
+                <div>
+                  <p class="muted">出发前准备</p>
+                  <h3>衣物与住宿</h3>
+                </div>
+              </div>
+              <div class="preparation-columns">
+                {% if plan.preparation.clothing %}
+                  <div>
+                    <strong>衣物与装备</strong>
+                    {% for item in plan.preparation.clothing %}
+                      <article class="preparation-item">
+                        <span>{{ item.status }}</span>
+                        <h4>{{ item.title }}</h4>
+                        <p>{{ item.body }}</p>
+                      </article>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+                {% if plan.preparation.accommodation %}
+                  <div>
+                    <strong>住宿</strong>
+                    {% for item in plan.preparation.accommodation %}
+                      <article class="preparation-item">
+                        <span>{{ item.status }}</span>
+                        <h4>{{ item.title }}</h4>
+                        <p>{{ item.body }}</p>
+                      </article>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            </section>
+          {% endif %}
           <form class="confirm-plan" action="/workspace/{{ trip.id }}/plan/confirm" method="post">
             <button type="submit">确认这版计划</button>
             <small>确认后，后续调整会作为新草案记录。</small>
@@ -148,8 +184,15 @@
                 <article class="timeline-item">
                   <time>{{ item.time }}</time>
                   <div>
+                    {% if item.category == "meal" %}<span class="item-category">用餐</span>{% elif item.category == "transport" %}<span class="item-category">交通</span>{% elif item.category == "rest" %}<span class="item-category">休息</span>{% elif item.category == "accommodation" %}<span class="item-category">住宿</span>{% else %}<span class="item-category">游览</span>{% endif %}
                     <h4>{{ item.title }}</h4>
                     <p class="item-location">{{ item.location }} · {{ item.duration }}</p>
+                    {% if item.meal %}
+                      <div class="meal-recommendation">
+                        <strong>{{ item.meal.meal_type }}推荐：{{ item.meal.recommendation }}</strong>
+                        <span>{{ item.meal.cuisine }} · {{ item.meal.budget }} · {{ item.meal.reservation }}</span>
+                      </div>
+                    {% endif %}
                     {% if item.satisfies %}
                       <div class="satisfies">
                         <strong>对应偏好</strong>

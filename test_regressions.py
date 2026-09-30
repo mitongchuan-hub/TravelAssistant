@@ -78,7 +78,24 @@ def test_restart_resolves_interrupted_tasks_without_losing_user_messages(tmp_pat
     assert not any(m["status"] == "thinking" for m in load_snapshot(path)["messages"]["trip-hangzhou"])
 
 
-def test_failed_model_plan_does_not_overwrite_confirmed_plan(monkeypatch):
+def test_failed_first_plan_uses_local_plan_fallback(monkeypatch):
+    local = DemoStore(persistence_enabled=False)
+    failure = AgentReply(
+        "这次模型回复没有完成",
+        AgentCard("missing-info", "模型调用暂时失败", "稍后重试", [], []),
+        [],
+        None,
+    )
+    monkeypatch.setattr(store_module, "generate_agent_reply", lambda *args, **kwargs: failure)
+    local.generate_plan("trip-hangzhou")
+    plan = local.plans["trip-hangzhou"]
+    assert plan.days
+    assert plan.preparation.clothing
+    assert any(item.category == "meal" for day in plan.days for item in day.items)
+    assert local.messages["trip-hangzhou"][-1].agent_card.title == "第一版行程已生成"
+
+
+
     local = DemoStore(persistence_enabled=False)
     local.confirm_plan("trip-hangzhou")
     plan = deepcopy(local.plans["trip-hangzhou"])
@@ -208,7 +225,7 @@ def test_model_timeout_does_not_silently_retry_for_minutes(monkeypatch):
         raise httpx.ReadTimeout("simulated timeout", request=request)
 
     def factory(**kwargs):
-        assert kwargs["timeout"] <= 60
+        assert kwargs["timeout"] <= 180
         assert kwargs["max_retries"] == 0
         client = original_client(**kwargs, http_client=httpx.Client(transport=httpx.MockTransport(timed_out)))
         clients.append(client)
@@ -219,10 +236,87 @@ def test_model_timeout_does_not_silently_retry_for_minutes(monkeypatch):
     try:
         result = agent_client.generate_agent_reply(local.trips["trip-hangzhou"], [], "hi")
         assert len(attempts) == 1
-        assert result.card.title == "模型调用暂时失败"
+        assert result.card.title == "模型响应超时"
     finally:
         for client in clients:
             client.close()
+
+
+def test_plan_keeps_preparation_and_timeline_categories():
+    raw = {
+        "body": "已整理旅行方案",
+        "card": {
+            "kind": "itinerary-draft",
+            "title": "行程草案",
+            "summary": "已按景点路线补齐准备事项",
+            "bullets": ["安排用餐", "补充住宿", "标注天气装备"],
+            "action_target": "itinerary",
+        },
+        "idea_cards": [],
+        "plan": {
+            "title": "杭州轻松行",
+            "status": "草案",
+            "preparation": {
+                "clothing": [{"title": "薄外套", "body": "早晚温度较低时携带", "status": "建议"}],
+                "accommodation": [{"title": "西湖东侧住宿", "body": "方便连接两天景点", "status": "待确认"}],
+            },
+            "days": [{
+                "label": "Day 1",
+                "items": [{
+                    "category": "meal",
+                    "time": "08:30",
+                    "title": "早餐",
+                    "location": "住宿附近",
+                    "duration": "40 分钟",
+                    "reason": "出发前补充体力",
+                    "notes": "具体店铺待确认",
+                    "meal": {
+                        "meal_type": "早餐",
+                        "recommendation": "片儿川面",
+                        "cuisine": "杭州小吃",
+                        "budget": "人均 30 元",
+                        "reservation": "无需预约",
+                    },
+                    "satisfies": [],
+                }, {
+                    "category": "transport",
+                    "time": "09:30",
+                    "title": "前往西湖",
+                    "location": "住宿 → 西湖",
+                    "duration": "30 分钟",
+                    "reason": "衔接上午游览",
+                    "notes": "预留步行时间",
+                    "satisfies": ["少绕路"],
+                }],
+            }],
+        },
+    }
+    parsed = agent_client._parse_reply(json.dumps(raw, ensure_ascii=False))
+    local = DemoStore(persistence_enabled=False)
+    local._apply_agent_plan("trip-hangzhou", parsed.plan)
+    plan = local.plans["trip-hangzhou"]
+    assert plan.preparation.clothing[0].title == "薄外套"
+    assert plan.preparation.accommodation[0].status == "待确认"
+    assert [item.category for item in plan.days[0].items] == ["meal", "transport"]
+    assert plan.days[0].items[0].meal.recommendation == "片儿川面"
+
+
+def test_rate_limit_is_reported_separately_from_configuration_failure(monkeypatch):
+    import httpx
+    from openai import RateLimitError
+
+    response = httpx.Response(429, request=httpx.Request("POST", "https://model.invalid/chat/completions"))
+    monkeypatch.setattr(agent_client, "is_llm_enabled", lambda: True)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    monkeypatch.setattr(
+        agent_client,
+        "_create_chat_completion",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RateLimitError("too many requests", response=response, body=None)),
+    )
+    local = DemoStore(persistence_enabled=False)
+    result = agent_client.generate_agent_reply(local.trips["trip-hangzhou"], [], "hi")
+    assert result.card.title == "模型服务暂时限流"
+    assert "繁忙" in result.body
 
 
 def test_queued_replies_use_matching_history_and_do_not_duplicate(monkeypatch):
@@ -245,3 +339,64 @@ def test_queued_replies_use_matching_history_and_do_not_duplicate(monkeypatch):
     assert "回复：第一条" in histories[1]
     assert len(histories) == 2
     assert not any("思考中" in body for history in histories for body in history)
+
+
+def test_weather_tool_returns_requested_day_without_external_network(monkeypatch):
+    from app.tools import weather
+
+    def fake_fetch(url, params):
+        if "geocoding" in url:
+            return {"results": [{"name": "杭州", "latitude": 30.27, "longitude": 120.15, "country": "中国"}]}
+        return {
+            "timezone": "Asia/Shanghai",
+            "daily": {
+                "time": ["2026-08-24"],
+                "weather_code": [1],
+                "temperature_2m_max": [32],
+                "temperature_2m_min": [25],
+                "precipitation_probability_max": [20],
+            },
+        }
+
+    monkeypatch.setattr(weather, "_fetch_json", fake_fetch)
+    result = weather.query_weather({"city": "杭州", "date": "2026-08-24"})
+    assert result["status"] == "available"
+    assert result["condition"] == "大致晴"
+    assert result["temperature_max_c"] == 32
+    assert "轻薄衣物" in result["clothing_advice"]
+    preview = weather.query_weather({"city": "杭州"})
+    assert preview["forecast_preview"][0]["temperature_min_c"] == 25
+    assert "穿衣" in preview["reason"]
+
+
+def test_planning_tool_loop_preserves_assistant_tool_call_and_result(monkeypatch):
+    call = SimpleNamespace(
+        id="call-1",
+        function=SimpleNamespace(name="query_weather", arguments='{"city":"杭州"}'),
+    )
+    responses = [
+        SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=None, tool_calls=[call]))]),
+        SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="已完成", tool_calls=[]))]),
+    ]
+    monkeypatch.setattr(agent_client, "_create_chat_completion", lambda *args, **kwargs: responses.pop(0))
+    monkeypatch.setattr(agent_client, "run_tool", lambda name, arguments: {"status": "available", "city": arguments["city"]})
+    messages = agent_client._collect_tool_messages(object(), "test-model", "context")
+    assert messages[0]["role"] == "assistant"
+    assert messages[0]["tool_calls"][0]["function"]["name"] == "query_weather"
+    assert messages[1]["role"] == "tool"
+    assert '"city": "杭州"' in messages[1]["content"]
+
+
+def test_schema_retry_drops_only_unsupported_response_format():
+    import httpx
+    from openai import BadRequestError
+    from unittest.mock import Mock
+
+    response = httpx.Response(400, request=httpx.Request("POST", "https://model.invalid/chat/completions"))
+    unsupported = BadRequestError("response_format json_schema is not supported", response=response, body=None)
+    create = Mock(side_effect=[unsupported, "completed"])
+    client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    result = agent_client._create_chat_completion(client, "kimi-k3", [], response_format={"type": "json_schema"})
+    assert result == "completed"
+    assert "response_format" in create.call_args_list[0].kwargs
+    assert create.call_args_list[1].kwargs["response_format"] == {"type": "json_object"}
