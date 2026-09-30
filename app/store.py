@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 import sys
+from copy import deepcopy
 from datetime import datetime
+from functools import wraps
 from threading import RLock
 from itertools import count
 
-from .agent_client import generate_agent_reply
+from .agent_client import AgentReply, generate_agent_reply
 from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripDay, TripItem, TripPlan, User
 from .persistence import CURRENT_SCHEMA_VERSION, load_snapshot, restore_state, save_snapshot, serialize_state
 
@@ -21,11 +23,21 @@ MAX_IDEA_CARDS = 8
 IDEA_ROTATIONS = ["-1.4deg", "1deg", "0.6deg", "-0.8deg", "1.3deg", "0.8deg", "-0.7deg", "1.1deg"]
 
 
+def _state_locked(method):
+    """Keep in-memory mutations and their persisted snapshot in one critical section."""
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapped
+
+
 class DemoStore:
     def __init__(self, db_path: str | None = None, persistence_enabled: bool | None = None) -> None:
         self.db_path = db_path or os.getenv("TRAVEL_DB_PATH", ".cache/travelassistant.sqlite3")
         self.persistence_enabled = self._resolve_persistence_enabled(persistence_enabled)
         self._lock = RLock()
+        self._agent_locks: dict[str, RLock] = {}
         self.trips: dict[str, Trip] = {
             "trip-hangzhou": Trip(
                 id="trip-hangzhou",
@@ -66,7 +78,14 @@ class DemoStore:
         _id_counter = count(restore_state(self, snapshot, USERS))
         if legacy_snapshot:
             self._persist()
+        # Background tasks cannot survive a process restart. Keep the user's text
+        # and replace interrupted placeholders with the existing failure response.
+        for trip_id, messages in self.messages.items():
+            for message in list(messages):
+                if message.status == "thinking":
+                    self.fail_agent_task(trip_id, message.id)
 
+    @_state_locked
     def _persist(self) -> None:
         if self.persistence_enabled:
             save_snapshot(self.db_path, serialize_state(self, USERS))
@@ -108,6 +127,7 @@ class DemoStore:
             "latest_change": latest_change,
         }
 
+    @_state_locked
     def create_trip(self, destination: str, date_range: str, budget: str, style: str, note: str, owner: User | None = None) -> Trip:
         owner = owner or USERS["u1"]
         trip_id = f"trip-{next(_id_counter)}"
@@ -170,12 +190,20 @@ class DemoStore:
                 created_at=_now_label(),
             )
             self.messages[trip_id].append(message)
-            if process_agent:
-                self._append_agent_reply_for_message(trip_id, clean_body, sender)
-            else:
-                self.trips[trip_id].last_activity = "已发送消息，Agent 正在思考"
+            self.trips[trip_id].last_activity = "已发送消息，Agent 正在思考"
             self._persist()
-            return message
+            thinking = self.start_agent_task(trip_id) if process_agent else None
+        if thinking:
+            try:
+                self.finish_agent_task(trip_id, clean_body, sender.id, thinking.id)
+            except Exception:
+                self.fail_agent_task(trip_id, thinking.id)
+        return message
+
+    @_state_locked
+    def queue_user_message(self, trip_id: str, body: str, sender_id: str) -> tuple[Message, Message]:
+        message = self.add_user_message(trip_id, body, sender_id, process_agent=False)
+        return message, self.start_agent_task(trip_id)
 
     def start_agent_task(self, trip_id: str) -> Message:
         with self._lock:
@@ -192,18 +220,54 @@ class DemoStore:
             self._persist()
             return thinking_message
 
-    def finish_agent_task(self, trip_id: str, body: str, sender_id: str, thinking_message_id: str | None = None) -> None:
+    def _agent_lock(self, trip_id: str):
         with self._lock:
-            owner = self.trips[trip_id].owner
-            sender = USERS.get(sender_id, owner)
-            if sender.id != owner.id:
-                sender = owner
+            return self._agent_locks.setdefault(trip_id, RLock())
+
+    def _generate_reply(self, trip_id: str, body: str, thinking_message_id: str | None = None) -> AgentReply | None:
+        if self._is_summary_command(body) and not self._is_plan_command(body):
+            return None
+        with self._lock:
+            messages = self.messages[trip_id]
             if thinking_message_id:
-                self.messages[trip_id] = [message for message in self.messages[trip_id] if message.id != thinking_message_id]
-            else:
-                self.messages[trip_id] = [message for message in self.messages[trip_id] if message.status != "thinking"]
-            self._append_agent_reply_for_message(trip_id, body.strip(), sender)
-            self._persist()
+                index = next(i for i, message in enumerate(messages) if message.id == thinking_message_id)
+                messages = messages[:index]
+            context = deepcopy({
+                "trip": self.trips[trip_id],
+                "messages": [message for message in messages if message.status == "sent"],
+                "idea_cards": self.idea_cards[trip_id],
+                "plan": self.plans[trip_id],
+                "plan_versions": self.plan_versions[trip_id],
+                "metrics": self.trip_metrics(trip_id),
+            })
+        # Network calls must never hold the global store lock.
+        return generate_agent_reply(user_body=body, **context)
+
+    def finish_agent_task(self, trip_id: str, body: str, sender_id: str, thinking_message_id: str | None = None) -> None:
+        with self._agent_lock(trip_id):
+            with self._lock:
+                if thinking_message_id and not any(
+                    message.id == thinking_message_id and message.status == "thinking"
+                    for message in self.messages[trip_id]
+                ):
+                    return
+            reply = self._generate_reply(trip_id, body.strip(), thinking_message_id)
+            with self._lock:
+                owner = self.trips[trip_id].owner
+                sender = USERS.get(sender_id, owner)
+                if sender.id != owner.id:
+                    sender = owner
+                self._append_agent_reply_for_message(trip_id, body.strip(), sender, reply)
+                if thinking_message_id:
+                    # Replace in place so a slow reply stays next to its user's message.
+                    completed = self.messages[trip_id].pop()
+                    for index, message in enumerate(self.messages[trip_id]):
+                        if message.id == thinking_message_id:
+                            self.messages[trip_id][index] = completed
+                            break
+                    else:
+                        self.messages[trip_id].append(completed)
+                self._persist()
 
     def fail_agent_task(self, trip_id: str, thinking_message_id: str | None = None) -> None:
         with self._lock:
@@ -233,23 +297,27 @@ class DemoStore:
             self.trips[trip_id].last_activity = "Agent 整理失败，等待重试"
             self._persist()
 
-    def _append_agent_reply_for_message(self, trip_id: str, clean_body: str, sender: User) -> None:
+    def _append_agent_reply_for_message(self, trip_id: str, clean_body: str, sender: User, reply: AgentReply | None) -> None:
         instruction = clean_body.strip()
+        previous_versions = len(self.plan_versions[trip_id])
         if self._is_plan_command(instruction):
-            self.messages[trip_id].append(self._agent_plan_message(trip_id, instruction, sender))
-            self.trips[trip_id].status = "草案"
+            self.messages[trip_id].append(self._agent_plan_message(trip_id, instruction, sender, reply))
+        else:
+            self.messages[trip_id].append(self._agent_reply(trip_id, instruction, sender, reply))
+        if len(self.plan_versions[trip_id]) > previous_versions:
             self.trips[trip_id].last_activity = "Agent 已生成行程草案"
         else:
-            self.messages[trip_id].append(self._agent_reply(trip_id, instruction, sender))
             self.trips[trip_id].last_activity = "Agent 已更新需求摘要"
 
+    @_state_locked
     def summarize_chat(self, trip_id: str) -> Message:
-        message = self._agent_reply(trip_id, "请整理最近对话里的旅行偏好、限制和缺失信息。", self.trips[trip_id].owner)
+        message = self._local_summary_reply(trip_id)
         self.messages[trip_id].append(message)
         self.trips[trip_id].last_activity = "Agent 已整理最近对话"
         self._persist()
         return message
 
+    @_state_locked
     def add_idea(self, trip_id: str, body: str) -> IdeaCard:
         rotation = IDEA_ROTATIONS[len(self.idea_cards[trip_id]) % len(IDEA_ROTATIONS)]
         card = IdeaCard(
@@ -267,6 +335,7 @@ class DemoStore:
         self._persist()
         return card
 
+    @_state_locked
     def request_revision(self, trip_id: str, item_id: str | None = None, feedback: str = "", sender: User | None = None) -> None:
         sender = sender or USERS["u1"]
         clean_feedback = feedback.strip() or "希望这项安排更轻松一点"
@@ -334,11 +403,16 @@ class DemoStore:
         return f"第 {version_number} 版：根据对{item_title}的反馈调整：{feedback[:28]}"
 
     def generate_plan(self, trip_id: str) -> None:
-        self.messages[trip_id].append(self._agent_plan_message(trip_id, "请根据当前对话和想法墙，生成一版结构化旅行行程。", self.trips[trip_id].owner))
-        self.trips[trip_id].status = "草案"
-        self.trips[trip_id].last_activity = "Agent 已生成行程草案"
-        self._persist()
+        thinking = self.start_agent_task(trip_id)
+        try:
+            self.finish_agent_task(
+                trip_id, "请根据当前对话和想法墙，生成一版结构化旅行行程。",
+                self.trips[trip_id].owner.id, thinking.id,
+            )
+        except Exception:
+            self.fail_agent_task(trip_id, thinking.id)
 
+    @_state_locked
     def confirm_plan(self, trip_id: str) -> None:
         plan = self.plans[trip_id]
         if not plan.days:
@@ -365,6 +439,7 @@ class DemoStore:
         )
         self._persist()
 
+    @_state_locked
     def restore_plan_version(self, trip_id: str, version_id: str) -> bool:
         version = next((item for item in self.plan_versions[trip_id] if item.id == version_id), None)
         if not version:
@@ -381,23 +456,12 @@ class DemoStore:
         self._persist()
         return True
 
-    def _agent_plan_message(self, trip_id: str, instruction: str, sender: User | None = None) -> Message:
+    def _agent_plan_message(self, trip_id: str, instruction: str, sender: User | None = None, reply: AgentReply | None = None) -> Message:
         change_summary = self._plan_change_summary(trip_id)
-        reply = generate_agent_reply(
-            self.trips[trip_id],
-            self.messages[trip_id],
-            instruction or "请根据当前对话和想法墙，生成一版结构化旅行行程。",
-            idea_cards=self.idea_cards[trip_id],
-            plan=self.plans[trip_id],
-            plan_versions=self.plan_versions[trip_id],
-            metrics=self.trip_metrics(trip_id),
-        )
         if reply:
             self._add_agent_idea_cards(trip_id, reply.idea_cards, sender)
             if reply.plan:
                 self._apply_agent_plan(trip_id, reply.plan, change_summary)
-            else:
-                self._apply_agent_plan(trip_id, self._fallback_plan_from_ideas(trip_id), change_summary)
             card = reply.card
             body = reply.body
         else:
@@ -419,19 +483,10 @@ class DemoStore:
             agent_card=card,
         )
 
-    def _agent_reply(self, trip_id: str, body: str, sender: User | None = None) -> Message:
+    def _agent_reply(self, trip_id: str, body: str, sender: User | None = None, llm_reply: AgentReply | None = None) -> Message:
         if self._is_summary_command(body):
             return self._local_summary_reply(trip_id)
 
-        llm_reply = generate_agent_reply(
-            self.trips[trip_id],
-            self.messages[trip_id],
-            body,
-            idea_cards=self.idea_cards[trip_id],
-            plan=self.plans[trip_id],
-            plan_versions=self.plan_versions[trip_id],
-            metrics=self.trip_metrics(trip_id),
-        )
         if llm_reply:
             self._add_agent_idea_cards(trip_id, llm_reply.idea_cards, sender)
             if llm_reply.plan:
@@ -634,6 +689,7 @@ class DemoStore:
                 status=str(raw_plan.get("status") or "草案"),
                 days=days,
             )
+            self.trips[trip_id].status = self.plans[trip_id].status
             self._save_plan_version(trip_id, change_summary or self._plan_change_summary(trip_id))
 
     def _plan_change_summary(self, trip_id: str) -> str:

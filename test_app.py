@@ -670,7 +670,7 @@ def test_frontend_assets_reflect_solo_chat_flow():
     assert ".bottom-nav" in css
     assert "grid-template-columns: repeat(3, 1fr)" in css
     assert "appendAgentThinkingMessage" in js
-    assert "await waitForNextPaint();\n  appendAgentThinkingMessage();" in js
+    assert "await waitForNextPaint();\n  const thinkingMessage = appendAgentThinkingMessage();" in js
     assert "selectedMember" not in js
     assert "isAgentMentionValue" not in js
     assert "copyInviteLink" not in js

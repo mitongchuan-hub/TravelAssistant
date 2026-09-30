@@ -49,7 +49,7 @@ async function submitComposerMessage(form) {
     button.disabled = true;
   }
   await waitForNextPaint();
-  appendAgentThinkingMessage();
+  const thinkingMessage = appendAgentThinkingMessage();
   scrollChatToLatest();
 
   try {
@@ -57,14 +57,22 @@ async function submitComposerMessage(form) {
       method: 'post',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
       body: JSON.stringify({ body }),
+      signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) {
       throw new Error('send failed');
     }
+    const payload = await response.json();
+    pendingMessage.dataset.messageId = payload.messages[0].id;
+    pendingMessage.dataset.status = 'sent';
+    pendingMessage.classList.remove('pending-message');
+    if (thinkingMessage) {
+      thinkingMessage.dataset.messageId = payload.messages[1].id;
+    }
     await refreshChatMessages(chatList, { force: true });
   } catch (error) {
     markMessageFailed(pendingMessage, body);
-    chatList.querySelectorAll('[data-agent-thinking-message]').forEach((item) => item.remove());
+    thinkingMessage?.remove();
   } finally {
     form.dataset.submitting = 'false';
     form.removeAttribute('aria-busy');
@@ -151,7 +159,7 @@ function setDetailText(selector, value) {
 
 function appendAgentThinkingMessage() {
   const chatList = document.querySelector('[data-chat-list]');
-  if (!(chatList instanceof HTMLElement) || chatList.querySelector('[data-agent-thinking-message]')) {
+  if (!(chatList instanceof HTMLElement)) {
     return;
   }
 
@@ -171,6 +179,7 @@ function appendAgentThinkingMessage() {
     </div>
   `;
   chatList.append(article);
+  return article;
 }
 
 function appendUserMessage(body, user = { initials: '我', name: '我' }) {
@@ -233,6 +242,9 @@ function retryFailedMessage(button) {
   const form = document.querySelector('.composer');
   const input = form?.querySelector('input[name="body"]');
   if (!(messageElement instanceof HTMLElement) || !(form instanceof HTMLFormElement) || !(input instanceof HTMLInputElement)) {
+    return;
+  }
+  if (form.dataset.submitting === 'true') {
     return;
   }
   input.value = messageElement.dataset.failedBody || '';
@@ -359,7 +371,6 @@ function startChatPolling() {
 
 async function refreshChatMessages(chatList, options = {}) {
   const composer = document.querySelector('.composer');
-  const input = composer?.querySelector('input[name="body"]');
   const force = options.force === true;
   if (chatPollingInFlight || (!force && document.hidden)) {
     return;
@@ -367,25 +378,43 @@ async function refreshChatMessages(chatList, options = {}) {
   if (!force && composer instanceof HTMLFormElement && composer.dataset.submitting === 'true') {
     return;
   }
-  if (!force && input instanceof HTMLInputElement && input.value.trim()) {
-    return;
-  }
-
   chatPollingInFlight = true;
   try {
     const response = await fetch(chatList.dataset.messagesUrl, {
       headers: { 'X-Requested-With': 'fetch' },
       cache: 'no-store',
+      signal: AbortSignal.timeout(10000),
     });
     if (!response.ok || response.redirected) {
       return;
     }
     const html = await response.text();
-    if (html.trim() && html !== chatList.innerHTML) {
+    // A poll started before Send must not wipe the optimistic outgoing message.
+    if (!force && composer?.dataset.submitting === 'true') {
+      return;
+    }
+    if (html.trim()) {
       const wasNearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 140;
-      chatList.innerHTML = html;
-      if (wasNearBottom) {
-        scrollChatToLatest();
+      const fragment = document.createElement('template');
+      fragment.innerHTML = html;
+      const incoming = Array.from(fragment.content.querySelectorAll('[data-message-id]'));
+      const existing = new Map(Array.from(chatList.querySelectorAll('[data-message-id]'))
+        .map((node) => [node.dataset.messageId, node]));
+      const messages = incoming.map((node) => {
+        const previous = existing.get(node.dataset.messageId);
+        if (previous?.querySelector('details[open]')) {
+          node.querySelector('details')?.setAttribute('open', '');
+        }
+        return previous?.outerHTML === node.outerHTML ? previous : node;
+      });
+      // Unsent messages must remain available for the existing retry action.
+      const local = Array.from(chatList.querySelectorAll('.failed-message, .pending-message'));
+      if (messages.some((node, index) => chatList.children[index] !== node)
+          || chatList.children.length !== messages.length + local.length) {
+        chatList.replaceChildren(...messages, ...local);
+        if (wasNearBottom) {
+          scrollChatToLatest();
+        }
       }
     }
   } catch (error) {

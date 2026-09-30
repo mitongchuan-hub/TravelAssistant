@@ -1,0 +1,620 @@
+/* Selected palette 02: 雾蓝经典.
+   Color Hunt: f9f7f7dbe2ef3f72af112d4e.
+   Load after styles.css; component layout remains in that file. */
+:root {
+  --fog: #F9F7F7;
+  --mist: #DBE2EF;
+  --ocean: #3F72AF;
+  --navy: #112D4E;
+  --on-action: #FFFFFF;
+
+  --bg: var(--fog);
+  --surface: color-mix(in srgb, var(--fog) 22%, white);
+  --surface-strong: var(--mist);
+  --surface-accent: color-mix(in srgb, var(--mist) 22%, white);
+  --ink: var(--navy);
+  --muted: color-mix(in srgb, var(--navy) 72%, var(--fog));
+  --line: rgb(17 45 78 / 14%);
+  --green: var(--ocean);
+  --green-soft: var(--mist);
+  --blue: var(--ocean);
+  --blue-soft: var(--mist);
+  --amber: var(--navy);
+  --amber-soft: var(--surface-accent);
+  --red: var(--navy);
+  --red-soft: var(--mist);
+  --violet: var(--ocean);
+  --violet-soft: var(--surface-accent);
+
+  --idea-place-bg: var(--ocean);
+  --idea-place-border: var(--line);
+  --idea-place-label: var(--on-action);
+  --idea-budget-bg: var(--fog);
+  --idea-budget-border: var(--line);
+  --idea-budget-label: var(--navy);
+  --idea-pace-bg: var(--mist);
+  --idea-pace-border: var(--line);
+  --idea-pace-label: var(--navy);
+  --idea-taboo-bg: var(--surface-accent);
+  --idea-taboo-border: var(--line);
+  --idea-taboo-label: var(--navy);
+  --idea-pending-bg: var(--surface);
+  --idea-pending-border: var(--line);
+  --idea-pending-label: var(--muted);
+
+  --shadow-card: 0 8px 24px rgb(17 45 78 / 7%);
+  --shadow-soft: 0 3px 10px rgb(17 45 78 / 5%);
+}
+
+html,
+body {
+  background: var(--mist);
+}
+
+.phone-shell {
+  border-color: var(--line);
+  background: var(--bg);
+  box-shadow: 0 18px 50px rgb(17 45 78 / 10%);
+}
+
+.auth-screen,
+.workspace,
+.idea-wall-screen,
+.itinerary-panel > .travel-section-title {
+  background: var(--bg);
+}
+
+.travel-page-top h1,
+.travel-section-title h2 {
+  color: var(--ink);
+}
+
+.text-link,
+.travel-page-top > a,
+.board-back {
+  text-decoration-color: var(--ocean);
+}
+
+/* Fine borders and soft surfaces match the selected preview. */
+input,
+textarea,
+.login-card input,
+.chat-screen .composer input,
+.wall-quick-add input,
+.revision-form textarea {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+input::placeholder,
+textarea::placeholder,
+.composer input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+input:focus,
+textarea:focus,
+.login-card input:focus,
+.chat-screen .composer input:focus,
+.wall-quick-add input:focus,
+.revision-form textarea:focus {
+  border-color: var(--ocean);
+  box-shadow: 0 0 0 3px rgb(63 114 175 / 20%);
+}
+
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible {
+  outline: 3px solid var(--ocean);
+  outline-offset: 3px;
+}
+
+.bottom-nav a:focus-visible,
+.generate-plan:focus-visible,
+.wall-quick-add button:focus-visible,
+.composer button:focus-visible,
+.card-actions a:focus-visible,
+.timeline-item button:focus-visible,
+.primary-action:focus-visible,
+.icon-action:focus-visible {
+  outline-color: var(--ocean);
+}
+
+.primary-action,
+.button-reset,
+.primary-action.compact,
+.empty-state button.primary-action,
+.login-card .primary-action,
+.confirm-plan button,
+.version-history button,
+.timeline-item button,
+.generate-plan,
+.card-actions a,
+.chat-screen .composer button,
+.wall-quick-add button {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--ocean);
+  color: var(--on-action);
+  box-shadow: none;
+}
+
+.secondary-action.compact {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.icon-action {
+  border: 1px solid transparent;
+  background: var(--ocean);
+  color: var(--on-action);
+  box-shadow: none;
+}
+
+blockquote,
+.form-helper-card,
+.day-block h3 {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-accent);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.form-helper-card p {
+  color: var(--muted);
+}
+
+.helper-chips span,
+.trip-meta-row span,
+.agent-card small,
+.chat-agent-card small,
+.satisfies span {
+  border-color: transparent;
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.empty-state {
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+}
+
+/* Account entry */
+.brand-mark,
+.auth-screen .brand-mark {
+  border: 0;
+  border-radius: 14px;
+  background: var(--ocean);
+  color: var(--on-action);
+  box-shadow: none;
+  transform: none;
+}
+
+.auth-idea-board,
+.login-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.auth-board-title strong,
+.auth-idea-note strong {
+  color: inherit;
+}
+
+.auth-route path {
+  stroke: var(--ocean);
+}
+
+.auth-route circle {
+  fill: var(--surface);
+  stroke: var(--ocean);
+}
+
+.auth-idea-note {
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  color: var(--note-label);
+  box-shadow: 0 5px 10px rgb(17 45 78 / 5%);
+}
+
+.auth-mode-switch {
+  border-color: var(--line);
+  border-radius: 10px;
+  background: var(--surface-accent);
+}
+
+.auth-mode-switch a {
+  color: var(--muted);
+}
+
+.auth-mode-switch a.active {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--ocean);
+  color: var(--on-action);
+  box-shadow: none;
+}
+
+.auth-error {
+  border: 1px solid var(--line);
+  background: var(--mist);
+  color: var(--ink);
+}
+
+/* Trips */
+.user-chip {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.user-chip strong {
+  color: var(--ink);
+}
+
+.user-chip span,
+.composer-user {
+  border-color: transparent;
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.trip-card,
+.trip-card:nth-child(4n + 2),
+.trip-card:nth-child(4n + 3),
+.trip-card:nth-child(4n) {
+  --trip-accent: var(--ocean);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.trip-card:nth-child(2n) {
+  background: var(--surface-accent);
+}
+
+.trip-card::after {
+  width: 4px;
+  background: var(--trip-accent);
+}
+
+.trip-card-main strong,
+.trip-card-side > span {
+  color: var(--ink);
+}
+
+.trip-card-main span,
+.trip-card-main small {
+  color: var(--muted);
+}
+
+.trip-card .trip-meta-row span {
+  color: var(--ink);
+}
+
+.trip-card-side em,
+.status-pill {
+  border-color: transparent;
+  border-radius: 8px;
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.trip-card:active {
+  border-color: var(--ocean);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Navigation and conversation */
+.bottom-nav {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.bottom-nav a {
+  border-radius: 12px;
+  color: var(--ink);
+}
+
+.bottom-nav a span,
+.bottom-nav a:nth-child(2) span,
+.bottom-nav a:nth-child(3) span {
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.bottom-nav a.active {
+  background: var(--ocean);
+  color: var(--on-action);
+}
+
+.bottom-nav a.active span {
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  transform: none;
+}
+
+.chat-screen .avatar,
+.chat-screen .message.agent .avatar {
+  border: 0;
+  border-radius: 10px;
+  background: var(--ocean);
+  color: var(--on-action);
+  box-shadow: none;
+}
+
+.chat-screen .message.user .avatar {
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.chat-screen .message-meta {
+  color: var(--muted);
+}
+
+.chat-screen .message-body > p,
+.chat-screen .message.agent .message-body > p {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-soft);
+}
+
+.chat-screen .message.agent .message-body > p,
+.chat-screen .message.user .message-body > p {
+  border-radius: 15px;
+}
+
+.chat-screen .message.user .message-body > p {
+  border-color: transparent;
+  background: var(--ocean);
+  color: var(--on-action);
+  box-shadow: none;
+}
+
+.agent-card,
+.chat-agent-card,
+.agent-card.missing-info,
+.agent-card.conflict,
+.agent-card.itinerary-draft,
+.agent-card.revision {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-accent);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.chat-agent-card summary::after,
+.chat-agent-card summary strong,
+.chat-agent-card summary em,
+.agent-card strong,
+.agent-card p,
+.chat-agent-card em,
+.agent-card-detail li,
+.agent-card .agent-card-sources {
+  color: inherit;
+}
+
+.chat-screen .chat-dock,
+.wall-quick-add {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.chat-screen .composer button {
+  border-radius: 50%;
+}
+
+.failed-message .message-body > p {
+  opacity: 1;
+  outline-color: var(--navy);
+}
+
+.retry-message {
+  border-color: var(--line);
+  background: var(--mist);
+  color: var(--ink);
+}
+
+/* Idea wall */
+.idea-wall-canvas {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.idea-wall-legend span {
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+.idea-wall-legend .legend-place {
+  color: var(--idea-place-label);
+}
+
+.idea-wall-legend .legend-budget {
+  color: var(--idea-budget-label);
+}
+
+.idea-wall-legend .legend-pace {
+  color: var(--idea-pace-label);
+}
+
+.idea-wall-legend .legend-taboo {
+  color: var(--idea-taboo-label);
+}
+
+.travel-route path {
+  stroke: var(--ocean);
+  opacity: .3;
+}
+
+.floating-idea {
+  border-width: 1px;
+  border-radius: 11px;
+  color: var(--idea-label);
+  box-shadow: 0 5px 10px rgb(17 45 78 / 5%);
+}
+
+.floating-idea:active {
+  box-shadow: var(--shadow-soft);
+}
+
+.floating-idea span {
+  color: inherit;
+}
+
+.floating-idea span::before {
+  border-color: currentColor;
+}
+
+.sheet-scrim {
+  background: rgb(17 45 78 / 35%);
+}
+
+.idea-detail-panel {
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  background: var(--surface);
+  box-shadow: 0 -8px 30px rgb(17 45 78 / 10%);
+}
+
+.sheet-handle {
+  background: var(--mist);
+}
+
+.idea-detail-heading span,
+.idea-detail-statusbar strong,
+.idea-detail-statusbar span {
+  border-color: transparent;
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.idea-detail-heading button {
+  border-color: transparent;
+  background: var(--ocean);
+  color: var(--on-action);
+  box-shadow: none;
+}
+
+.idea-detail-panel p {
+  color: var(--muted);
+}
+
+.idea-detail-panel dd {
+  color: var(--ink);
+}
+
+.idea-detail-panel dl > div {
+  border-color: var(--line);
+}
+
+/* Itinerary */
+.version-summary-card,
+.confirm-plan,
+.timeline-item > div,
+.version-history article {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+.version-summary-card {
+  background: var(--surface-accent);
+  color: var(--ink);
+}
+
+.version-summary-card span {
+  border-color: transparent;
+  background: var(--ocean);
+  color: var(--on-action);
+}
+
+.version-summary-card p {
+  color: var(--ink);
+}
+
+.version-summary-card small,
+.confirm-plan small {
+  color: var(--muted);
+}
+
+.day-block h3 {
+  border-color: transparent;
+  border-radius: 8px;
+  background: var(--ocean);
+  color: var(--on-action);
+}
+
+.timeline-item::before {
+  background: var(--mist);
+}
+
+.timeline-item time {
+  border-color: transparent;
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.timeline-item:nth-child(3n) > div {
+  background: var(--surface);
+}
+
+.revision-drawer summary,
+.version-history summary {
+  border-color: var(--line);
+  background: var(--surface-accent);
+  color: var(--ink);
+}
+
+.revision-drawer[open] summary,
+.version-history[open] summary {
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.revision-form {
+  border-color: var(--line);
+}
+
+.version-history h3,
+.version-history article span,
+.version-history article p {
+  color: var(--muted);
+}
+
+.error-card {
+  border: 1px solid var(--line);
+  background: var(--surface-accent);
+  box-shadow: var(--shadow-soft);
+}
+
+@media (hover: hover) {
+  .trip-card:hover {
+    border-color: var(--ocean);
+    box-shadow: var(--shadow-card);
+  }
+}
+
+@media (max-width: 430px) {
+  .phone-shell {
+    box-shadow: none;
+  }
+}

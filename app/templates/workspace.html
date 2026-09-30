@@ -2,9 +2,9 @@
 
 {% macro bottom_nav(trip, active_tab) -%}
   <nav class="bottom-nav" aria-label="底部导航">
-    <a class="{{ 'active' if active_tab == 'chat' else '' }}" href="/workspace/{{ trip.id }}?tab=chat"><span>⌁</span>聊天</a>
-    <a class="{{ 'active' if active_tab == 'board' else '' }}" href="/workspace/{{ trip.id }}?tab=board"><span>✦</span>想法</a>
-    <a class="{{ 'active' if active_tab == 'itinerary' else '' }}" href="/workspace/{{ trip.id }}?tab=itinerary"><span>⌖</span>行程</a>
+    <a class="{{ 'active' if active_tab == 'chat' else '' }}" href="/workspace/{{ trip.id }}?tab=chat"><span aria-hidden="true">✉</span>聊天</a>
+    <a class="{{ 'active' if active_tab == 'board' else '' }}" href="/workspace/{{ trip.id }}?tab=board"><span aria-hidden="true">✦</span>想法</a>
+    <a class="{{ 'active' if active_tab == 'itinerary' else '' }}" href="/workspace/{{ trip.id }}?tab=itinerary"><span aria-hidden="true">⌖</span>行程</a>
   </nav>
 {%- endmacro %}
 
@@ -102,7 +102,7 @@
       <section class="chat-dock" aria-label="聊天输入区">
         <form class="composer" action="/workspace/{{ trip.id }}/messages" method="post" data-api-url="/api/trips/{{ trip.id }}/messages" data-current-name="{{ current_user.name }}" data-current-initials="{{ current_user.initials }}">
           <input name="body" placeholder="告诉 Agent 你的旅行想法" autocomplete="off" required />
-          <button type="submit">发送</button>
+          <button type="submit" aria-label="发送消息" title="发送消息"><span aria-hidden="true">↑</span></button>
         </form>
       </section>
       {{ bottom_nav(trip, "chat") }}

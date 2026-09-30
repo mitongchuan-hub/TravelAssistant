@@ -96,16 +96,10 @@ def ensure_relational_schema(db_path: str | Path) -> None:
 
 
 def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, Any]) -> None:
-    connection.executescript(
-        """
-        DELETE FROM plan_versions;
-        DELETE FROM plans;
-        DELETE FROM ideas;
-        DELETE FROM messages;
-        DELETE FROM trips;
-        DELETE FROM users;
-        """
-    )
+    # executescript() commits an open transaction, which would leave the snapshot
+    # and the cleared tables committed even if a subsequent INSERT fails.
+    for table in ("plan_versions", "plans", "ideas", "messages", "trips", "users"):
+        connection.execute(f"DELETE FROM {table}")
     for user in snapshot.get("users", {}).values():
         connection.execute(
             "INSERT INTO users (id, name, initials) VALUES (?, ?, ?)",
@@ -201,6 +195,10 @@ def load_snapshot(db_path: str | Path) -> dict[str, Any] | None:
     if not path.exists():
         return None
     with sqlite3.connect(path) as connection:
+        if not connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'app_snapshots'"
+        ).fetchone():
+            return None
         row = connection.execute("SELECT payload FROM app_snapshots WHERE key = ?", (SNAPSHOT_KEY,)).fetchone()
     if not row:
         return None

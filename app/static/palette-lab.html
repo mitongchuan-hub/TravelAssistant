@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f6f5f0">
+<title>10 款高收藏热门配色 · TravelAssistant</title>
+<style>
+:root { color-scheme: light; --lab-bg: #f6f5f0; --lab-ink: #252b36; --lab-muted: #5c6370; --lab-line: #dedfdc; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+body { margin: 0; background: var(--lab-bg); color: var(--lab-ink); font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; line-height: 1.6; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+button { font: inherit; cursor: pointer; }
+a { color: inherit; text-underline-offset: 4px; }
+button:focus-visible, a:focus-visible { outline: 3px solid #315cff; outline-offset: 4px; }
+button { color: inherit; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1280px; margin: auto; padding: 0 32px; }
+.masthead { display: flex; justify-content: space-between; align-items: center; padding: 24px 0; border-bottom: 1px solid var(--lab-line); gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 850; font-size: 15px; }
+.brand-icon { display: grid; place-items: center; width: 31px; height: 31px; color: white; background: var(--lab-ink); border-radius: 9px; }
+.masthead small { color: var(--lab-muted); font-size: 12px; }
+.hero { padding: 42px 0 32px; display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+.eyebrow { font-size: 11px; letter-spacing: .14em; font-weight: 800; color: var(--lab-muted); margin: 0 0 8px; }
+h1 { margin: 0; font-size: clamp(29px, 3.5vw, 45px); letter-spacing: -.045em; line-height: 1.3; }
+.hero p:last-child { color: var(--lab-muted); font-size: 14px; margin: 14px 0 0; max-width: 650px; }
+.jump-link { white-space: nowrap; text-decoration: none; border-bottom: 1px solid currentColor; font-size: 13px; padding-bottom: 5px; }
+.studio { display: grid; grid-template-columns: 306px minmax(0, 1fr); gap: 24px; align-items: start; }
+.selection-heading { display: flex; justify-content: space-between; align-items: center; margin: 0 0 12px; }
+.selection-heading h2 { font-size: 14px; margin: 0; }
+.selection-heading span { color: var(--lab-muted); font-size: 11px; }
+.palette-list { display: grid; gap: 8px; }
+.palette-option { text-align: left; width: 100%; padding: 11px 13px; background: #fff; border: 1px solid var(--lab-line); border-radius: 12px; transition: border-color .15s, transform .15s; }
+.palette-option:hover { transform: translateX(3px); border-color: #9297a0; }
+.palette-option[aria-pressed="true"] { border: 2px solid var(--lab-ink); padding: 10px 12px; box-shadow: 3px 3px 0 var(--lab-ink); }
+.option-head { display: flex; align-items: center; gap: 8px; }
+.number { color: var(--lab-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.option-head strong { font-size: 13px; }
+.pick { font-size: 10px; margin-left: auto; background: #edf1ed; color: #405342; padding: 1px 6px; border-radius: 4px; }
+.option-swatches { display: flex; height: 16px; border-radius: 4px; overflow: hidden; margin-top: 7px; }
+.option-swatches i { flex: 1; }
+.option-meta { display: flex; justify-content: space-between; margin-top: 6px; color: var(--lab-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.heat { color: #5b5555; font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ranking-evidence { display: flex; flex-wrap: wrap; align-items: center; gap: 9px 18px; font-size: 12px; color: var(--lab-muted); margin: -12px 0 26px; }
+.ranking-evidence strong { color: var(--lab-ink); }
+.active-popularity { margin: 0 24px 15px; padding: 10px 13px; background: #f5f5f2; border-radius: 8px; font-size: 12px; display: flex; gap: 8px 18px; flex-wrap: wrap; }
+.active-popularity span { color: var(--lab-muted); }
+.look-switch { display: flex; gap: 3px; font-size: 11px; }
+.look-switch button { border: 1px solid var(--lab-line); padding: 5px 8px; border-radius: 6px; background: white; }
+.look-switch button[aria-pressed="true"] { background: #edf0ef; border-color: #9aaba1; }
+.overview-proof { display: flex; justify-content: space-between; gap: 12px; padding: 0 17px 10px; font-size: 10px; color: var(--lab-muted); }
+.overview-proof a { white-space: nowrap; }
+.editor { min-width: 0; border: 1px solid var(--lab-line); background: #fff; border-radius: 20px; overflow: hidden; }
+.editor-heading { display: flex; justify-content: space-between; align-items: center; padding: 22px 24px 16px; gap: 12px; }
+.editor-heading h2 { font-size: 22px; letter-spacing: -.025em; margin: 0; }
+.editor-heading p { font-size: 12px; margin: 4px 0 0; color: var(--lab-muted); }
+.compare-button { border: 1px solid var(--lab-line); border-radius: 8px; padding: 8px 12px; font-size: 12px; background: white; white-space: nowrap; }
+.compare-button[aria-pressed="true"] { background: var(--lab-ink); color: white; border-color: var(--lab-ink); }
+.toolbar { padding: 0 24px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.scene-switch { display: flex; gap: 3px; padding: 4px; background: #f0f1ee; border-radius: 9px; }
+.scene-switch button { border: 0; padding: 5px 12px; border-radius: 6px; font-size: 12px; background: transparent; color: #515863; }
+.scene-switch button[aria-pressed="true"] { background: white; color: var(--lab-ink); box-shadow: 0 1px 3px #252b3620; }
+.preview-caption { font-size: 11px; color: var(--lab-muted); }
+.stage { padding: 24px; display: flex; justify-content: center; align-items: start; gap: 20px; background-color: #eeefec; background-image: radial-gradient(#d4d6d0 .8px, transparent .8px); background-size: 12px 12px; }
+.phone-slot { width: 348px; min-width: 0; max-width: 100%; }
+.slot-label { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #505865; margin-bottom: 9px; }
+.slot-label strong { font-weight: 700; }
+.slot-label span { font-size: 10px; }
+.phone { border: 2px solid var(--ink); background: var(--canvas); border-radius: 25px; padding: 18px 17px 14px; color: var(--ink); box-shadow: 5px 6px 0 var(--ink); font-size: 12px; overflow: hidden; }
+.phone-top { display: flex; align-items: center; justify-content: space-between; font-size: 10px; font-weight: 800; padding: 0 3px 14px; }
+.phone-top span:last-child { letter-spacing: 2px; }
+.app-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 15px; }
+.app-head small { font-size: 10px; }
+.app-head h3 { margin: 2px 0 0; font-size: 22px; line-height: 1.3; letter-spacing: -.05em; }
+.app-head .destination { padding: 4px 7px; border: 1.5px solid var(--ink); border-radius: 7px; font-size: 10px; font-weight: 750; background: var(--surface); }
+.app-scene { min-height: 365px; }
+.chat-date { text-align: center; font-size: 10px; margin: 0 0 14px; }
+.message { display: flex; gap: 7px; margin-bottom: 17px; align-items: start; }
+.avatar { display: grid; place-items: center; flex: 0 0 28px; height: 28px; border: 1.5px solid var(--ink); background: var(--action); color: var(--on-action); font-size: 10px; font-weight: 900; border-radius: 8px; box-shadow: 2px 2px 0 var(--ink); }
+.message-content { flex: 1; min-width: 0; }
+.message-content > small { display: block; margin-bottom: 3px; font-size: 9px; }
+.bubble { padding: 10px 11px; border: 1.5px solid var(--ink); background: var(--surface); color: var(--ink); border-radius: 12px; box-shadow: 3px 4px 0 var(--ink); line-height: 1.7; }
+.message.mine { justify-content: end; }
+.message.mine .bubble { max-width: 82%; background: var(--ink); color: var(--on-ink); box-shadow: none; }
+.ai-card { margin-top: 9px; border: 1.5px solid var(--ink); border-radius: 8px; padding: 10px; background: var(--accent); color: var(--on-accent); box-shadow: 3px 4px 0 var(--ink); }
+.ai-card small { display: inline-block; padding: 1px 5px; border: 1px solid var(--ink); border-radius: 4px; color: var(--ink); background: var(--canvas); font-size: 9px; margin-bottom: 5px; }
+.ai-card strong { font-size: 12px; display: block; }
+.ai-card p { margin: 3px 0 0; font-size: 10px; }
+.composer { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--surface); border: 1.5px solid var(--ink); border-radius: 13px; padding: 6px 6px 6px 11px; margin: 17px 0 12px; font-size: 11px; }
+.send-icon { display: grid; place-items: center; border: 1.5px solid var(--ink); border-radius: 50%; width: 31px; height: 31px; background: var(--action); color: var(--on-action); font-size: 17px; }
+.phone-nav { display: flex; gap: 6px; border: 1.5px solid var(--ink); background: var(--ink); padding: 5px; border-radius: 14px; }
+.phone-nav button { flex: 1; border: 0; padding: 6px 2px; border-radius: 9px; font-size: 10px; background: transparent; color: var(--on-ink); }
+.phone-nav button b { display: block; font-size: 14px; line-height: 1.1; margin-bottom: 3px; }
+.phone-nav button[aria-pressed="true"] { color: var(--on-action); background: var(--action); font-weight: 850; }
+.board-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 10px; }
+.sample-action { display: inline-block; border: 1.5px solid var(--ink); background: var(--action); color: var(--on-action); border-radius: 7px; padding: 5px 9px; box-shadow: 2px 3px 0 var(--ink); font-weight: 850; font-size: 10px; }
+.board { position: relative; background: var(--surface); border: 1.5px solid var(--ink); border-radius: 13px; padding: 22px 13px 26px; display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 31px 18px; overflow: hidden; }
+.route { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--ink); opacity: .22; }
+.note { position: relative; z-index: 1; border: 1.5px solid var(--ink); border-radius: 10px; padding: 13px 10px; box-shadow: 3px 4px 0 var(--ink); background: var(--action); color: var(--on-action); transform: rotate(-5deg); }
+.note strong { display: block; font-size: 14px; line-height: 1.5; }
+.note small { display: block; font-size: 9px; margin-top: 5px; }
+.note:nth-of-type(2) { background: var(--canvas); color: var(--ink); transform: translateY(19px) rotate(5deg); }
+.note:nth-of-type(3) { background: var(--accent); color: var(--on-accent); transform: rotate(3deg); }
+.note:nth-of-type(4) { background: var(--ink); color: var(--on-ink); transform: translateY(16px) rotate(-5deg); }
+.board-tip { margin-top: 17px; text-align: center; font-size: 10px; }
+.plan-summary { padding: 14px; background: var(--ink); color: var(--on-ink); border: 1.5px solid var(--ink); border-radius: 12px; margin-bottom: 15px; }
+.plan-summary small { display: inline-block; padding: 2px 6px; color: var(--on-action); background: var(--action); border-radius: 4px; font-size: 9px; }
+.plan-summary h4 { margin: 6px 0; font-size: 17px; }
+.plan-summary p { margin: 0; font-size: 10px; }
+.day-title { display: inline-block; padding: 4px 9px; background: var(--action); color: var(--on-action); border: 1.5px solid var(--ink); border-radius: 6px; font-size: 11px; font-weight: 850; }
+.plan-stop { display: flex; align-items: stretch; gap: 8px; margin-top: 10px; }
+.plan-stop time { display: grid; place-items: center; width: 44px; flex-shrink: 0; border: 1.5px solid var(--ink); border-radius: 6px; background: var(--accent); color: var(--on-accent); font-size: 10px; font-weight: 800; }
+.plan-stop > div { flex: 1; padding: 8px 10px; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--surface); box-shadow: 2px 3px 0 var(--ink); }
+.plan-stop strong { font-size: 12px; }
+.plan-stop p { font-size: 10px; margin: 2px 0 0; }
+.plan-footer { margin: 16px 0 12px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; }
+.palette-info { padding: 22px 24px; }
+.color-values { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.color-value { background: transparent; border: 0; padding: 0; text-align: left; min-width: 0; }
+.color-value .chip { display: block; height: 28px; border-radius: 5px; border: 1px solid #252b3620; margin-bottom: 5px; }
+.color-value code { font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; }
+.color-value small { font-size: 10px; display: block; color: var(--lab-muted); }
+.notes { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 19px; }
+.notes strong { display: block; font-size: 12px; }
+.notes p { font-size: 12px; color: var(--lab-muted); margin: 4px 0 0; }
+.info-footer { display: flex; justify-content: space-between; gap: 14px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--lab-line); padding-top: 14px; margin-top: 17px; font-size: 11px; }
+.info-footer a { color: var(--lab-muted); }
+.copy-all { background: #f0f1ee; border: 1px solid var(--lab-line); padding: 5px 10px; font-size: 11px; border-radius: 6px; }
+.contrast-note { margin: 10px 0 0; font-size: 10px; color: var(--lab-muted); }
+.overview { margin-top: 55px; }
+.section-title { display: flex; align-items: end; justify-content: space-between; gap: 14px; margin-bottom: 20px; }
+.section-title h2 { font-size: 26px; letter-spacing: -.04em; margin: 0; }
+.section-title p { color: var(--lab-muted); font-size: 12px; margin: 5px 0 0; }
+.overview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.overview-card { border: 1px solid var(--lab-line); border-radius: 14px; background: white; overflow: hidden; }
+.overview-card-head { display: flex; align-items: center; gap: 9px; padding: 13px 17px; }
+.overview-card-head h3 { margin: 0; font-size: 14px; }
+.overview-card-head button { margin-left: auto; background: transparent; border: 0; color: var(--lab-muted); font-size: 11px; padding: 4px 0 4px 8px; text-decoration: underline; text-underline-offset: 3px; }
+.mini { padding: 19px 21px; background: var(--canvas); color: var(--ink); }
+.mini-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 15px; }
+.mini-head strong { font-size: 17px; letter-spacing: -.035em; }
+.mini-content { display: grid; grid-template-columns: 1.05fr 1fr; gap: 16px; align-items: start; }
+.mini-bubble { border: 1.5px solid var(--ink); border-radius: 10px; box-shadow: 3px 4px 0 var(--ink); background: var(--surface); padding: 10px; font-size: 11px; }
+.mini-message { margin-top: 10px; margin-left: 19px; padding: 8px 10px; border-radius: 9px; background: var(--ink); color: var(--on-ink); font-size: 10px; }
+.mini-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 5px; }
+.mini-note { border: 1.5px solid var(--ink); border-radius: 8px; box-shadow: 3px 4px 0 var(--ink); padding: 11px 7px; background: var(--action); color: var(--on-action); transform: rotate(-5deg); font-size: 12px; font-weight: 800; }
+.mini-note:last-child { background: var(--accent); color: var(--on-accent); transform: translateY(13px) rotate(5deg); }
+.mini-note small { font-size: 9px; display: block; margin-top: 4px; font-weight: 500; }
+.mini-nav { margin-top: 15px; padding: 5px; border-radius: 9px; background: var(--ink); color: var(--on-ink); display: flex; align-items: center; justify-content: space-around; font-size: 10px; }
+.mini-nav span { flex: 1; text-align: center; padding: 3px; }
+.mini-nav span:first-child { border-radius: 5px; background: var(--action); color: var(--on-action); font-weight: 800; }
+.overview-colors { display: flex; }
+.overview-colors span { flex: 1; text-align: center; padding: 7px 2px; font: 10px ui-monospace, Consolas, monospace; }
+.research-note { margin: 32px 0 40px; padding: 24px; border: 1px solid var(--lab-line); border-radius: 14px; }
+.research-note h2 { font-size: 15px; margin: 0 0 8px; }
+.research-note p { font-size: 12px; margin: 6px 0; max-width: 950px; color: var(--lab-muted); }
+.footer { padding: 0 0 30px; color: var(--lab-muted); font-size: 11px; display: flex; justify-content: space-between; gap: 16px; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 10px 18px; border-radius: 10px; background: var(--lab-ink); color: white; font-size: 12px; z-index: 10; box-shadow: 0 6px 20px #0002; }
+@media (min-width: 1100px) { .palette-list { position: sticky; top: 20px; } }
+@media (max-width: 1100px) { .studio { grid-template-columns: 240px minmax(0, 1fr); gap: 18px; } .stage.is-comparing { flex-wrap: wrap; } }
+@media (max-width: 760px) {
+  .wrap { padding: 0 18px; } .masthead { padding: 18px 0; } .masthead small { font-size: 10px; }
+  .hero { padding: 30px 0 25px; display: block; } .hero p:last-child { font-size: 12px; } .jump-link { display: inline-block; margin-top: 17px; }
+  .studio { grid-template-columns: 1fr; gap: 20px; } .palette-list { grid-template-columns: 1fr 1fr; gap: 9px; }
+  .palette-option { padding: 10px; } .palette-option[aria-pressed="true"] { padding: 9px; } .option-head { gap: 5px; } .option-head strong { font-size: 12px; } .pick { font-size: 9px; padding: 1px 3px; }
+  .editor-heading { padding: 19px 17px 14px; } .editor-heading h2 { font-size: 21px; } .compare-button { padding: 7px 9px; font-size: 11px; }
+  .toolbar { padding: 0 17px 14px; } .preview-caption { font-size: 10px; } .stage { padding: 21px 16px 25px; } .phone { padding: 15px 13px 12px; }
+  .palette-info { padding: 20px 17px; } .color-values { gap: 7px; } .color-value code { font-size: 10px; } .notes { gap: 13px; }
+  .overview { margin-top: 36px; } .overview-grid { gap: 17px; grid-template-columns: 1fr; } .section-title h2 { font-size: 23px; }
+  .research-note { padding: 19px; } .footer { display: block; } .footer span { display: block; }
+}
+@media (max-width: 360px) { .wrap { padding: 0 12px; } .pick { display: none; } .stage { padding-left: 11px; padding-right: 14px; } .phone { padding-left: 10px; padding-right: 10px; } .option-head strong { font-size: 11px; } .editor-heading { gap: 6px; } .editor-heading h2 { font-size: 18px; } .preview-caption { display: none; } .mini { padding: 16px; } .mini-content { gap: 12px; } }
+/* The alternative preview uses the same colors and layout with lighter borders. */
+.soft-preview .phone { border: 1px solid var(--line); box-shadow: 0 12px 30px var(--shadow); }
+.soft-preview .app-head .destination { border-color: var(--line); border-radius: 20px; }
+.soft-preview .avatar { border: 0; box-shadow: none; border-radius: 10px; }
+.soft-preview .bubble { border: 1px solid var(--line); box-shadow: 0 3px 10px var(--shadow); border-radius: 15px; }
+.soft-preview .message.mine .bubble { background: var(--action); color: var(--on-action); border-color: transparent; }
+.soft-preview .ai-card { border: 1px solid var(--line); box-shadow: none; border-radius: 12px; background: var(--soft-accent); color: var(--ink); }
+.soft-preview .ai-card small { border: 0; background: var(--accent); color: var(--on-accent); border-radius: 5px; }
+.soft-preview .composer { border: 1px solid var(--line); box-shadow: 0 3px 10px var(--shadow); border-radius: 16px; }
+.soft-preview .send-icon { border: 0; }
+.soft-preview .phone-nav { border: 1px solid var(--line); background: var(--surface); border-radius: 15px; }
+.soft-preview .phone-nav button { color: var(--ink); }
+.soft-preview .phone-nav button[aria-pressed="true"] { color: var(--on-action); }
+.soft-preview .sample-action { border: 0; border-radius: 9px; box-shadow: none; }
+.soft-preview .board { border: 1px solid var(--line); }
+.soft-preview .note, .soft-preview .mini-note { border: 1px solid var(--line); box-shadow: 0 5px 10px var(--shadow); border-radius: 11px; }
+.soft-preview .note:nth-of-type(4) { background: var(--secondary); color: var(--on-secondary); }
+.soft-preview .plan-summary { background: var(--soft-accent); color: var(--ink); border: 1px solid var(--line); }
+.soft-preview .day-title { border: 0; border-radius: 8px; }
+.soft-preview .plan-stop time { border: 0; border-radius: 8px; }
+.soft-preview .plan-stop > div { border: 1px solid var(--line); box-shadow: none; border-radius: 10px; }
+.soft-preview .mini-bubble { border: 1px solid var(--line); box-shadow: 0 3px 10px var(--shadow); border-radius: 12px; }
+.soft-preview .mini-message { background: var(--action); color: var(--on-action); }
+.soft-preview .mini-nav { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+@media (max-width: 760px) { .active-popularity { margin-left: 17px; margin-right: 17px; font-size: 11px; } .option-meta { font-size: 9px; } .ranking-evidence { font-size: 11px; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+</style>
+</head>
+<body class="soft-preview">
+<div class="wrap">
+<header class="masthead"><div class="brand"><span class="brand-icon" aria-hidden="true">↗</span> TravelAssistant <span style="font-weight:400;color:#68707b">/ 热门配色</span></div><small>POPULAR / ALL TIME</small></header>
+<section class="hero"><div><p class="eyebrow">COLOR HUNT / 历史热门榜前 10</p><h1>看看大家喜欢的颜色。</h1><p>按 Color Hunt 历史热门榜顺序，带来 10 套高收藏配色。先看原始色板，再看它们用在聊天、想法墙和行程中的效果。</p></div><a class="jump-link" href="#overview">先看十款总览 ↘</a></section>
+<div class="ranking-evidence"><span><strong>35,361—47,361</strong> 次喜欢 / 套</span><span>核对于 2026-09-29</span><a href="https://colorhunt.co/palettes/popular" target="_blank" rel="noopener noreferrer">榜单来源：Popular → All time ↗</a></div>
+<main>
+<section class="studio" id="studio" aria-label="交互配色预览">
+<aside><div class="selection-heading"><h2>按历史榜排名浏览</h2><span>TOP 01 — 10</span></div><div class="palette-list" id="palette-list"></div></aside>
+<div class="editor">
+<div class="editor-heading"><div><h2 id="active-name"></h2><p id="active-tagline"></p></div><button type="button" class="compare-button" id="compare" aria-pressed="false">对比旧版青蓝</button></div>
+<div class="active-popularity"><strong id="active-heat"></strong><span id="active-rank"></span></div>
+<div class="toolbar"><div class="scene-switch" role="group" aria-label="预览内容"><button type="button" data-scene="chat" aria-pressed="true">聊天</button><button type="button" data-scene="board" aria-pressed="false">想法墙</button><button type="button" data-scene="plan" aria-pressed="false">行程</button></div><div class="look-switch" role="group" aria-label="界面风格"><button type="button" data-look="soft" aria-pressed="true">柔和界面</button><button type="button" data-look="original" aria-pressed="false">原版描边</button></div></div>
+<div class="stage" id="stage"><div class="phone-slot"><div class="slot-label"><strong id="selected-label"></strong><span>候选方案</span></div><div class="phone" id="selected-phone" aria-label="所选配色的界面预览"></div></div><div class="phone-slot" id="current-slot" hidden><div class="slot-label"><strong>旧版 · 青蓝配色</strong><span>对照方案</span></div><div class="phone" id="current-phone" aria-label="旧版青蓝配色的界面预览"></div></div></div>
+<div class="palette-info"><div class="color-values" id="color-values"></div><div class="notes"><div><strong>为什么选它</strong><p id="palette-reason"></p></div><div><strong>搭配建议</strong><p id="palette-advice"></p></div></div><div class="info-footer"><a id="source" target="_blank" rel="noopener noreferrer">Color Hunt · 查看原始色板 ↗</a><button type="button" class="copy-all" id="copy-all">复制 4 个色值</button></div><p class="contrast-note" id="contrast-note"></p></div>
+</div>
+</section>
+<section class="overview" id="overview" aria-labelledby="overview-title"><div class="section-title"><div><p class="eyebrow">COLOR HUNT · ALL-TIME TOP 10 · 2026-09-29</p><h2 id="overview-title">十款热门配色，一起看</h2><p>按历史榜顺序排列 · ♥ 为网站累计喜欢数 · 点击原始色板可核对来源</p></div></div><div class="overview-grid" id="overview-grid"></div></section>
+<section class="research-note"><h2>热度依据与界面搭配</h2><p>这 10 套直接取自 <a href="https://colorhunt.co/palettes/popular" target="_blank" rel="noopener noreferrer">Color Hunt Popular → All time</a> 榜单前 10 项，顺序与网站一致。2026-09-29 核对色值及喜欢数（likes），数据会随时间变化；这是历史累计热度，不表示近期增长速度或全网排名。来源页面默认显示 Month，查看历史榜需切换 All time。<a href="palette-popular-research.json" target="_blank" rel="noopener noreferrer">查看本次调研数据 ↗</a></p><p>中文名称、用途和「适合本项目」标记是界面设计建议，不是网站命名或额外排名。全浅色的色板补充深色正文与白色表面，正文辅助色在上方说明中展示。默认柔和界面减少描边与阴影，也可切换原版描边查看同一套颜色的不同表现。</p><p>适合本项目的优先选项：<strong>02 雾蓝经典</strong>，正文和按钮层级清楚；<strong>05 奶咖拿铁</strong>，更温暖松弛；<strong>09 北欧蓝灰</strong>，更克制、适合长对话。三种场景使用相同内容，旧版青蓝配色可作为对照。所有内容均为配色样例。</p></section>
+</main>
+<footer class="footer"><span>已选用 02「雾蓝经典」 · <a href="/">查看正式界面 ↗</a></span><span>TravelAssistant / Color study</span></footer>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script>
+'use strict';
+const palettes = [
+  { id: '01', name: '冰川薄荷', likes: 47361, tagline: '浅青 × 薄荷 · 轻盈、清透、清凉', colors: ['#E3FDFD','#CBF1F5','#A6E3E9','#71C9CE'], ink: -1, text: '#233C43', accent: 2, action: 3, canvas: 0, secondary: 1, reason: '历史热门榜第 1。四种青色渐变让整个界面很轻，适合海边旅行和轻松的聊天体验。', advice: '最深的薄荷色做按钮，浅青铺底。原色板没有深色，补充 #233C43 作为正文，避免浅色字看不清。' },
+  { id: '02', name: '雾蓝经典', likes: 46413, tagline: '雾白 × 柔蓝 × 深海军蓝 · 清爽、可靠', colors: ['#F9F7F7','#DBE2EF','#3F72AF','#112D4E'], ink: 3, accent: 1, action: 2, canvas: 0, pick: true, reason: '历史热门榜第 2。自带浅底、中蓝和深色文字，放进应用后层级完整，适合旅行规划与长对话。', advice: '雾白作为主要表面，柔蓝放摘要卡片，中蓝突出操作，深蓝用于正文。颜色占比建议偏向浅底。' },
+  { id: '03', name: '奶油珊瑚', likes: 42210, tagline: '奶油白 × 珊瑚粉 · 温暖、亲切、明亮', colors: ['#FFF5E4','#FFE3E1','#FFD1D1','#FF9494'], ink: -1, text: '#53363A', accent: 2, action: 3, canvas: 0, secondary: 1, reason: '历史热门榜第 3。奶油色和暖粉很适合周末出游、照片与生活方式内容，视觉重心柔和。', advice: '珊瑚色集中在主按钮，卡片使用浅粉。补充 #53363A 文字，让暖色氛围下的信息保持清楚。' },
+  { id: '04', name: '轻樱粉', likes: 41964, tagline: '樱白 × 浅玫瑰 · 细腻、柔软、安静', colors: ['#F9F5F6','#F8E8EE','#FDCEDF','#F2BED1'], ink: -1, text: '#503846', accent: 2, action: 3, canvas: 0, secondary: 1, reason: '历史热门榜第 4。整体饱和度低、颜色接近，适合轻柔的旅行日记或心愿清单。', advice: '樱白作为大底，粉色分配给按钮和重点卡片；用 #503846 做正文。选中状态同时依靠形状和字重区分。' },
+  { id: '05', name: '奶咖拿铁', likes: 38820, tagline: '奶油白 × 沙杏 × 拿铁棕 · 温暖、松弛', colors: ['#AD8B73','#CEAB93','#E3CAA5','#FFFBE9'], ink: -1, text: '#49382E', accent: 2, action: 0, canvas: 3, secondary: 1, pick: true, reason: '历史热门榜第 5。奶咖和浅杏容易形成统一的暖色气质，适合城市漫步、咖啡和慢旅行。', advice: '奶油白占大面积，拿铁棕用于操作，浅杏用于摘要。补充 #49382E 做正文，按钮使用更深的文字保证清晰。' },
+  { id: '06', name: '雾粉灰紫', likes: 38638, tagline: '浅粉 × 灰紫 × 雾白 · 柔和、有层次', colors: ['#FFC7C7','#FFE2E2','#F6F6F6','#8785A2'], ink: -1, text: '#403E55', accent: 0, action: 3, canvas: 2, secondary: 1, reason: '历史热门榜第 6。灰紫给浅粉增加层次，适合希望有一点甜度、又保持清爽的界面。', advice: '雾白铺底，灰紫做操作，浅粉用于卡片。正文补充 #403E55，灰紫按钮用自动选择的高对比文字。' },
+  { id: '07', name: '薰衣草蓝', likes: 38129, tagline: '浅紫 × 雾蓝 × 靛灰 · 温柔、轻科技感', colors: ['#F4EEFF','#DCD6F7','#A6B1E1','#424874'], ink: 3, accent: 1, action: 2, canvas: 0, reason: '历史热门榜第 7。淡紫保留想象力，靛灰提供稳定的文字层级，适合以 AI 助手为主的旅行体验。', advice: '浅紫铺底，淡雾蓝用于按钮，靛灰做文字；卡片尽量保持轻浅，避免整屏紫色过浓。' },
+  { id: '08', name: '深海航线', likes: 36211, tagline: '冰蓝 × 海蓝 × 炭黑 · 冷静、清晰', colors: ['#1B262C','#0F4C75','#3282B8','#BBE1FA'], ink: 0, accent: 1, action: 2, canvas: 3, reason: '历史热门榜第 8。冷色层次丰富、对比明确，适合路线、时间和预算等信息密度较高的页面。', advice: '冰蓝做背景，白色衍生表面承接长文字，海蓝只强调操作和时间；深蓝作为卡片点缀。' },
+  { id: '09', name: '北欧蓝灰', likes: 36113, tagline: '浅雾灰 × 钢蓝 × 深蓝灰 · 克制、耐看', colors: ['#27374D','#526D82','#9DB2BF','#DDE6ED'], ink: 0, accent: 2, action: 1, canvas: 3, pick: true, reason: '历史热门榜第 9。低饱和的蓝灰比较安静，适合长时间聊天、反复修改行程的工具型体验。', advice: '浅灰作为背景，钢蓝用于按钮，浅蓝灰标记摘要，深蓝灰做正文。保持细边框和充足留白。' },
+  { id: '10', name: '青粉撞色', likes: 35361, tagline: '亮青 × 玫红 × 炭灰 · 鲜明、活泼', colors: ['#08D9D6','#252A34','#FF2E63','#EAEAEA'], ink: 1, accent: 0, action: 2, canvas: 3, reason: '历史热门榜第 10。经典的亮青与玫红组合，辨识度高，适合更强调年轻感和互动感的方向。', advice: '大面积使用灰白，玫红集中在按钮、亮青集中在卡片；高饱和部分控制占比，保留阅读空间。' }
+];
+const current = { name: '旧版青蓝', colors: ['#2DACB5','#C3E9EA','#1E2D58','#374D73'], action: 0, canvas: 1, ink: 2, accent: 3 };
+const params = new URLSearchParams(location.search);
+let active = palettes.find(p => p.id === params.get('palette')) || palettes[1];
+let scene = ['chat', 'board', 'plan'].includes(params.get('scene')) ? params.get('scene') : 'chat';
+let comparing = params.get('compare') === '1';
+let look = params.get('look') === 'original' ? 'original' : 'soft';
+const likesLabel = p => p.likes.toLocaleString('en-US');
+const $ = selector => document.querySelector(selector);
+function rgb(hex) { return hex.slice(1).match(/../g).map(v => parseInt(v, 16)); }
+function luminance(hex) { return rgb(hex).map(v => v / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4).reduce((sum, v, i) => sum + v * [.2126,.7152,.0722][i], 0); }
+function contrast(a, b) { const x = luminance(a), y = luminance(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }
+function readable(bg, preferred) { if (contrast(bg, preferred) >= 4.5) return preferred; return ['#FFFFFF','#0B0B0B'].sort((a,b) => contrast(bg,b) - contrast(bg,a))[0]; }
+function tint(hex) { return '#' + rgb(hex).map(v => Math.round(v * .22 + 255 * .78).toString(16).padStart(2, '0')).join(''); }
+function theme(p) { const ink = p.text || p.colors[p.ink], canvas = p.colors[p.canvas], action = p.colors[p.action], accent = p.colors[p.accent], secondary = p.colors[p.secondary] || accent; return { ink, canvas, action, accent, secondary, surface: tint(canvas), 'soft-accent': tint(accent), line: ink + '24', shadow: ink + '0D', 'on-ink': readable(ink, canvas), 'on-action': readable(action, ink), 'on-accent': readable(accent, ink), 'on-secondary': readable(secondary, ink) }; }
+function applyTheme(el, p) { Object.entries(theme(p)).forEach(([key, value]) => el.style.setProperty('--' + key, value)); }
+function paletteURL(p) { return 'https://colorhunt.co/palette/' + p.colors.map(c => c.slice(1).toLowerCase()).join(''); }
+function role(p, index) { return index === p.action ? '主按钮' : index === p.canvas ? '背景' : index === p.ink ? '文字 / 描边' : index === p.accent ? '重点卡片' : '辅助浅色'; }
+function phoneHTML() {
+  const headings = { chat: ['私人对话', '杭州周末旅行'], board: ['旅行想法', '杭州想法墙'], plan: ['我的行程', '杭州 · 慢游三天'] };
+  const chat = `<p class="chat-date">10 月 10 日 · 一起出发吧</p><div class="message"><span class="avatar">AI</span><div class="message-content"><small>旅行规划 Agent</small><div class="bubble">想去哪里走走？告诉我你的旅行想法，我来安排。</div></div></div><div class="message mine"><div class="bubble">去杭州三天，想看看西湖，节奏轻松一点。</div></div><div class="message"><span class="avatar">AI</span><div class="message-content"><small>旅行规划 Agent</small><div class="bubble">收到，给这次旅行留一点发呆的时间。</div><div class="ai-card"><small>需求摘要</small><strong>西湖散步 · 慢节奏 · 三天</strong><p>每天保留自由时间，不安排太早出门。</p></div></div></div>`;
+  const board = `<div class="board-header"><span>让零散想法慢慢成形</span><span class="sample-action">生成计划 ↗</span></div><div class="board"><svg class="route" viewBox="0 0 280 270" aria-hidden="true"><path d="M35 50 C250 -10 220 160 90 125 S20 270 230 215" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="5 7"/></svg><article class="note"><strong>西湖边<br>散散步</strong><small>● 地点</small></article><article class="note"><strong>预算<br>¥ 4,000</strong><small>● 预算</small></article><article class="note"><strong>早上<br>不赶时间</strong><small>● 节奏</small></article><article class="note"><strong>避开人潮<br>少排队</strong><small>● 偏好</small></article></div><p class="board-tip">每个小想法，都是旅行的一部分。</p>`;
+  const plan = `<div class="plan-summary"><small>行程草案 · v1</small><h4>把时间留给风景</h4><p>3 天 2 晚 · 预算 ¥ 4,000 · 轻松漫游</p></div><span class="day-title">DAY 01 / 西湖与老街</span><div class="plan-stop"><time>10:00</time><div><strong>湖畔散步</strong><p>沿着苏堤走走，随时停下拍照。</p></div></div><div class="plan-stop"><time>13:00</time><div><strong>午饭与咖啡</strong><p>在街角小店坐一会儿。</p></div></div><div class="plan-stop"><time>16:00</time><div><strong>河坊街闲逛</strong><p>留点空白，让惊喜发生。</p></div></div><div class="plan-footer"><span>已照顾「轻松一点」的偏好</span><span class="sample-action">确认行程 ✓</span></div>`;
+  return `<div class="phone-top"><span>9:41</span><span aria-hidden="true">● ▰</span></div><div class="app-head"><div><small>${headings[scene][0]}</small><h3>${headings[scene][1]}</h3></div><span class="destination">杭州 ↗</span></div><div class="app-scene">${{chat,board,plan}[scene]}</div>${scene === 'plan' ? '' : `<div class="composer"><span>${scene === 'chat' ? '告诉 Agent 你的旅行想法' : '再记下一个小想法'}</span><span class="send-icon" aria-hidden="true">↑</span></div>`}<nav class="phone-nav" aria-label="样例页面切换">${[['chat','✉','聊天'],['board','✦','想法'],['plan','↟','行程']].map(([value,icon,label]) => `<button type="button" data-scene="${value}" aria-pressed="${scene === value}"><b aria-hidden="true">${icon}</b>${label}</button>`).join('')}</nav>`;
+}
+function miniHTML(p) { return `<div class="mini-head"><strong>周末，去杭州走走。</strong><span class="sample-action">生成计划 ↗</span></div><div class="mini-content"><div><div class="mini-bubble">去看看西湖，再喝杯咖啡。</div><div class="mini-message">好，安排轻松的一天。</div></div><div class="mini-notes"><div class="mini-note">西湖散步<small>● 想去的地方</small></div><div class="mini-note">慢一点<small>● 旅行节奏</small></div></div></div><div class="mini-nav"><span>聊天</span><span>想法墙</span><span>行程</span></div>`; }
+function buildOptions() {
+  $('#palette-list').innerHTML = palettes.map(p => `<button type="button" class="palette-option" data-palette="${p.id}" aria-pressed="false" aria-label="历史榜第 ${Number(p.id)}，${p.name}，${likesLabel(p)} 次喜欢${p.pick ? '，适合本项目' : ''}"><span class="option-head"><span class="number">${p.id}</span><strong>${p.name}</strong>${p.pick ? '<span class="pick">适合本项目</span>' : ''}</span><span class="option-swatches" aria-hidden="true">${p.colors.map(c => `<i style="background:${c}"></i>`).join('')}</span><span class="option-meta"><span>♥ ${likesLabel(p)}</span><span>历史榜 #${Number(p.id)}</span></span></button>`).join('');
+  $('#overview-grid').innerHTML = palettes.map(p => `<article class="overview-card"><div class="overview-card-head"><span class="number">${p.id}</span><h3>${p.name}</h3><span class="heat">♥ ${likesLabel(p)}</span><button type="button" data-palette="${p.id}" data-jump aria-label="查看 ${p.name} 大图">查看大图 ↗</button></div><div class="overview-proof"><span>历史榜 #${Number(p.id)}${p.pick ? ' · 适合本项目' : ''}</span><a href="${paletteURL(p)}" target="_blank" rel="noopener noreferrer">原始色板 ↗</a></div><div class="mini" data-mini="${p.id}">${miniHTML(p)}</div><div class="overview-colors">${p.colors.map(c => `<span style="background:${c};color:${readable(c, theme(p).ink)}">${c}</span>`).join('')}</div></article>`).join('');
+  palettes.forEach(p => applyTheme(document.querySelector(`[data-mini="${p.id}"]`), p));
+}
+function render() {
+  $('#active-name').textContent = active.id + ' / ' + active.name;
+  $('#active-heat').textContent = '♥ ' + likesLabel(active) + ' 次喜欢';
+  $('#active-rank').textContent = 'Color Hunt 历史榜第 ' + Number(active.id) + ' · 2026-09-29';
+  document.body.classList.toggle('soft-preview', look === 'soft');
+  document.querySelectorAll('[data-look]').forEach(el => el.setAttribute('aria-pressed', el.dataset.look === look));
+  $('#active-tagline').textContent = active.tagline;
+  $('#selected-label').textContent = active.name;
+  $('#palette-reason').textContent = active.reason;
+  $('#palette-advice').textContent = active.advice;
+  $('#source').href = paletteURL(active);
+  $('#source').setAttribute('aria-label', active.name + '的 Color Hunt 原始色板，打开新页面');
+  $('#compare').setAttribute('aria-pressed', comparing);
+  $('#compare').textContent = comparing ? '收起旧版青蓝' : '对比旧版青蓝';
+  $('#current-slot').hidden = !comparing;
+  $('#stage').classList.toggle('is-comparing', comparing);
+  for (const [selector, p] of [['#selected-phone', active], ['#current-phone', current]]) { const el = $(selector); applyTheme(el, p); el.innerHTML = phoneHTML(); }
+  document.querySelectorAll('.palette-option').forEach(el => el.setAttribute('aria-pressed', el.dataset.palette === active.id));
+  document.querySelectorAll('[data-scene]').forEach(el => el.setAttribute('aria-pressed', el.dataset.scene === scene));
+  $('#color-values').innerHTML = active.colors.map((c,i) => `<button type="button" class="color-value" data-copy="${c}" aria-label="复制 ${role(active,i)}色 ${c}"><span class="chip" style="background:${c}"></span><code>${c}</code><small>${role(active,i)}</small></button>`).join('');
+  const t = theme(active);
+  $('#contrast-note').textContent = `正文 ${t.ink}${active.text ? '（辅助文字色）' : ''} · 正文与表面对比度 ${contrast(t.ink,t.surface).toFixed(1)}:1 · 主按钮 ${contrast(t['on-action'],t.action).toFixed(1)}:1。仅代表这两组颜色的对比度。`;
+  const url = new URL(location.href); url.searchParams.set('palette', active.id); url.searchParams.set('scene', scene); url.searchParams.set('look', look); if (comparing) url.searchParams.set('compare', '1'); else url.searchParams.delete('compare');
+  history.replaceState(null, '', url);
+}
+let toastTimer;
+async function copy(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+    else { const field = document.createElement('textarea'); field.value = text; field.style.position = 'fixed'; field.style.opacity = '0'; document.body.append(field); field.select(); const copied = document.execCommand('copy'); field.remove(); if (!copied) throw new Error('clipboard unavailable'); }
+    $('#toast').textContent = text.includes(' ') ? '已复制这套配色的 4 个色值' : '已复制 ' + text;
+  } catch { $('#toast').textContent = '未能自动复制，可直接选中色值复制。'; }
+  $('#toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 2600);
+}
+document.addEventListener('click', event => {
+  const selection = event.target.closest('[data-palette]');
+  if (selection) { active = palettes.find(p => p.id === selection.dataset.palette); render(); if (selection.hasAttribute('data-jump')) $('#studio').scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'}); }
+  const sceneButton = event.target.closest('[data-scene]');
+  if (sceneButton) { const fromPhone = !!sceneButton.closest('.phone'); const container = sceneButton.closest('.phone'); scene = sceneButton.dataset.scene; render(); if (fromPhone) container.querySelector(`[data-scene="${scene}"]`).focus({preventScroll: true}); }
+  const lookButton = event.target.closest('[data-look]'); if (lookButton) { look = lookButton.dataset.look; render(); }
+  const swatch = event.target.closest('[data-copy]'); if (swatch) copy(swatch.dataset.copy);
+});
+$('#compare').addEventListener('click', () => { comparing = !comparing; render(); });
+$('#copy-all').addEventListener('click', () => copy(active.colors.join(' ')));
+buildOptions(); render();
+</script>
+</body>
+</html>

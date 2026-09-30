@@ -1,9 +1,12 @@
+import json
+import logging
 import os
 import sqlite3
 from pathlib import Path
 from threading import Lock
 
 from fastapi import BackgroundTasks, FastAPI, Form, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -24,7 +27,8 @@ auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20260816-idea-auth"
+templates.env.globals["static_version"] = "20260929-idea-auth-chat-fixes"
+logger = logging.getLogger(__name__)
 
 
 @app.exception_handler(404)
@@ -104,7 +108,8 @@ def finish_agent_message_task(trip_id: str, body: str, sender_id: str, thinking_
     if trip_id in store.trips:
         try:
             store.finish_agent_task(trip_id, body, sender_id, thinking_message_id)
-        except Exception:
+        except Exception as exc:
+            logger.warning("Agent background task failed (%s)", type(exc).__name__)
             store.fail_agent_task(trip_id, thinking_message_id)
 
 
@@ -340,12 +345,16 @@ async def api_add_message(request: Request, trip_id: str, background_tasks: Back
     if not user:
         return JSONResponse({"error": "请先登录"}, status_code=401)
     get_owned_trip_or_404(trip_id, user)
-    data = await request.json()
-    body = str(data.get("body") or "").strip()
+    try:
+        data = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse({"error": "消息格式不正确"}, status_code=400)
+    if not isinstance(data, dict) or not isinstance(data.get("body"), str):
+        return JSONResponse({"error": "消息必须是文本"}, status_code=400)
+    body = data["body"].strip()
     if not body:
         return JSONResponse({"error": "消息不能为空"}, status_code=400)
-    message = store.add_user_message(trip_id, body, user.id, process_agent=False)
-    thinking = store.start_agent_task(trip_id)
+    message, thinking = await run_in_threadpool(store.queue_user_message, trip_id, body, user.id)
     background_tasks.add_task(finish_agent_message_task, trip_id, body, user.id, thinking.id)
     return JSONResponse({"messages": [message_to_dict(message), message_to_dict(thinking)]})
 
@@ -364,13 +373,14 @@ def messages_partial(request: Request, trip_id: str) -> Response:
 
 
 @app.post("/workspace/{trip_id}/messages")
-def add_message(request: Request, trip_id: str, body: str = Form("")) -> RedirectResponse:
+def add_message(request: Request, trip_id: str, background_tasks: BackgroundTasks, body: str = Form("")) -> RedirectResponse:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
     if body.strip():
-        store.add_user_message(trip_id, body, user.id)
+        _, thinking = store.queue_user_message(trip_id, body, user.id)
+        background_tasks.add_task(finish_agent_message_task, trip_id, body, user.id, thinking.id)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=chat", status_code=303)
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,7 +12,8 @@ from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
-load_dotenv(APP_DIR / ".env", override=True)
+load_dotenv(APP_DIR / ".env", override=False)
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -83,7 +85,8 @@ JSON 格式：
 
 
 def is_llm_enabled() -> bool:
-    if os.getenv("TRAVEL_AGENT_DISABLE_LLM") or os.getenv("PYTEST_CURRENT_TEST"):
+    disabled = os.getenv("TRAVEL_AGENT_DISABLE_LLM", "").strip().lower()
+    if disabled in {"1", "true", "yes", "on"} or os.getenv("PYTEST_CURRENT_TEST"):
         return False
     return bool(os.getenv("OPENAI_API_KEY"))
 
@@ -106,12 +109,14 @@ def generate_agent_reply(
         client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY"),
             base_url=os.getenv("OPENAI_BASE_URL") or None,
+            timeout=45.0,
+            max_retries=0,
         )
         model = os.getenv("OPENAI_MODEL") or os.getenv("MODEL_ID") or "qwen-plus"
-        response = client.chat.completions.create(
-            model=model,
-            temperature=0.4,
-            messages=[
+        response = _create_chat_completion(
+            client,
+            model,
+            [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {
                     "role": "user",
@@ -127,11 +132,32 @@ def generate_agent_reply(
                 },
             ],
         )
-        content = response.choices[0].message.content or ""
-        return _parse_reply(content)
-    except Exception:
+        content = (response.choices[0].message.content or "").strip()
+        if not content:
+            raise ValueError("Empty model response")
+        try:
+            return _parse_reply(content)
+        except json.JSONDecodeError:
+            # Plain text is usable; broken structured output is not a successful reply.
+            if content.startswith(("{", "[", "```")):
+                raise
+            return AgentReply(
+                body=content,
+                card=AgentCard(
+                    kind="requirement-summary",
+                    title="已收到",
+                    summary=content[:80] or "我会继续结合你的需求整理行程。",
+                    bullets=["回复已直接显示在聊天里", "可以继续补充预算、时间和偏好"],
+                    actions=[AgentAction(label="查看旅行想法", target="board")],
+                ),
+                idea_cards=[],
+                plan=None,
+            )
+    except Exception as exc:
+        # Do not log provider responses, credentials, or conversation contents.
+        logger.warning("Agent reply failed (%s)", type(exc).__name__)
         return AgentReply(
-            body="我这边暂时没连上模型，先按本地规则记录。",
+            body="这次模型回复没有完成，你的消息已保留，请稍后重试。",
             card=AgentCard(
                 kind="missing-info",
                 title="模型调用暂时失败",
@@ -144,6 +170,20 @@ def generate_agent_reply(
         )
 
 
+def _create_chat_completion(client, model: str, messages: list[dict]) -> object:
+    from openai import BadRequestError
+
+    params: dict[str, object] = {"model": model, "temperature": 0.4, "messages": messages}
+    try:
+        return client.chat.completions.create(**params)
+    except BadRequestError as exc:
+        text = str(exc).lower()
+        if "temperature" in text and "not supported" in text:
+            params.pop("temperature", None)
+            return client.chat.completions.create(**params)
+        raise
+
+
 def _build_context(
     trip: Trip,
     messages: list[Message],
@@ -153,7 +193,7 @@ def _build_context(
     plan_versions: list[PlanVersion] | None = None,
     metrics: dict[str, int | str] | None = None,
 ) -> str:
-    recent_messages = messages[-20:]
+    recent_messages = [message for message in messages if message.status == "sent"][-20:]
     chat_lines = [
         f"{'用户' if message.sender_type == 'user' else 'Agent'}: {message.body}"
         for message in recent_messages
@@ -213,6 +253,9 @@ def _plan_context_lines(plan: TripPlan | None) -> list[str]:
 
 def _parse_reply(content: str) -> AgentReply:
     data = _load_json(content)
+    body = data.get("body")
+    if not isinstance(body, str) or not body.strip():
+        raise ValueError("Model response is missing its reply body")
     card_data = data.get("card") if isinstance(data.get("card"), dict) else {}
     kind = str(card_data.get("kind") or "missing-info")
     if kind not in VALID_CARD_KINDS:
@@ -230,7 +273,7 @@ def _parse_reply(content: str) -> AgentReply:
         action_target = "itinerary" if kind in {"itinerary-draft", "revision", "conflict"} else "board"
 
     return AgentReply(
-        body=str(data.get("body") or "我已把这条消息纳入旅行计划约束。").strip()[:120],
+        body=body.strip(),
         card=AgentCard(
             kind=kind,
             title=str(card_data.get("title") or "偏好已更新").strip()[:40],

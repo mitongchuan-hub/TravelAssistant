@@ -1,0 +1,195 @@
+{
+  "checkedAt": "2026-09-29T13:02:34.972Z",
+  "source": "Color Hunt",
+  "rankingPage": "https://colorhunt.co/palettes/popular",
+  "scope": "Popular / All time",
+  "request": {
+    "url": "https://colorhunt.co/php/feed.php",
+    "method": "POST",
+    "parameters": {
+      "step": "0",
+      "sort": "popular",
+      "tags": "",
+      "timeframe": "4000"
+    }
+  },
+  "metric": "likes (cumulative, not unique users or recent growth)",
+  "palettes": [
+    {
+      "rank": 1,
+      "code": "e3fdfdcbf1f5a6e3e971c9ce",
+      "colors": [
+        "#E3FDFD",
+        "#CBF1F5",
+        "#A6E3E9",
+        "#71C9CE"
+      ],
+      "likes": 47361,
+      "publishedAgo": "9 years",
+      "url": "https://colorhunt.co/palette/e3fdfdcbf1f5a6e3e971c9ce",
+      "verifiedTitle": "Color Palette: #E3FDFD #CBF1F5 #A6E3E9 #71C9CE - Color Hunt"
+    },
+    {
+      "rank": 2,
+      "code": "f9f7f7dbe2ef3f72af112d4e",
+      "colors": [
+        "#F9F7F7",
+        "#DBE2EF",
+        "#3F72AF",
+        "#112D4E"
+      ],
+      "likes": 46413,
+      "publishedAgo": "10 years",
+      "url": "https://colorhunt.co/palette/f9f7f7dbe2ef3f72af112d4e",
+      "verifiedTitle": "Color Palette: #F9F7F7 #DBE2EF #3F72AF #112D4E - Color Hunt"
+    },
+    {
+      "rank": 3,
+      "code": "fff5e4ffe3e1ffd1d1ff9494",
+      "colors": [
+        "#FFF5E4",
+        "#FFE3E1",
+        "#FFD1D1",
+        "#FF9494"
+      ],
+      "likes": 42210,
+      "publishedAgo": "4 years",
+      "url": "https://colorhunt.co/palette/fff5e4ffe3e1ffd1d1ff9494",
+      "verifiedTitle": "Color Palette: #FFF5E4 #FFE3E1 #FFD1D1 #FF9494 - Color Hunt"
+    },
+    {
+      "rank": 4,
+      "code": "f9f5f6f8e8eefdcedff2bed1",
+      "colors": [
+        "#F9F5F6",
+        "#F8E8EE",
+        "#FDCEDF",
+        "#F2BED1"
+      ],
+      "likes": 41964,
+      "publishedAgo": "3 years",
+      "url": "https://colorhunt.co/palette/f9f5f6f8e8eefdcedff2bed1",
+      "verifiedTitle": "Color Palette: #F9F5F6 #F8E8EE #FDCEDF #F2BED1 - Color Hunt"
+    },
+    {
+      "rank": 5,
+      "code": "ad8b73ceab93e3caa5fffbe9",
+      "colors": [
+        "#AD8B73",
+        "#CEAB93",
+        "#E3CAA5",
+        "#FFFBE9"
+      ],
+      "likes": 38820,
+      "publishedAgo": "4 years",
+      "url": "https://colorhunt.co/palette/ad8b73ceab93e3caa5fffbe9",
+      "verifiedTitle": "Color Palette: #AD8B73 #CEAB93 #E3CAA5 #FFFBE9 - Color Hunt"
+    },
+    {
+      "rank": 6,
+      "code": "ffc7c7ffe2e2f6f6f68785a2",
+      "colors": [
+        "#FFC7C7",
+        "#FFE2E2",
+        "#F6F6F6",
+        "#8785A2"
+      ],
+      "likes": 38638,
+      "publishedAgo": "8 years",
+      "url": "https://colorhunt.co/palette/ffc7c7ffe2e2f6f6f68785a2",
+      "verifiedTitle": "Color Palette: #FFC7C7 #FFE2E2 #F6F6F6 #8785A2 - Color Hunt"
+    },
+    {
+      "rank": 7,
+      "code": "f4eeffdcd6f7a6b1e1424874",
+      "colors": [
+        "#F4EEFF",
+        "#DCD6F7",
+        "#A6B1E1",
+        "#424874"
+      ],
+      "likes": 38129,
+      "publishedAgo": "6 years",
+      "url": "https://colorhunt.co/palette/f4eeffdcd6f7a6b1e1424874",
+      "verifiedTitle": "Color Palette: #F4EEFF #DCD6F7 #A6B1E1 #424874 - Color Hunt"
+    },
+    {
+      "rank": 8,
+      "code": "1b262c0f4c753282b8bbe1fa",
+      "colors": [
+        "#1B262C",
+        "#0F4C75",
+        "#3282B8",
+        "#BBE1FA"
+      ],
+      "likes": 36211,
+      "publishedAgo": "6 years",
+      "url": "https://colorhunt.co/palette/1b262c0f4c753282b8bbe1fa",
+      "verifiedTitle": "Color Palette: #1B262C #0F4C75 #3282B8 #BBE1FA - Color Hunt"
+    },
+    {
+      "rank": 9,
+      "code": "27374d526d829db2bfdde6ed",
+      "colors": [
+        "#27374D",
+        "#526D82",
+        "#9DB2BF",
+        "#DDE6ED"
+      ],
+      "likes": 36113,
+      "publishedAgo": "3 years",
+      "url": "https://colorhunt.co/palette/27374d526d829db2bfdde6ed",
+      "verifiedTitle": "Color Palette: #27374D #526D82 #9DB2BF #DDE6ED - Color Hunt"
+    },
+    {
+      "rank": 10,
+      "code": "08d9d6252a34ff2e63eaeaea",
+      "colors": [
+        "#08D9D6",
+        "#252A34",
+        "#FF2E63",
+        "#EAEAEA"
+      ],
+      "likes": 35361,
+      "publishedAgo": "10 years",
+      "url": "https://colorhunt.co/palette/08d9d6252a34ff2e63eaeaea",
+      "verifiedTitle": "Color Palette: #08D9D6 #252A34 #FF2E63 #EAEAEA - Color Hunt"
+    }
+  ],
+  "context": {
+    "yearTop3": [
+      {
+        "code": "f9f8f6efe9e3d9cfc7c9b59c",
+        "likes": "11191",
+        "date": "10 months"
+      },
+      {
+        "code": "fcf8f8fbefeff9dfdff5afaf",
+        "likes": "10855",
+        "date": "9 months"
+      },
+      {
+        "code": "fcf9eabadfdbffa4a4ffbdbd",
+        "likes": "9931",
+        "date": "11 months"
+      }
+    ],
+    "monthTop3": [
+      {
+        "code": "8b9a6ef7f2ebeae2d6eeeeee",
+        "likes": "1442",
+        "date": "3 weeks"
+      },
+      {
+        "code": "f29191f7adadb1e5e6ccfbfa",
+        "likes": "1367",
+        "date": "3 weeks"
+      },
+      {
+        "code": "800020f3e6d5fff9f2d45060",
+        "likes": "1339",
+        "date": "2 weeks"
+      }
+    ]
+  }
+}
