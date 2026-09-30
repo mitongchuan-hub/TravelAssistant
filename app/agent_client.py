@@ -35,6 +35,9 @@ VALID_IDEA_KINDS = {"地点", "预算", "节奏", "禁忌", "待归类"}
 
 
 MAX_TOOL_ROUNDS = 1
+MAX_CONTEXT_MESSAGES = 12
+MAX_CONTEXT_IDEAS = 6
+MAX_CONTEXT_VERSIONS = 3
 
 
 SYSTEM_PROMPT = BASE_SYSTEM_PROMPT
@@ -382,19 +385,19 @@ def _build_context(
     plan_versions: list[PlanVersion] | None = None,
     metrics: dict[str, int | str] | None = None,
 ) -> str:
-    recent_messages = [message for message in messages if message.status == "sent"][-20:]
+    recent_messages = [message for message in messages if message.status == "sent"][-MAX_CONTEXT_MESSAGES:]
     chat_lines = [
         f"{'用户' if message.sender_type == 'user' else 'Agent'}: {message.body}"
         for message in recent_messages
     ]
     idea_lines = [
         f"- [{card.kind}/{card.status}] {card.title}｜来源={card.author}：{card.body}"
-        for card in (idea_cards or [])[-8:]
+        for card in (idea_cards or [])[-MAX_CONTEXT_IDEAS:]
     ]
     plan_lines = _plan_context_lines(plan)
     version_lines = [
         f"- {version.label}｜{version.status}｜{version.change_summary}"
-        for version in (plan_versions or [])[-5:]
+        for version in (plan_versions or [])[-MAX_CONTEXT_VERSIONS:]
     ]
     metric_lines = [f"- {key}: {value}" for key, value in (metrics or {}).items()]
 
@@ -404,6 +407,7 @@ def _build_context(
             "当前是用户与 Agent 的一对一私人对话。",
             "",
             "旅行信息：",
+            f"当前日期：{datetime.now().date().isoformat()}（涉及月份和日期但未写年份时，按这个年份理解；日期无效时保留待确认，不要自行改成另一个日期）",
             f"目的地/标题：{trip.destination}",
             f"时间：{trip.date_range}",
             f"预算：{trip.budget}",

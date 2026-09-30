@@ -559,7 +559,8 @@ def test_idea_board_keeps_visual_workspace_and_source_details():
     assert "workspace--board" in response.text
     assert "旅行想法白板" in response.text
     assert "data-route-board" in response.text
-    assert "idea-wall-legend" in response.text
+    assert "idea-wall-legend" not in response.text
+    assert "data-kind=" not in response.text
     assert "写一个旅行想法" in response.text
     assert 'class="idea-detail-sheet"' in response.text
     assert "来源" in response.text

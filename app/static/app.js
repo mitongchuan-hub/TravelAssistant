@@ -271,13 +271,18 @@ function drawIdeaRoutes() {
       return Number(a.dataset.routeIndex) - Number(b.dataset.routeIndex);
     });
 
-    if (!(svg instanceof SVGSVGElement) || !(path instanceof SVGPathElement) || cards.length < 2) {
+    if (!(svg instanceof SVGSVGElement) || !(path instanceof SVGPathElement) || cards.length === 0) {
       return;
     }
 
     const boardRect = board.getBoundingClientRect();
     layoutIdeaCards(board, cards, boardRect);
     svg.setAttribute('viewBox', `0 0 ${boardRect.width} ${boardRect.height}`);
+
+    if (cards.length < 2) {
+      path.removeAttribute('d');
+      return;
+    }
 
     const points = cards.map((card) => {
       const rect = card.getBoundingClientRect();

@@ -123,7 +123,19 @@ class DemoStore:
         legacy_snapshot = int(snapshot.get("schema_version", 1)) < CURRENT_SCHEMA_VERSION
         global _id_counter
         _id_counter = count(restore_state(self, snapshot, USERS))
-        if legacy_snapshot:
+        removed_placeholder = False
+        for trip_id, cards in self.idea_cards.items():
+            filtered_cards = [
+                card for card in cards
+                if not (
+                    card.author == "Agent"
+                    and card.title == "从一句话开始"
+                    and card.body == "Agent 会在对话中把地点、预算、节奏和禁忌整理成可执行的旅行约束。"
+                )
+            ]
+            removed_placeholder = removed_placeholder or len(filtered_cards) != len(cards)
+            self.idea_cards[trip_id] = filtered_cards
+        if legacy_snapshot or removed_placeholder:
             self._persist()
         # Background tasks cannot survive a process restart. Keep the user's text
         # and replace interrupted placeholders with the existing failure response.
@@ -208,17 +220,7 @@ class DemoStore:
         ]
         self.plans[trip_id] = TripPlan(id="empty", title="还没有行程计划", status="未生成", days=[])
         self.plan_versions[trip_id] = []
-        self.idea_cards[trip_id] = [
-            IdeaCard(
-                id=f"idea-{next(_id_counter)}",
-                kind="节奏",
-                title="从一句话开始",
-                body="Agent 会在对话中把地点、预算、节奏和禁忌整理成可执行的旅行约束。",
-                author="Agent",
-                status="待补充",
-                rotation=IDEA_ROTATIONS[0],
-            )
-        ]
+        self.idea_cards[trip_id] = []
         self._persist()
         return trip
 

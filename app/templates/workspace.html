@@ -23,15 +23,16 @@
 
       <section class="idea-wall-canvas" data-route-board data-card-count="{{ idea_cards | length }}" aria-label="旅行想法白板">
         <h2 class="sr-only">旅行想法白板</h2>
-        <div class="idea-wall-legend" aria-label="想法类型">
-          <span class="legend-place">地点</span>
-          <span class="legend-budget">预算</span>
-          <span class="legend-pace">节奏</span>
-          <span class="legend-taboo">禁忌</span>
-        </div>
         <svg class="travel-route" viewBox="0 0 260 360" aria-hidden="true">
           <path data-route-path />
         </svg>
+        {% if not idea_cards %}
+          <div class="idea-wall-empty">
+            <strong>这里先留给你的旅行想法</strong>
+            <p>写下想去的地方、预算、节奏或不想接受的安排，Agent 会帮你整理。</p>
+            <span>从下面开始记录第一条想法</span>
+          </div>
+        {% endif %}
         {% for card in idea_cards %}
           <button
             class="floating-idea kind-{{ card.kind }}"
@@ -40,14 +41,12 @@
             data-idea-detail-trigger
             data-idea-id="{{ card.id }}"
             data-title="{{ card.title }}"
-            data-kind="{{ card.kind }}"
             data-body="{{ card.body }}"
             data-author="{{ card.author }}"
             data-status="{{ card.status }}"
             style="--rotate: {{ card.rotation }}"
           >
             <strong>{{ card.title }}</strong>
-            <span>{{ card.kind }}</span>
           </button>
         {% endfor %}
       </section>
@@ -57,7 +56,7 @@
         <article class="idea-detail-panel" role="dialog" aria-modal="true" aria-labelledby="idea-detail-title">
           <div class="sheet-handle" aria-hidden="true"></div>
           <div class="idea-detail-heading">
-            <span data-idea-detail-kind>地点</span>
+            <span>旅行想法</span>
             <button type="button" data-idea-detail-close>关闭</button>
           </div>
           <h2 id="idea-detail-title" data-idea-detail-title>想法</h2>
