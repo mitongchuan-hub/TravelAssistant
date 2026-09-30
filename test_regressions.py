@@ -160,24 +160,14 @@ def test_message_api_rejects_non_text_payloads(body):
     assert response.status_code == 400
 
 
-def test_temperature_retries_only_for_explicit_parameter_rejection():
-    import httpx
-    from openai import BadRequestError, AuthenticationError
+def test_model_request_omits_temperature_parameter():
     from unittest.mock import Mock
 
-    response = httpx.Response(400, request=httpx.Request("POST", "https://model.invalid/chat/completions"))
-    unsupported = BadRequestError("Parameter 'temperature'=0.4 is not supported", response=response, body=None)
-    create = Mock(side_effect=[unsupported, "completed"])
+    create = Mock(return_value="completed")
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
     assert agent_client._create_chat_completion(client, "kimi-k3", []) == "completed"
-    assert create.call_args_list[0].kwargs["temperature"] == 0.4
-    assert "temperature" not in create.call_args_list[1].kwargs
-    auth_error = AuthenticationError("rejected", response=response, body=None)
-    create.reset_mock(side_effect=True)
-    create.side_effect = auth_error
-    with pytest.raises(AuthenticationError):
-        agent_client._create_chat_completion(client, "kimi-k3", [])
     assert create.call_count == 1
+    assert "temperature" not in create.call_args.kwargs
 
 
 @pytest.mark.parametrize("content,failed", [("", True), ("{}", True), ('{"body":', True), ("你好！", False)])

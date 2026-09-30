@@ -359,6 +359,8 @@ def _day(raw: dict[str, Any], legacy: bool = False) -> TripDay:
         id=str(raw["id"]),
         label=str(raw["label"]),
         items=[_item(item, legacy) for item in raw.get("items", [])],
+        date=str(raw.get("date") or ""),
+        theme=str(raw.get("theme") or ""),
     )
 
 
@@ -385,6 +387,10 @@ def _plan(raw: dict[str, Any], legacy: bool = False) -> TripPlan:
         status=str(raw["status"]),
         days=[_day(day, legacy) for day in raw.get("days", [])],
         preparation=_preparation(raw.get("preparation")),
+        overview=str(raw.get("overview") or ""),
+        constraints_met=[str(item) for item in raw.get("constraints_met", [])],
+        pending_items=[str(item) for item in raw.get("pending_items", [])],
+        risks=[str(item) for item in raw.get("risks", [])],
     )
 
 
@@ -399,6 +405,10 @@ def _version(raw: dict[str, Any], legacy: bool = False) -> PlanVersion:
         change_summary=_solo_text(change_summary) if legacy else change_summary,
         days=[_day(day, legacy) for day in raw.get("days", [])],
         preparation=_preparation(raw.get("preparation")),
+        overview=str(raw.get("overview") or ""),
+        constraints_met=[str(item) for item in raw.get("constraints_met", [])],
+        pending_items=[str(item) for item in raw.get("pending_items", [])],
+        risks=[str(item) for item in raw.get("risks", [])],
     )
 
 

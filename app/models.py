@@ -75,6 +75,8 @@ class TripDay:
     id: str
     label: str
     items: list[TripItem]
+    date: str = ""
+    theme: str = ""
 
 
 @dataclass(frozen=True)
@@ -97,6 +99,10 @@ class TripPlan:
     status: str
     days: list[TripDay] = field(default_factory=list)
     preparation: TravelPreparation = field(default_factory=TravelPreparation)
+    overview: str = ""
+    constraints_met: list[str] = field(default_factory=list)
+    pending_items: list[str] = field(default_factory=list)
+    risks: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -109,6 +115,10 @@ class PlanVersion:
     change_summary: str
     days: list[TripDay] = field(default_factory=list)
     preparation: TravelPreparation = field(default_factory=TravelPreparation)
+    overview: str = ""
+    constraints_met: list[str] = field(default_factory=list)
+    pending_items: list[str] = field(default_factory=list)
+    risks: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

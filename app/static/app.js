@@ -131,6 +131,10 @@ function openIdeaDetail(trigger) {
   setDetailText('[data-idea-detail-body]', trigger.dataset.body);
   setDetailText('[data-idea-detail-author]', trigger.dataset.author);
   setDetailText('[data-idea-detail-status]', trigger.dataset.status);
+  const deleteId = sheet.querySelector('[data-idea-delete-id]');
+  if (deleteId instanceof HTMLInputElement) {
+    deleteId.value = trigger.dataset.ideaId || '';
+  }
   sheet.removeAttribute('aria-hidden');
   sheet.classList.add('open');
   document.body.classList.add('sheet-open');

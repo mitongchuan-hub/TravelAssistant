@@ -18,8 +18,9 @@ TRAVEL_RESULT_SCHEMA = {
                 "summary": {"type": "string"},
                 "bullets": {"type": "array", "items": {"type": "string"}},
                 "action_target": {"type": "string", "enum": ["board", "itinerary"]},
+                "next_action": {"type": "string", "enum": ["continue_chat", "ask_plan_confirmation", "generate_plan", "show_plan"]},
             },
-            "required": ["kind", "title", "summary", "bullets", "action_target"],
+            "required": ["kind", "title", "summary", "bullets", "action_target", "next_action"],
         },
         "idea_cards": {
             "type": "array",

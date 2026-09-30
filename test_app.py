@@ -378,7 +378,8 @@ def test_agent_context_uses_three_personal_workspace_tabs():
         metrics=store.trip_metrics(trip.id),
     )
 
-    assert "三个导航页的全局上下文" in context
+    assert "应用提供的旅行上下文数据" in context
+    assert "任务规则和输出格式以 system message 与当前 Skill 为准" in context
     assert "一对一私人对话" in context
     assert "想法页 / 想法墙" in context
     assert "聊天页 / 最近对话" in context

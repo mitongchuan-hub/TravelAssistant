@@ -222,6 +222,13 @@ class DemoStore:
         self._persist()
         return trip
 
+    @_state_locked
+    def clear_chat(self, trip_id: str) -> None:
+        self.messages[trip_id] = []
+        self.trips[trip_id].last_activity = "聊天记录已清空"
+        self._persist()
+
+    @_state_locked
     def add_user_message(self, trip_id: str, body: str, sender_id: str = "u1", process_agent: bool = True) -> Message:
         with self._lock:
             clean_body = body.strip()
@@ -290,11 +297,26 @@ class DemoStore:
         # Network calls must never hold the global store lock.
         # A first draft can still be created from the stored ideas when the provider
         # times out or returns malformed structured output. Never replace a confirmed plan.
+        planning_requested = self._is_plan_command(body)
         reply = generate_agent_reply(
             user_body=body,
-            planning_mode=self._is_plan_command(body),
+            planning_mode=planning_requested,
             **context,
         )
+        if (
+            not planning_requested
+            and reply
+            and any(action.target == "generate" for action in reply.card.actions)
+        ):
+            # Let the model classify a semantic confirmation such as “出一版方案吧”.
+            # Only after that classification do we run the tool and final-plan pass.
+            planning_reply = generate_agent_reply(
+                user_body=body,
+                planning_mode=True,
+                **context,
+            )
+            if planning_reply is not None:
+                reply = planning_reply
         if (
             reply
             and reply.plan is None
@@ -377,6 +399,17 @@ class DemoStore:
         self.trips[trip_id].last_activity = "Agent 已整理最近对话"
         self._persist()
         return message
+
+    @_state_locked
+    def delete_idea(self, trip_id: str, idea_id: str) -> bool:
+        cards = self.idea_cards[trip_id]
+        remaining = [card for card in cards if card.id != idea_id]
+        if len(remaining) == len(cards):
+            return False
+        self.idea_cards[trip_id] = remaining
+        self.trips[trip_id].last_activity = "已删除一条旅行想法"
+        self._persist()
+        return True
 
     @_state_locked
     def add_idea(self, trip_id: str, body: str) -> IdeaCard:
@@ -511,6 +544,10 @@ class DemoStore:
             status="草案",
             days=version.days,
             preparation=version.preparation,
+            overview=version.overview,
+            constraints_met=version.constraints_met,
+            pending_items=version.pending_items,
+            risks=version.risks,
         )
         self.trips[trip_id].status = "草案"
         self.trips[trip_id].last_activity = f"已回退到 {version.label}"
@@ -745,7 +782,13 @@ class DemoStore:
                     )
                 )
             if items:
-                days.append(TripDay(id=f"day-{day_index}-{next(_id_counter)}", label=str(raw_day.get("label") or f"Day {day_index}"), items=items))
+                days.append(TripDay(
+                    id=f"day-{day_index}-{next(_id_counter)}",
+                    label=str(raw_day.get("label") or f"Day {day_index}"),
+                    date=str(raw_day.get("date") or ""),
+                    theme=str(raw_day.get("theme") or ""),
+                    items=items,
+                ))
         if days:
             self.plans[trip_id] = TripPlan(
                 id=f"plan-{next(_id_counter)}",
@@ -753,6 +796,10 @@ class DemoStore:
                 status=str(raw_plan.get("status") or "草案"),
                 days=days,
                 preparation=_preparation_from_raw(raw_plan.get("preparation")),
+                overview=str(raw_plan.get("overview") or ""),
+                constraints_met=[str(item) for item in raw_plan.get("constraints_met", [])],
+                pending_items=[str(item) for item in raw_plan.get("pending_items", [])],
+                risks=[str(item) for item in raw_plan.get("risks", [])],
             )
             self.trips[trip_id].status = self.plans[trip_id].status
             self._save_plan_version(trip_id, change_summary or self._plan_change_summary(trip_id))
@@ -791,6 +838,10 @@ class DemoStore:
             change_summary=change_summary,
             days=plan.days,
             preparation=plan.preparation,
+            overview=plan.overview,
+            constraints_met=plan.constraints_met,
+            pending_items=plan.pending_items,
+            risks=plan.risks,
         )
 
     def _fallback_plan_from_ideas(self, trip_id: str) -> dict:
@@ -804,6 +855,10 @@ class DemoStore:
         return {
             "title": f"{trip.destination}行程草案",
             "status": "草案",
+            "overview": "围绕核心景点安排慢走和当地用餐，每天保留自由调整空间。",
+            "constraints_met": ["轻松节奏", "减少跨区域往返", "优先安排已提到的地点"],
+            "pending_items": ["住宿区域和具体酒店", "餐厅与预约情况", "天气对应的衣物准备"],
+            "risks": ["周末景点可能拥挤，建议避开热门时段"],
             "preparation": {
                 "clothing": [{"title": "根据天气准备衣物", "body": "温度和降雨待确认，建议准备舒适鞋和方便增减的外套。", "status": "待确认"}],
                 "accommodation": [{"title": "住宿区域待确认", "body": "建议选择靠近主要景点且方便公共交通的区域。", "status": "待确认"}],
@@ -811,6 +866,8 @@ class DemoStore:
             "days": [
                 {
                     "label": "Day 1",
+                    "date": "出发日",
+                    "theme": "抵达与西湖慢走",
                     "items": [
                         {
                             "time": "10:00",
@@ -853,6 +910,8 @@ class DemoStore:
                 },
                 {
                     "label": "Day 2",
+                    "date": "第二天",
+                    "theme": "茶园与自由时间",
                     "items": [
                         {
                             "time": "10:30",
@@ -871,7 +930,10 @@ class DemoStore:
 
     @staticmethod
     def _is_plan_command(body: str) -> bool:
-        return any(keyword in body for keyword in ("生成", "行程", "计划", "安排", "第一版"))
+        return any(keyword in body for keyword in (
+            "生成", "行程", "计划", "安排", "第一版", "出一版", "出方案", "方案",
+            "现在出", "现在生成", "开始生成", "可以生成", "做一版",
+        ))
 
     @staticmethod
     def _is_summary_command(body: str) -> bool:

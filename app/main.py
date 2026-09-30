@@ -384,6 +384,16 @@ def add_message(request: Request, trip_id: str, background_tasks: BackgroundTask
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=chat", status_code=303)
 
 
+@app.post("/workspace/{trip_id}/messages/clear")
+def clear_messages(request: Request, trip_id: str) -> RedirectResponse:
+    user = current_user(request)
+    if not user:
+        return RedirectResponse(url="/", status_code=303)
+    get_owned_trip_or_404(trip_id, user)
+    store.clear_chat(trip_id)
+    return RedirectResponse(url=f"/workspace/{trip_id}?tab=chat", status_code=303)
+
+
 @app.post("/workspace/{trip_id}/ideas")
 def add_idea(request: Request, trip_id: str, body: str = Form("")) -> RedirectResponse:
     user = current_user(request)
@@ -392,6 +402,17 @@ def add_idea(request: Request, trip_id: str, body: str = Form("")) -> RedirectRe
     get_owned_trip_or_404(trip_id, user)
     if body.strip():
         store.add_idea(trip_id, body)
+    return RedirectResponse(url=f"/workspace/{trip_id}?tab=board", status_code=303)
+
+
+@app.post("/workspace/{trip_id}/ideas/delete")
+def delete_idea(request: Request, trip_id: str, idea_id: str = Form("")) -> RedirectResponse:
+    user = current_user(request)
+    if not user:
+        return RedirectResponse(url="/", status_code=303)
+    get_owned_trip_or_404(trip_id, user)
+    if idea_id:
+        store.delete_idea(trip_id, idea_id)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=board", status_code=303)
 
 

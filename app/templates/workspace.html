@@ -38,6 +38,7 @@
             type="button"
             data-route-index="{{ loop.index0 }}"
             data-idea-detail-trigger
+            data-idea-id="{{ card.id }}"
             data-title="{{ card.title }}"
             data-kind="{{ card.kind }}"
             data-body="{{ card.body }}"
@@ -75,6 +76,10 @@
               <dd data-idea-detail-status></dd>
             </div>
           </dl>
+          <form class="idea-delete-form" action="/workspace/{{ trip.id }}/ideas/delete" method="post" onsubmit="return confirm('确定要删除这条旅行想法吗？删除后无法恢复。');">
+            <input type="hidden" name="idea_id" data-idea-delete-id />
+            <button type="submit">删除这条想法</button>
+          </form>
         </article>
       </section>
 
@@ -93,6 +98,11 @@
           <span>私人对话</span>
           <h1>{{ trip.destination | replace("周末旅行", "") }}</h1>
           <p>{{ trip.date_range }} · 旅行规划 Agent</p>
+        </div>
+        <div class="chat-header-actions">
+          <form action="/workspace/{{ trip.id }}/messages/clear" method="post" onsubmit="return confirm('确定要清空这次旅行的全部聊天记录吗？清空后无法恢复。');">
+            <button type="submit" class="clear-chat-button">清空聊天</button>
+          </form>
         </div>
       </header>
 
@@ -129,6 +139,22 @@
           </div>
           <span class="status-pill">{{ plan.status }}</span>
         </div>
+        {% if plan.overview or plan.constraints_met or plan.pending_items or plan.risks %}
+          <section class="plan-details" aria-label="计划说明">
+            {% if plan.overview %}
+              <div class="plan-overview"><strong>计划概览</strong><p>{{ plan.overview }}</p></div>
+            {% endif %}
+            {% if plan.constraints_met %}
+              <div><strong>已满足需求</strong><ul>{% for item in plan.constraints_met %}<li>{{ item }}</li>{% endfor %}</ul></div>
+            {% endif %}
+            {% if plan.pending_items %}
+              <div><strong>待确认</strong><ul>{% for item in plan.pending_items %}<li>{{ item }}</li>{% endfor %}</ul></div>
+            {% endif %}
+            {% if plan.risks %}
+              <div><strong>风险提醒</strong><ul>{% for item in plan.risks %}<li>{{ item }}</li>{% endfor %}</ul></div>
+            {% endif %}
+          </section>
+        {% endif %}
         {% if plan.days %}
           <section class="version-summary-card" aria-label="当前版本变化">
             <span>{{ metrics.latest_version }}</span>
@@ -179,7 +205,10 @@
         {% if plan.days %}
           {% for day in plan.days %}
             <section class="day-block">
-              <h3>{{ day.label }}</h3>
+              <div class="day-heading">
+                <h3>{{ day.label }}</h3>
+                {% if day.date or day.theme %}<p>{% if day.date %}{{ day.date }}{% endif %}{% if day.date and day.theme %} · {% endif %}{% if day.theme %}{{ day.theme }}{% endif %}</p>{% endif %}
+              </div>
               {% for item in day.items %}
                 <article class="timeline-item">
                   <time>{{ item.time }}</time>

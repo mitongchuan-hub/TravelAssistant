@@ -463,6 +463,28 @@ blockquote {
   padding-bottom: 128px;
 }
 
+.chat-header-actions {
+  display: flex;
+  align-items: flex-start;
+  margin-left: auto;
+}
+
+.clear-chat-button {
+  padding: 7px 10px;
+  border: 1px solid #e1b7a7;
+  border-radius: 999px;
+  background: #fff8f4;
+  color: #9a4d3d;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.clear-chat-button:hover {
+  background: #fcece5;
+}
+
 .chat-screen {
   padding-bottom: 286px;
 }
@@ -945,11 +967,58 @@ blockquote {
   background: #e7f0ff;
   color: #2457a6;
 }
+.plan-details {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #eadfca;
+  border-radius: 18px;
+  background: #fffdf8;
+  color: #536158;
+  font-size: 13px;
+  line-height: 1.55;
+}
 
+.plan-details > div {
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee5d7;
+}
+
+.plan-details > div:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.plan-details strong {
+  color: #26382d;
+}
+
+.plan-details p {
+  margin: 4px 0 0;
+}
+
+.plan-details ul {
+  display: grid;
+  gap: 3px;
+  margin: 5px 0 0;
+  padding-left: 18px;
+}
+
+.day-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.day-heading p {
+  margin: 0;
+  color: #77847b;
+  font-size: 12px;
+  font-weight: 750;
+}
 
 .version-summary-card {
-  display: grid;
-  gap: 5px;
   padding: 13px 14px;
   border: 1px solid #d8e9dc;
   border-radius: 20px;
@@ -1600,6 +1669,7 @@ blockquote {
 }
 
 .card-actions a,
+.card-actions button,
 .timeline-item button {
   min-height: 32px;
   padding: 0 12px;
@@ -1610,6 +1680,11 @@ blockquote {
   font-size: 12px;
   font-weight: 850;
   line-height: 32px;
+}
+
+.card-actions button {
+  cursor: pointer;
+  font-family: inherit;
 }
 
 .chat-dock {
@@ -2882,7 +2957,27 @@ button:disabled,
   background: #2f3b32;
 }
 
-.idea-detail-statusbar {
+.idea-delete-form {
+  margin-top: 18px;
+}
+
+.idea-delete-form button {
+  padding: 8px 12px;
+  border: 1px solid #e1b7a7;
+  border-radius: 999px;
+  background: #fff8f4;
+  color: #9a4d3d;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.idea-delete-form button:hover {
+  background: #fcece5;
+}
+
+
   display: flex;
   flex-wrap: wrap;
   gap: 7px;

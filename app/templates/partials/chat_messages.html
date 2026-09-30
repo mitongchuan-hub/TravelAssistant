@@ -26,7 +26,11 @@
             </ul>
             <div class="card-actions">
               {% for action in message.agent_card.actions %}
-                <a href="/workspace/{{ trip.id }}?tab={{ action.target }}">{{ action.label }}</a>
+                {% if action.target == "generate" %}
+                  <form action="/workspace/{{ trip.id }}/plan" method="post"><button type="submit">{{ action.label }}</button></form>
+                {% else %}
+                  <a href="/workspace/{{ trip.id }}?tab={{ action.target }}">{{ action.label }}</a>
+                {% endif %}
               {% endfor %}
             </div>
             <p class="agent-card-sources">参考：当前对话 / 想法 / 行程</p>
