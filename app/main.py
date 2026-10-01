@@ -422,8 +422,10 @@ def request_revision(request: Request, trip_id: str, item_id: str | None = Form(
     if not user:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
+    before = len(store.plan_versions[trip_id])
     store.request_revision(trip_id, item_id, feedback, user)
-    return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary", status_code=303)
+    tab = "itinerary" if len(store.plan_versions[trip_id]) > before else "chat"
+    return RedirectResponse(url=f"/workspace/{trip_id}?tab={tab}", status_code=303)
 
 
 @app.post("/workspace/{trip_id}/plan")
@@ -432,8 +434,10 @@ def generate_plan(request: Request, trip_id: str) -> RedirectResponse:
     if not user:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
+    before = len(store.plan_versions[trip_id])
     store.generate_plan(trip_id)
-    return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary", status_code=303)
+    tab = "itinerary" if len(store.plan_versions[trip_id]) > before else "chat"
+    return RedirectResponse(url=f"/workspace/{trip_id}?tab={tab}", status_code=303)
 
 
 @app.post("/workspace/{trip_id}/plan/confirm")

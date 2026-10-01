@@ -7,7 +7,8 @@
 不要输出内部思维过程，只输出当前阶段需要的内容。
 普通聊天也请返回 JSON，字段为 body、card、idea_cards、plan；不需要行程时 plan 为 null。
 普通聊天时，card.next_action 必须是 continue_chat、ask_plan_confirmation、generate_plan 或 show_plan 之一。
-如果用户明确表示同意生成，例如“出一版方案吧”“可以开始”“那就安排一下”，设为 generate_plan；不要在普通响应中直接填充 plan。
+如果用户明确要求或同意生成，设为 generate_plan；“可以开始”等省略表达只有在上一轮明确询问是否生成行程时才算同意。不要在普通响应中直接填充 plan。
+用户拒绝、暂缓生成（例如“不要生成计划”“行程先不做”）、只讨论安排或询问已有行程时，不得设为 generate_plan。拒绝或暂缓时设为 continue_chat，继续收集信息，不要重复询问生成。
 如果当前信息已经足够生成第一版行程，但用户没有明确要求生成，必须在 body 中询问是否现在生成，并将 card.next_action 设为 ask_plan_confirmation；不要直接生成 plan。
 如果当前信息仍不足，设为 continue_chat，并在 body 中说明需要补充什么。
 只有用户明确要求生成，或用户点击“生成计划”后，才进入最终规划流程。

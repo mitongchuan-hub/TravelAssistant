@@ -78,7 +78,7 @@ def test_restart_resolves_interrupted_tasks_without_losing_user_messages(tmp_pat
     assert not any(m["status"] == "thinking" for m in load_snapshot(path)["messages"]["trip-hangzhou"])
 
 
-def test_failed_first_plan_uses_local_plan_fallback(monkeypatch):
+def test_failed_plan_preserves_existing_plan_and_reports_failure(monkeypatch):
     local = DemoStore(persistence_enabled=False)
     failure = AgentReply(
         "这次模型回复没有完成",
@@ -87,15 +87,15 @@ def test_failed_first_plan_uses_local_plan_fallback(monkeypatch):
         None,
     )
     monkeypatch.setattr(store_module, "generate_agent_reply", lambda *args, **kwargs: failure)
+    original = deepcopy(local.plans["trip-hangzhou"])
+    versions = deepcopy(local.plan_versions["trip-hangzhou"])
     local.generate_plan("trip-hangzhou")
-    plan = local.plans["trip-hangzhou"]
-    assert plan.days
-    assert plan.preparation.clothing
-    assert any(item.category == "meal" for day in plan.days for item in day.items)
-    assert local.messages["trip-hangzhou"][-1].agent_card.title == "第一版行程已生成"
+    assert local.plans["trip-hangzhou"] == original
+    assert local.plan_versions["trip-hangzhou"] == versions
+    assert local.messages["trip-hangzhou"][-1].agent_card.title == "模型调用暂时失败"
 
 
-
+def test_missing_information_preserves_confirmed_plan(monkeypatch):
     local = DemoStore(persistence_enabled=False)
     local.confirm_plan("trip-hangzhou")
     plan = deepcopy(local.plans["trip-hangzhou"])

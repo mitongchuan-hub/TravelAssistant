@@ -51,6 +51,7 @@
         "theme": "当天主题",
         "items": [
           {
+            "id": "修改已有条目时保留原 id；新增条目填写空字符串",
             "category": "activity|meal|transport|accommodation|rest",
             "meal": null,
             "time": "时间或时段",
@@ -69,6 +70,8 @@
 
 必须遵守：
 
+- 修改已有行程条目时，必须在对应 item 的 id 字段返回当前行程中的原始 id，不得编造、交换或省略；只调整用户要求的目标条目，其余行程保持不变。
+- 输出用户所需的全部天数和每日全部安排，不得为缩短输出而省略晚间安排或后续天数。
 - 顶层必须包含 body、card、idea_cards、plan；生成计划时 plan 不能为 null。
 - plan 必须包含 title、status、overview、constraints_met、pending_items、risks、preparation、days。
 - 每个 day 必须包含 label、date、theme、items。

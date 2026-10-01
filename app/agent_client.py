@@ -5,7 +5,7 @@ import logging
 import os
 import traceback
 import uuid
-from dataclasses import dataclass, field, replace
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 
@@ -28,6 +28,7 @@ class AgentReply:
     card: AgentCard
     idea_cards: list[dict]
     plan: dict | None = None
+    next_action: str = "continue_chat"
 
 
 VALID_CARD_KINDS = {"requirement-summary", "missing-info", "conflict", "itinerary-draft", "revision"}
@@ -36,7 +37,6 @@ VALID_IDEA_KINDS = {"地点", "预算", "节奏", "禁忌", "待归类"}
 
 MAX_TOOL_ROUNDS = 1
 MAX_CONTEXT_MESSAGES = 12
-MAX_CONTEXT_IDEAS = 6
 MAX_CONTEXT_VERSIONS = 3
 
 
@@ -111,7 +111,7 @@ def generate_agent_reply(
         "metrics": metrics or {},
     })
     if not is_llm_enabled():
-        trace.add("调用结果", "LLM 当前未启用，本轮将由本地 fallback 处理。")
+        trace.add("调用结果", "LLM 当前未启用，本轮提示服务不可用，不生成或修改行程。")
         trace.write()
         return None
 
@@ -157,7 +157,7 @@ def generate_agent_reply(
             return reply
         except json.JSONDecodeError:
             # Plain text is usable; broken structured output is not a successful reply.
-            if content.startswith(("{", "[", "```")):
+            if planning_mode or content.startswith(("{", "[", "```")):
                 raise
             return AgentReply(
                 body=content,
@@ -392,7 +392,7 @@ def _build_context(
     ]
     idea_lines = [
         f"- [{card.kind}/{card.status}] {card.title}｜来源={card.author}：{card.body}"
-        for card in (idea_cards or [])[-MAX_CONTEXT_IDEAS:]
+        for card in (idea_cards or [])
     ]
     plan_lines = _plan_context_lines(plan)
     version_lines = [
@@ -437,15 +437,7 @@ def _build_context(
 def _plan_context_lines(plan: TripPlan | None) -> list[str]:
     if not plan:
         return []
-    lines = [f"- 当前行程：{plan.title}｜{plan.status}"]
-    for item in plan.preparation.clothing[:4]:
-        lines.append(f"- 旅行准备/衣物：{item.title}｜{item.status}｜{item.body}")
-    for item in plan.preparation.accommodation[:4]:
-        lines.append(f"- 旅行准备/住宿：{item.title}｜{item.status}｜{item.body}")
-    for day in plan.days[:5]:
-        item_titles = "、".join(f"{item.time} {item.title}@{item.location}" for item in day.items[:6])
-        lines.append(f"- {day.label}：{item_titles or '暂无安排'}")
-    return lines
+    return [json.dumps(asdict(plan), ensure_ascii=False)]
 
 
 def _parse_reply(content: str, *, strict_plan: bool = False) -> AgentReply:
@@ -490,6 +482,7 @@ def _parse_reply(content: str, *, strict_plan: bool = False) -> AgentReply:
             bullets=clean_bullets,
             actions=actions,
         ),
+        next_action=next_action,
         idea_cards=_parse_idea_cards(data.get("idea_cards")),
         plan=_parse_plan(data.get("plan")),
     )
@@ -555,14 +548,14 @@ def _parse_plan(raw_plan: object) -> dict | None:
         return None
 
     days = []
-    for raw_day in raw_days[:5]:
+    for raw_day in raw_days:
         if not isinstance(raw_day, dict):
             continue
         raw_items = raw_day.get("items")
         if not isinstance(raw_items, list):
             continue
         items = []
-        for raw_item in raw_items[:6]:
+        for raw_item in raw_items:
             if not isinstance(raw_item, dict):
                 continue
             title = str(raw_item.get("title") or "待定安排").strip()[:40]
@@ -576,6 +569,7 @@ def _parse_plan(raw_plan: object) -> dict | None:
                 category = "activity"
             items.append(
                 {
+                    "id": str(raw_item.get("id") or ""),
                     "time": str(raw_item.get("time") or "待定").strip()[:16],
                     "title": title,
                     "location": str(raw_item.get("location") or "地点待定").strip()[:40],

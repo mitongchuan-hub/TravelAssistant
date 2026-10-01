@@ -1,10 +1,14 @@
 import json
 import sqlite3
+import importlib
+from dataclasses import asdict
+import pytest
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from app.agent_client import _build_context
+from app.agent_client import _build_context, AgentReply
+from app.models import AgentCard
 from app.auth import AuthStore, SESSION_COOKIE_NAME
 from app.main import app, auth
 from app.persistence import CURRENT_SCHEMA_VERSION, load_snapshot, serialize_state
@@ -22,6 +26,23 @@ client.post(
     data={"email": TEST_EMAIL, "password": TEST_PASSWORD},
     follow_redirects=False,
 )
+
+
+@pytest.fixture
+def successful_model(monkeypatch):
+    def respond(**kwargs):
+        plan = None
+        if kwargs['planning_mode']:
+            current = kwargs['plan']
+            plan = asdict(current if current.days else DemoStore(persistence_enabled=False)._seed_plan())
+            plan['status'] = '草案'
+            plan['title'] = kwargs['trip'].destination + '行程'
+            for day in plan['days']:
+                for item in day['items']:
+                    item['reason'] = '根据反馈调整'
+        return AgentReply('已处理', AgentCard('itinerary-draft', '已生成新草案', '已处理', [], []), [], plan,
+                          'show_plan' if plan else 'generate_plan')
+    monkeypatch.setattr(importlib.import_module('app.store'), 'generate_agent_reply', respond)
 
 
 def register_client(local_client: TestClient, email: str, password: str = TEST_PASSWORD):
@@ -465,10 +486,10 @@ def test_plain_form_message_gets_agent_reply_without_mention():
     assert len(store.messages[trip.id]) == before + 2
     assert store.messages[trip.id][-2].sender.id == trip.owner.id
     assert store.messages[trip.id][-1].sender_type == "agent"
-    assert "预算约束已更新" in response.text
+    assert "模型服务不可用" in response.text
 
 
-def test_plain_plan_command_generates_itinerary():
+def test_plain_plan_command_generates_itinerary(successful_model):
     trip = store.create_trip("对话生成行程测试", "10月1日 - 10月3日", "人均 2600", "轻松", "")
     store.add_idea(trip.id, "想去海边散步")
 
@@ -484,7 +505,11 @@ def test_plain_plan_command_generates_itinerary():
     assert "行程草案" in response.text
 
 
-def test_plain_budget_message_adds_and_updates_single_idea_card():
+def test_plain_budget_message_adds_and_updates_single_idea_card(monkeypatch):
+    def budget_reply(**kwargs):
+        return AgentReply('预算已记录', AgentCard('requirement-summary', '预算', '', [], []),
+                          [{'kind': '预算', 'title': '预算约束', 'body': kwargs['user_body']}])
+    monkeypatch.setattr(importlib.import_module('app.store'), 'generate_agent_reply', budget_reply)
     trip = store.create_trip("预算更新测试", "10月1日", "人均 3000", "轻松", "")
 
     client.post(f"/workspace/{trip.id}/messages", data={"body": "预算不要超过人均 2000"})
@@ -496,7 +521,11 @@ def test_plain_budget_message_adds_and_updates_single_idea_card():
     assert budget_cards[0].author == "对话"
 
 
-def test_summary_command_organizes_single_users_recent_messages():
+def test_summary_command_organizes_single_users_recent_messages(monkeypatch):
+    def summary_reply(**kwargs):
+        return AgentReply('旅行偏好整理好了', AgentCard('requirement-summary', '旅行偏好整理好了', '',
+                          ['预算：预算人均 2000', '地点：想去海边散步'], []), [])
+    monkeypatch.setattr(importlib.import_module('app.store'), 'generate_agent_reply', summary_reply)
     trip = store.create_trip("对话整理测试", "10月1日", "人均 3000", "轻松", "")
     store.add_user_message(trip.id, "预算人均 2000", trip.owner.id, process_agent=False)
     store.add_user_message(trip.id, "想去海边散步", trip.owner.id, process_agent=False)
@@ -621,7 +650,7 @@ def test_empty_itinerary_offers_chat_and_generate_actions():
     assert "成员" not in response.text
 
 
-def test_generate_plan_updates_itinerary_and_saves_versions():
+def test_generate_plan_updates_itinerary_and_saves_versions(successful_model):
     trip = store.create_trip("青岛海边旅行", "10月1日 - 10月3日", "人均 2500", "轻松", "")
     store.add_idea(trip.id, "想去栈桥看海")
 
@@ -638,7 +667,7 @@ def test_generate_plan_updates_itinerary_and_saves_versions():
     assert "想逛老城" in store.plan_versions[trip.id][-1].change_summary
 
 
-def test_revision_feedback_generates_new_plan_version():
+def test_revision_feedback_generates_new_plan_version(successful_model):
     trip = store.create_trip("反馈改行程测试", "11月1日 - 11月3日", "人均 2200", "轻松", "")
     store.add_idea(trip.id, "想去古城散步")
     client.post(f"/workspace/{trip.id}/plan")
@@ -657,7 +686,7 @@ def test_revision_feedback_generates_new_plan_version():
     assert revision_cards[-1].author == "你的反馈"
 
 
-def test_confirm_and_restore_plan_versions():
+def test_confirm_and_restore_plan_versions(successful_model):
     trip = store.create_trip("确认与恢复测试", "11月1日", "2200", "轻松", "")
     store.add_idea(trip.id, "想去古城散步")
     client.post(f"/workspace/{trip.id}/plan")

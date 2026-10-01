@@ -249,7 +249,6 @@ class DemoStore:
         self.trips[trip_id].last_activity = "聊天记录已清空"
         self._persist()
 
-    @_state_locked
     def add_user_message(self, trip_id: str, body: str, sender_id: str = "u1", process_agent: bool = True) -> Message:
         with self._lock:
             clean_body = body.strip()
@@ -299,9 +298,7 @@ class DemoStore:
         with self._lock:
             return self._agent_locks.setdefault(trip_id, RLock())
 
-    def _generate_reply(self, trip_id: str, body: str, thinking_message_id: str | None = None) -> AgentReply | None:
-        if self._is_summary_command(body) and not self._is_plan_command(body):
-            return None
+    def _generate_reply(self, trip_id: str, body: str, thinking_message_id: str | None = None, *, planning_requested: bool = False) -> AgentReply | None:
         with self._lock:
             messages = self.messages[trip_id]
             if thinking_message_id:
@@ -315,10 +312,7 @@ class DemoStore:
                 "plan_versions": self.plan_versions[trip_id],
                 "metrics": self.trip_metrics(trip_id),
             })
-        # Network calls must never hold the global store lock.
-        # A first draft can still be created from the stored ideas when the provider
-        # times out or returns malformed structured output. Never replace a confirmed plan.
-        planning_requested = self._is_plan_command(body)
+        # Only the explicit plan endpoint bypasses conversational intent classification.
         reply = generate_agent_reply(
             user_body=body,
             planning_mode=planning_requested,
@@ -327,7 +321,7 @@ class DemoStore:
         if (
             not planning_requested
             and reply
-            and any(action.target == "generate" for action in reply.card.actions)
+            and reply.next_action == "generate_plan"
         ):
             # Let the model classify a semantic confirmation such as “出一版方案吧”.
             # Only after that classification do we run the tool and final-plan pass.
@@ -336,18 +330,10 @@ class DemoStore:
                 planning_mode=True,
                 **context,
             )
-            if planning_reply is not None:
-                reply = planning_reply
-        if (
-            reply
-            and reply.plan is None
-            and reply.card.title in {"模型调用暂时失败", "模型响应超时", "模型服务暂时限流"}
-            and (not self._is_plan_command(body) or self.plans[trip_id].status != "已确认")
-        ):
-            return None
+            reply = planning_reply
         return reply
 
-    def finish_agent_task(self, trip_id: str, body: str, sender_id: str, thinking_message_id: str | None = None) -> None:
+    def finish_agent_task(self, trip_id: str, body: str, sender_id: str, thinking_message_id: str | None = None, *, planning_requested: bool = False) -> None:
         with self._agent_lock(trip_id):
             with self._lock:
                 if thinking_message_id and not any(
@@ -355,7 +341,7 @@ class DemoStore:
                     for message in self.messages[trip_id]
                 ):
                     return
-            reply = self._generate_reply(trip_id, body.strip(), thinking_message_id)
+            reply = self._generate_reply(trip_id, body.strip(), thinking_message_id, planning_requested=planning_requested)
             with self._lock:
                 owner = self.trips[trip_id].owner
                 sender = USERS.get(sender_id, owner)
@@ -404,10 +390,7 @@ class DemoStore:
     def _append_agent_reply_for_message(self, trip_id: str, clean_body: str, sender: User, reply: AgentReply | None) -> None:
         instruction = clean_body.strip()
         previous_versions = len(self.plan_versions[trip_id])
-        if self._is_plan_command(instruction):
-            self.messages[trip_id].append(self._agent_plan_message(trip_id, instruction, sender, reply))
-        else:
-            self.messages[trip_id].append(self._agent_reply(trip_id, instruction, sender, reply))
+        self.messages[trip_id].append(self._agent_reply(trip_id, instruction, sender, reply))
         if len(self.plan_versions[trip_id]) > previous_versions:
             self.trips[trip_id].last_activity = "Agent 已生成行程草案"
         else:
@@ -450,34 +433,61 @@ class DemoStore:
         self._persist()
         return card
 
-    @_state_locked
     def request_revision(self, trip_id: str, item_id: str | None = None, feedback: str = "", sender: User | None = None) -> None:
-        sender = sender or USERS["u1"]
-        clean_feedback = feedback.strip() or "希望这项安排更轻松一点"
-        item_title = self._item_title(trip_id, item_id)
-        self._add_revision_idea(trip_id, item_title, clean_feedback, sender)
-        change_summary = self._revision_change_summary(trip_id, item_title, clean_feedback)
-        self._apply_agent_plan(trip_id, self._fallback_plan_from_ideas(trip_id), change_summary)
-        self.plans[trip_id].status = "草案"
-        self.trips[trip_id].status = "草案"
-        self.trips[trip_id].last_activity = "Agent 已根据反馈生成新草案"
-        self.messages[trip_id].append(
-            Message(
-                id=f"m-{next(_id_counter)}",
-                sender=USERS["agent"],
-                sender_type="agent",
-                body="我已根据这条反馈生成新草案。",
-                created_at=_now_label(),
-                agent_card=AgentCard(
-                    kind="revision",
-                    title="已生成新草案",
-                    summary=change_summary,
-                    bullets=[f"反馈项：{item_title}", clean_feedback[:32], "旧版本已保留，可在版本记录恢复"],
-                    actions=[AgentAction(label="查看行程", target="itinerary")],
-                ),
-            )
+        with self._agent_lock(trip_id):
+            with self._lock:
+                original = deepcopy(self.plans[trip_id])
+                sender = sender or self.trips[trip_id].owner
+                target = next((item for day in original.days for item in day.items if item.id == item_id), None)
+                if not original.days or (item_id and target is None):
+                    self.messages[trip_id].append(self._agent_reply(trip_id, "", sender, self._revision_failure("目标行程已不存在，请刷新后重试。")))
+                    self._persist()
+                    return
+            instruction = f"请修改现有行程。用户反馈：{feedback.strip() or '希望安排更轻松一点'}。"
+            if target:
+                instruction += f"仅修改条目 id={target.id}（{target.title}），返回完整 plan，目标条目必须带原 id；其他安排保持不变。"
+            reply = self._generate_reply(trip_id, instruction, planning_requested=True)
+            with self._lock:
+                applied = False
+                if self.plans[trip_id] != original:
+                    reply = self._revision_failure("行程在处理期间已变化，请基于最新版本重试。")
+                elif reply and reply.plan:
+                    if target:
+                        matches = [item for day in reply.plan['days'] for item in day['items'] if item.get('id') == target.id]
+                        if len(matches) != 1:
+                            reply = self._revision_failure("模型未能准确定位要修改的条目，原行程保持不变。")
+                        else:
+                            raw = matches[0]
+                            updated = replace(target, **{key: raw[key] for key in (
+                                'time', 'title', 'location', 'duration', 'reason', 'notes', 'satisfies', 'category'
+                            )}, meal=_meal_from_raw(raw.get('meal')))
+                            revised = deepcopy(original)
+                            revised.days = [replace(day, items=[updated if item.id == target.id else item for item in day.items]) for day in revised.days]
+                            revised.status = '草案'
+                            revised.id = f"plan-{next(_id_counter)}"
+                            self.plans[trip_id] = revised
+                            self.trips[trip_id].status = '草案'
+                            self._save_plan_version(trip_id, f"修改 {target.title}：{feedback}")
+                            applied = True
+                            reply = replace(reply, plan=None)
+                    else:
+                        self._apply_agent_plan(trip_id, reply.plan, f"根据反馈调整：{feedback}")
+                        applied = True
+                        reply = replace(reply, plan=None)
+                if applied:
+                    self._add_revision_idea(trip_id, target.title if target else original.title, feedback, sender)
+                    self.trips[trip_id].last_activity = "Agent 已根据反馈生成新草案"
+                self.messages[trip_id].append(self._agent_reply(trip_id, instruction, sender, reply))
+                self._persist()
+
+    @staticmethod
+    def _revision_failure(reason: str) -> AgentReply:
+        return AgentReply(
+            body=reason,
+            card=AgentCard(kind="missing-info", title="本次未修改行程", summary=reason,
+                           bullets=["原行程和版本保持不变"], actions=[AgentAction(label="查看行程", target="itinerary")]),
+            idea_cards=[],
         )
-        self._persist()
 
     def _item_title(self, trip_id: str, item_id: str | None) -> str:
         if item_id:
@@ -522,7 +532,7 @@ class DemoStore:
         try:
             self.finish_agent_task(
                 trip_id, "请根据当前对话和想法墙，生成一版结构化旅行行程。",
-                self.trips[trip_id].owner.id, thinking.id,
+                self.trips[trip_id].owner.id, thinking.id, planning_requested=True,
             )
         except Exception:
             self.fail_agent_task(trip_id, thinking.id)
@@ -585,15 +595,7 @@ class DemoStore:
             card = reply.card
             body = reply.body
         else:
-            self._apply_agent_plan(trip_id, self._fallback_plan_from_ideas(trip_id), change_summary)
-            card = AgentCard(
-                kind="itinerary-draft",
-                title="第一版行程已生成",
-                summary=change_summary,
-                bullets=self._plan_change_bullets(trip_id),
-                actions=[AgentAction(label="查看行程", target="itinerary")],
-            )
-            body = "我已生成行程草案，也整理了这一版的变化。"
+            return self._agent_reply(trip_id, instruction, sender)
         return Message(
             id=f"m-{next(_id_counter)}",
             sender=USERS["agent"],
@@ -604,9 +606,6 @@ class DemoStore:
         )
 
     def _agent_reply(self, trip_id: str, body: str, sender: User | None = None, llm_reply: AgentReply | None = None) -> Message:
-        if self._is_summary_command(body):
-            return self._local_summary_reply(trip_id)
-
         if llm_reply:
             self._add_agent_idea_cards(trip_id, llm_reply.idea_cards, sender)
             if llm_reply.plan:
@@ -620,61 +619,15 @@ class DemoStore:
                 agent_card=llm_reply.card,
             )
 
-        lower_body = body.lower()
-        if "预算" in body or "钱" in body or "贵" in body:
-            self._add_agent_idea_cards(
-                trip_id,
-                [{"kind": "预算", "title": "预算约束", "body": body.strip(), "status": "约束"}],
-                sender,
-            )
-            card = AgentCard(
-                kind="requirement-summary",
-                title="预算约束已更新",
-                summary="我会把预算作为筛选住宿、餐饮和交通方式的重要约束。",
-                bullets=["优先公共交通和步行友好区域", "避免高价网红餐厅", "保留一段弹性支出"],
-                actions=[AgentAction(label="查看旅行想法", target="board")],
-            )
-        elif "改" in body or "不要" in body or "太累" in body or "累" in body:
-            self._add_agent_idea_cards(
-                trip_id,
-                [{"kind": "节奏", "title": "节奏提醒", "body": body.strip(), "status": "冲突提醒"}],
-                sender,
-            )
-            card = AgentCard(
-                kind="conflict",
-                title="发现一个节奏风险",
-                summary="当前计划需要避免连续长距离移动，否则会和轻松旅行目标冲突。",
-                bullets=["每天控制 2-3 个主要安排", "下午保留休息窗口", "把同区域地点合并"],
-                actions=[AgentAction(label="查看行程", target="itinerary")],
-            )
-        elif "plan" in lower_body or "行程" in body or "安排" in body:
-            card = AgentCard(
-                kind="itinerary-draft",
-                title="可以生成下一版行程",
-                summary="我已经有足够信息生成结构化计划。",
-                bullets=["按天安排", "标注地点与停留时间", "说明每个安排对应的旅行偏好"],
-                actions=[AgentAction(label="查看行程", target="itinerary")],
-            )
-        else:
-            self._add_agent_idea_cards(
-                trip_id,
-                [{"kind": "待归类", "title": "新的旅行想法", "body": body.strip(), "status": "待归类"}],
-                sender,
-            )
-            card = AgentCard(
-                kind="missing-info",
-                title="我记录了一条新偏好",
-                summary="继续补充预算、时间、忌口和不能接受的安排，会让计划更稳定。",
-                bullets=["这项偏好是否必须满足", "它可能影响哪一天", "还有没有相关限制"],
-                actions=[AgentAction(label="查看旅行想法", target="board")],
-            )
         return Message(
-            id=f"m-{next(_id_counter)}",
-            sender=USERS["agent"],
-            sender_type="agent",
-            body="我已经把这条消息纳入计划约束。",
+            id=f"m-{next(_id_counter)}", sender=USERS["agent"], sender_type="agent",
+            body="模型服务当前不可用，本次未生成或修改行程。你的消息已保留，请稍后重试。",
             created_at=_now_label(),
-            agent_card=card,
+            agent_card=AgentCard(
+                kind="missing-info", title="模型服务不可用", summary="原行程和版本保持不变。",
+                bullets=["请检查模型配置或稍后重试"],
+                actions=[AgentAction(label="继续聊天", target="chat")],
+            ),
         )
 
     def _add_agent_idea_cards(self, trip_id: str, raw_cards: list[dict], sender: User | None = None) -> None:
@@ -946,13 +899,6 @@ class DemoStore:
                 },
             ],
         }
-
-    @staticmethod
-    def _is_plan_command(body: str) -> bool:
-        return any(keyword in body for keyword in (
-            "生成", "行程", "计划", "安排", "第一版", "出一版", "出方案", "方案",
-            "现在出", "现在生成", "开始生成", "可以生成", "做一版",
-        ))
 
     @staticmethod
     def _is_summary_command(body: str) -> bool:
