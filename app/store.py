@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 from copy import deepcopy
+from dataclasses import replace
 from datetime import datetime
 from functools import wraps
 from threading import RLock
@@ -134,7 +135,25 @@ class DemoStore:
                 )
             ]
             removed_placeholder = removed_placeholder or len(filtered_cards) != len(cards)
-            self.idea_cards[trip_id] = filtered_cards
+            self.idea_cards[trip_id] = []
+            for card in filtered_cards:
+                if card.body == "Agent 会结合当前对话判断它属于地点、预算、节奏还是禁忌。":
+                    card = replace(card, body=card.title, status="待整理")
+                    removed_placeholder = True
+                existing = next((item for item in self.idea_cards[trip_id]
+                                 if _normalize_idea_text(item.title) == _normalize_idea_text(card.title)), None)
+                if existing is None:
+                    self.idea_cards[trip_id].append(card)
+                    continue
+                removed_placeholder = True
+                merged_body = existing.body
+                if _normalize_idea_text(card.body) != _normalize_idea_text(existing.body):
+                    merged_body = f"{existing.body}\n{card.body}"
+                index = self.idea_cards[trip_id].index(existing)
+                self.idea_cards[trip_id][index] = replace(
+                    existing, body=merged_body,
+                    author="你" if card.author == "你" else existing.author,
+                )
         if legacy_snapshot or removed_placeholder:
             self._persist()
         # Background tasks cannot survive a process restart. Keep the user's text
@@ -420,14 +439,14 @@ class DemoStore:
             id=f"idea-{next(_id_counter)}",
             kind="待归类",
             title=body.strip(),
-            body="Agent 会结合当前对话判断它属于地点、预算、节奏还是禁忌。",
+            body=body.strip(),
             author="你",
-            status="待归类",
+            status="待整理",
             rotation=rotation,
         )
         self.idea_cards[trip_id].append(card)
         self.idea_cards[trip_id] = self.idea_cards[trip_id][-MAX_IDEA_CARDS:]
-        self.trips[trip_id].last_activity = "Agent 正在归类新的旅行想法"
+        self.trips[trip_id].last_activity = "已添加新的旅行想法"
         self._persist()
         return card
 
@@ -678,7 +697,7 @@ class DemoStore:
                     kind=kind,
                     title=title,
                     body=body,
-                    author=source,
+                    author=previous.author if previous.author == "你" else source,
                     status=status,
                     rotation=previous.rotation,
                 )
@@ -754,13 +773,11 @@ class DemoStore:
         normalized_title = _normalize_idea_text(title)
         normalized_body = _normalize_idea_text(body)
         for index, card in enumerate(self.idea_cards[trip_id]):
-            if card.kind != kind:
-                continue
-            if kind == "预算":
-                return index
             if _normalize_idea_text(card.title) == normalized_title:
                 return index
             if _normalize_idea_text(card.body) == normalized_body:
+                return index
+            if card.kind == kind == "预算":
                 return index
         return None
 

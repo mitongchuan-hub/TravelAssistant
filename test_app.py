@@ -519,7 +519,7 @@ def test_workspace_defaults_to_private_chat():
 
     assert response.status_code == 200
     assert "chat-screen" in response.text
-    assert "私人对话" in response.text
+    assert "<span>私人对话</span>" not in response.text
     assert "旅行规划 Agent" in response.text
     assert "与旅行规划 Agent 的对话" in response.text
     assert "告诉 Agent 你的旅行想法" in response.text
@@ -547,7 +547,7 @@ def test_removed_member_tab_falls_back_to_chat():
     response = client.get("/workspace/trip-hangzhou?tab=members")
 
     assert response.status_code == 200
-    assert "私人对话" in response.text
+    assert "chat-screen" in response.text
     assert "成员偏好" not in response.text
     assert "member-card" not in response.text
 
@@ -565,6 +565,33 @@ def test_idea_board_keeps_visual_workspace_and_source_details():
     assert 'class="idea-detail-sheet"' in response.text
     assert "来源" in response.text
     assert "提出人" not in response.text
+
+
+def test_agent_idea_matches_manual_card_across_types():
+    local_store = DemoStore(persistence_enabled=False)
+    trip = local_store.create_trip("济南", "待定", "待定", "轻松", "")
+    manual = local_store.add_idea(trip.id, "爬山")
+    local_store._add_agent_idea_cards(trip.id, [
+        {"kind": "地点", "title": "爬山", "body": "想安排一次爬山", "status": "已整理"}
+    ])
+    cards = local_store.idea_cards[trip.id]
+    assert len(cards) == 1
+    assert cards[0].id == manual.id
+    assert cards[0].author == "你"
+    assert cards[0].body == "想安排一次爬山"
+
+
+def test_duplicate_idea_migration_preserves_details(tmp_path):
+    db_path = str(tmp_path / "ideas.sqlite3")
+    local_store = DemoStore(db_path=db_path, persistence_enabled=True)
+    trip = local_store.create_trip("济南", "待定", "待定", "轻松", "")
+    local_store.add_idea(trip.id, "爬山")
+    local_store.add_idea(trip.id, "爬山")
+    restored = DemoStore(db_path=db_path, persistence_enabled=True)
+    assert len(restored.idea_cards[trip.id]) == 1
+    assert restored.idea_cards[trip.id][0].body == "爬山"
+    reopened = DemoStore(db_path=db_path, persistence_enabled=True)
+    assert len(reopened.idea_cards[trip.id]) == 1
 
 
 def test_idea_board_accepts_new_idea_and_stays_on_board():

@@ -35,7 +35,7 @@
         {% endif %}
         {% for card in idea_cards %}
           <button
-            class="floating-idea kind-{{ card.kind }}"
+            class="floating-idea"
             type="button"
             data-route-index="{{ loop.index0 }}"
             data-idea-detail-trigger
@@ -94,7 +94,6 @@
       <header class="travel-page-top">
         <a href="/trips">我的旅行</a>
         <div>
-          <span>私人对话</span>
           <h1>{{ trip.destination | replace("周末旅行", "") }}</h1>
           <p>{{ trip.date_range }} · 旅行规划 Agent</p>
         </div>
