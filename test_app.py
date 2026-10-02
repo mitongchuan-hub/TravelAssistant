@@ -662,7 +662,12 @@ def test_generate_plan_updates_itinerary_and_saves_versions(successful_model):
     assert second.status_code == 200
     assert store.plans[trip.id].status == "草案"
     assert [version.label for version in store.plan_versions[trip.id]] == ["v1", "v2"]
-    assert "当前版本 v2" in second.text
+    assert "济南 6 天 5 晚情侣泉景美食之旅" not in second.text
+    assert "行程概览" in second.text
+    assert "天已安排" in second.text
+    assert "个行程安排" in second.text
+    assert "本版变化" not in second.text
+    assert "版本记录 · 2 个版本" in second.text
     assert "版本记录" in second.text
     assert "想逛老城" in store.plan_versions[trip.id][-1].change_summary
 
@@ -742,7 +747,7 @@ def test_itinerary_page_renders_requirement_labels_not_member_names():
     response = client.get("/workspace/trip-hangzhou?tab=itinerary")
 
     assert response.status_code == 200
-    assert "杭州 3 天 2 晚轻松行程" in response.text
+    assert "杭州 3 天 2 晚轻松行程" not in response.text
     assert "西湖傍晚散步" in response.text
     assert "对应偏好" in response.text
     assert "茶园体验" in response.text

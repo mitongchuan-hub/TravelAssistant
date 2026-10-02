@@ -120,23 +120,27 @@
       <header class="travel-page-top">
         <a href="/trips">我的旅行</a>
         <div>
-          <span>结构化计划</span>
           <h1>{{ trip.destination | replace("周末旅行", "行程") }}</h1>
-          <p>{{ trip.date_range }} · {{ plan.status }}</p>
+          <p>{{ trip.date_range }}</p>
         </div>
       </header>
 
       <section class="itinerary-panel">
-        <div class="travel-section-title">
-          <div>
-            <p class="muted">Agent 草案</p>
-            <h2>{{ plan.title }}</h2>
-            {% if plan_versions %}
-              <small class="version-line">当前版本 {{ plan_versions[-1].label }} · {{ plan_versions[-1].change_summary }}</small>
-            {% endif %}
+        <section class="itinerary-summary-card" aria-label="行程摘要">
+          <div class="itinerary-summary-heading">
+            <div class="itinerary-summary-copy">
+              <p class="itinerary-summary-kicker">行程概览</p>
+              <p class="itinerary-summary-date">{{ trip.date_range }}</p>
+            </div>
           </div>
-          <span class="status-pill">{{ plan.status }}</span>
-        </div>
+          <div class="itinerary-summary-stats" aria-label="行程统计">
+            <div><strong>{{ metrics.plan_day_count }}</strong><span>天已安排</span></div>
+            <div><strong>{{ metrics.plan_item_count }}</strong><span>个行程安排</span></div>
+          </div>
+          {% if plan_versions %}
+          <p class="itinerary-summary-note"><strong>行程说明</strong>已根据你的旅行想法和聊天内容整理，具体安排请查看下方每日时间线。</p>
+          {% endif %}
+        </section>
         {% if plan.overview or plan.constraints_met or plan.pending_items or plan.risks %}
           <section class="plan-details" aria-label="计划说明">
             {% if plan.overview %}
@@ -154,11 +158,6 @@
           </section>
         {% endif %}
         {% if plan.days %}
-          <section class="version-summary-card" aria-label="当前版本变化">
-            <span>{{ metrics.latest_version }}</span>
-            <p>{{ metrics.latest_change }}</p>
-            <small>{{ metrics.plan_day_count }} 天 · {{ metrics.plan_item_count }} 个安排 · {{ metrics.version_count }} 个版本</small>
-          </section>
           {% if plan.preparation.clothing or plan.preparation.accommodation %}
             <section class="preparation-panel" aria-label="旅行准备">
               <div class="travel-section-title">
@@ -195,10 +194,6 @@
               </div>
             </section>
           {% endif %}
-          <form class="confirm-plan" action="/workspace/{{ trip.id }}/plan/confirm" method="post">
-            <button type="submit">确认这版计划</button>
-            <small>确认后，后续调整会作为新草案记录。</small>
-          </form>
         {% endif %}
         {% if plan.days %}
           {% for day in plan.days %}

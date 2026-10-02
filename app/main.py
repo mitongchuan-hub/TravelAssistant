@@ -27,7 +27,7 @@ auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20260929-idea-auth-chat-fixes"
+templates.env.globals["static_version"] = "20261002-itinerary-summary-idea-auth"
 logger = logging.getLogger(__name__)
 
 

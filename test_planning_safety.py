@@ -77,7 +77,7 @@ def test_invalid_model_plan_is_failure_and_never_replaces_draft(monkeypatch, con
     local.generate_plan('trip-hangzhou')
     assert local.plans['trip-hangzhou'] == original
     assert local.plan_versions['trip-hangzhou'] == versions
-    assert local.messages['trip-hangzhou'][-1].agent_card.title == '模型调用暂时失败'
+    assert local.messages['trip-hangzhou'][-1].agent_card.title == '行程格式校验失败'
 
 
 def test_strict_plan_preserves_seven_days_and_nine_items():

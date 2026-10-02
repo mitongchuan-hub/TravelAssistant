@@ -12,7 +12,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripPlan
-from .prompts import BASE_SYSTEM_PROMPT, FINALIZE_TRIP_PLAN_PROMPT, GATHER_TRIP_INFORMATION_PROMPT
+from .prompts import BASE_SYSTEM_PROMPT, CHAT_PROMPT, FINALIZE_TRIP_PLAN_PROMPT, GATHER_TRIP_INFORMATION_PROMPT
 from .tools import run_tool, tool_specs
 from .response_schema import TRAVEL_RESULT_RESPONSE_FORMAT
 
@@ -40,7 +40,12 @@ MAX_CONTEXT_MESSAGES = 12
 MAX_CONTEXT_VERSIONS = 3
 
 
-SYSTEM_PROMPT = BASE_SYSTEM_PROMPT
+SYSTEM_PROMPT = f"{BASE_SYSTEM_PROMPT}\n\n{CHAT_PROMPT}"
+
+
+class ModelOutputError(ValueError):
+    """The provider returned content that cannot be saved as a plan."""
+
 
 
 @dataclass
@@ -150,7 +155,7 @@ def generate_agent_reply(
         if not content:
             raise ValueError("Empty model response")
         try:
-            reply = _parse_reply(content, strict_plan=planning_mode)
+            reply = _parse_planning_reply(content) if planning_mode else _parse_reply(content)
             if not planning_mode and reply.plan is not None:
                 trace.add("普通聊天响应", "忽略模型擅自返回的 plan；普通聊天不更新行程。")
                 reply = replace(reply, plan=None)
@@ -177,6 +182,17 @@ def generate_agent_reply(
         # The standard application logger still avoids provider responses and credentials.
         status_code = getattr(exc, "status_code", None)
         logger.warning("Agent reply failed (%s, status=%s)", type(exc).__name__, status_code)
+        if isinstance(exc, ModelOutputError):
+            return AgentReply(
+                body="模型已返回内容，但行程结构不符合要求，本次未保存新版本，原行程保持不变。请稍后重试。",
+                card=AgentCard(
+                    kind="missing-info", title="行程格式校验失败",
+                    summary="模型没有返回完整、有效的行程结构。",
+                    bullets=["原行程和历史版本已保留", "不是 API Key 或登录问题", "可以稍后重新生成"],
+                    actions=[AgentAction(label="查看原行程", target="itinerary")],
+                ),
+                idea_cards=[],
+            )
         if type(exc).__name__ == "RateLimitError" or status_code == 429:
             return AgentReply(
                 body="模型服务当前比较繁忙，你的消息已保留，请稍后再试。",
@@ -232,17 +248,34 @@ def _request_model(client, model: str, context: str, planning_mode: bool, *, tra
                 logger.info("Model does not support tool calls; continuing without tools")
             else:
                 raise
-        return _create_chat_completion(
-            client,
-            model,
-            [
-                {"role": "system", "content": f"{BASE_SYSTEM_PROMPT}\n\n{FINALIZE_TRIP_PLAN_PROMPT}"},
-                {"role": "user", "content": context},
-                *tool_messages,
-            ],
-            response_format={"type": "json_object"},
-            trace=trace,
-        )
+        messages = [
+            {"role": "system", "content": f"{BASE_SYSTEM_PROMPT}\n\n{FINALIZE_TRIP_PLAN_PROMPT}"},
+            {"role": "user", "content": context},
+            *tool_messages,
+        ]
+        for attempt in range(2):
+            response = _create_chat_completion(
+                client, model, messages, response_format={"type": "json_object"}, trace=trace,
+            )
+            content = (response.choices[0].message.content or "").strip()
+            try:
+                _parse_planning_reply(content)
+                return response
+            except ModelOutputError as exc:
+                if trace:
+                    trace.add("行程格式校验", {"attempt": attempt + 1, "content": content, "error": str(exc)})
+                if attempt == 1:
+                    raise ModelOutputError(f"行程重生成后仍未通过校验：{exc}") from exc
+                messages = [*messages,
+                    {"role": "assistant", "content": content},
+                    {"role": "user", "content": (
+                        f"上次输出未通过结构校验：{exc}。请依据原始旅行信息和已有工具结果重新输出完整 JSON。"
+                        "严格使用模板字段名，不得为键名添加冒号、句点等前缀；days 必须位于 plan 下，"
+                        "每天和每个行程项必须是完整对象，不能用编号数组代替。"
+                        "不要只返回修改说明或局部补丁，也不要再次查询工具。"
+                    )},
+                ]
+
     return _create_chat_completion(
         client,
         model,
@@ -438,6 +471,13 @@ def _plan_context_lines(plan: TripPlan | None) -> list[str]:
     if not plan:
         return []
     return [json.dumps(asdict(plan), ensure_ascii=False)]
+
+
+def _parse_planning_reply(content: str) -> AgentReply:
+    try:
+        return _parse_reply(content, strict_plan=True)
+    except (ValueError, TypeError) as exc:
+        raise ModelOutputError(str(exc)) from exc
 
 
 def _parse_reply(content: str, *, strict_plan: bool = False) -> AgentReply:
