@@ -1,0 +1,18 @@
+<section class="idea-detail-sheet" aria-label="想法详情" aria-hidden="true" data-idea-detail-sheet>
+  <button class="sheet-scrim" type="button" aria-label="关闭想法详情" data-idea-detail-close></button>
+  <article class="idea-detail-panel" role="dialog" aria-modal="true" aria-labelledby="idea-detail-title">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="idea-detail-heading"><span>旅行想法</span><button type="button" data-idea-detail-close>关闭</button></div>
+    <h2 id="idea-detail-title" data-idea-detail-title>想法</h2>
+    <p data-idea-detail-body></p>
+    <div class="idea-detail-statusbar"><strong data-idea-detail-status></strong><span data-idea-detail-author></span></div>
+    <dl>
+      <div><dt>来源</dt><dd data-idea-detail-author></dd></div>
+      <div><dt>采纳状态</dt><dd data-idea-detail-status></dd></div>
+    </dl>
+    <form class="idea-delete-form" action="/workspace/{{ trip.id }}/ideas/delete" method="post" onsubmit="return confirm('确定要删除这条旅行想法吗？删除后无法恢复。');">
+      <input type="hidden" name="idea_id" data-idea-delete-id />
+      <button type="submit">删除这条想法</button>
+    </form>
+  </article>
+</section>

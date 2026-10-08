@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.agent_client import AgentReply, _build_context, _parse_reply
-from app.models import AgentCard
+from app.models import AgentCard, TripDay, TripPlan
 from app.store import DemoStore
 
 store_module = importlib.import_module('app.store')
@@ -101,7 +101,25 @@ def test_strict_plan_preserves_seven_days_and_nine_items():
     assert stored.days[-1].items[-1].id in context
 
 
-def test_all_visible_ideas_including_old_allergy_reach_model():
+def test_date_coverage_note_identifies_unplanned_return_day():
+    local = DemoStore(persistence_enabled=False)
+    trip = local.create_trip('济南', '2026年10月2日-7日', '1500', '轻松', '')
+    plan = TripPlan(
+        id='plan-test',
+        title='济南行程',
+        status='草案',
+        days=[
+            TripDay(id='day-1', label='Day 1', date='2026-10-02', items=[]),
+            TripDay(id='day-2', label='Day 2', date='2026-10-03', items=[]),
+            TripDay(id='day-3', label='Day 3', date='2026-10-04', items=[]),
+            TripDay(id='day-4', label='Day 4', date='2026-10-05', items=[]),
+            TripDay(id='day-5', label='Day 5', date='2026-10-06', items=[]),
+        ],
+    )
+    assert store_module._date_coverage_note(trip, plan) == '返程日（10月7日）尚未安排'
+
+
+def test_all_ideas_including_old_allergy_reach_full_context():
     local = DemoStore(persistence_enabled=False)
     trip = local.create_trip('北京', '待定', '待定', '轻松', '')
     for text in ['严重花生过敏'] + [f'想法{i}' for i in range(7)]:

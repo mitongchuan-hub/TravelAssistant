@@ -9,6 +9,26 @@ class User:
 
 
 @dataclass
+class TripRequirements:
+    start_date: str = ""
+    end_date: str = ""
+    arrival_time: str = ""
+    departure_time: str = ""
+    city: str = ""
+    arrival_location: str = ""
+    departure_location: str = ""
+    day_count: int | None = None
+    travelers: int | None = None
+    budget_amount: str = ""
+    budget_scope: str = "unspecified"
+    must_visit: list[str] = field(default_factory=list)
+    avoid: list[str] = field(default_factory=list)
+    dietary: list[str] = field(default_factory=list)
+    pace: str = ""
+    revision: int = 0
+
+
+@dataclass
 class Trip:
     id: str
     destination: str
@@ -19,6 +39,7 @@ class Trip:
     owner: User
     status: str
     last_activity: str
+    requirements: TripRequirements = field(default_factory=TripRequirements)
 
 
 @dataclass(frozen=True)
@@ -57,6 +78,35 @@ class MealRecommendation:
 
 
 @dataclass(frozen=True)
+class PlaceDetails:
+    poi_id: str
+    name: str
+    address: str
+    longitude: float
+    latitude: float
+    city: str
+    district: str
+    source: str
+    fetched_at: str
+    selected_at: str = ""
+
+
+@dataclass(frozen=True)
+class RouteDetails:
+    origin_poi_id: str = ""
+    origin_name: str = ""
+    destination_poi_id: str = ""
+    destination_name: str = ""
+    mode: str = "transit"
+    status: str = "unavailable"
+    duration_minutes: int | None = None
+    distance_meters: int | None = None
+    source: str = ""
+    fetched_at: str = ""
+    reason: str = "交通耗时待核实。"
+
+
+@dataclass(frozen=True)
 class TripItem:
     id: str
     time: str
@@ -68,6 +118,11 @@ class TripItem:
     satisfies: list[str] = field(default_factory=list)
     category: str = "activity"
     meal: MealRecommendation | None = None
+    place: PlaceDetails | None = None
+    place_scope: str = "unknown"
+    travel_mode: str = "transit"
+    incoming_route: RouteDetails | None = None
+    departure_route: RouteDetails | None = None
 
 
 @dataclass(frozen=True)

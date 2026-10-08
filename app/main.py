@@ -19,15 +19,24 @@ from .auth import (
     validate_email,
     validate_password,
 )
+from uuid import uuid4
+from .tasks import TaskConflict
+from .tools.places import map_url, query_time_label
 from .models import AgentCard, Message, User
-from .store import USERS, store
+from .requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
+from .presentation import day_date_label, timeline_time_parts
+from .store import IDEA_WALL_LIMIT, USERS, store
 
 app = FastAPI(title="TravelAssistant Python H5")
 auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20261002-itinerary-summary-idea-auth"
+templates.env.globals["static_version"] = "20261005-role-agents-itinerary-idea-auth-requirements-tasks-places-routes"
+templates.env.filters.update(day_date_label=day_date_label, timeline_time_parts=timeline_time_parts)
+templates.env.globals["task_request_id"] = lambda: uuid4().hex
+templates.env.globals["place_map_url"] = map_url
+templates.env.globals["place_query_time"] = query_time_label
 logger = logging.getLogger(__name__)
 
 
@@ -102,15 +111,6 @@ def agent_card_to_dict(card: AgentCard) -> dict:
         "bullets": card.bullets,
         "actions": [{"label": action.label, "target": action.target} for action in card.actions],
     }
-
-
-def finish_agent_message_task(trip_id: str, body: str, sender_id: str, thinking_message_id: str) -> None:
-    if trip_id in store.trips:
-        try:
-            store.finish_agent_task(trip_id, body, sender_id, thinking_message_id)
-        except Exception as exc:
-            logger.warning("Agent background task failed (%s)", type(exc).__name__)
-            store.fail_agent_task(trip_id, thinking_message_id)
 
 
 def persistence_health() -> dict[str, str | bool]:
@@ -300,6 +300,51 @@ def create_trip(
     return RedirectResponse(url=f"/workspace/{trip.id}?tab=chat", status_code=303)
 
 
+@app.get("/workspace/{trip_id}/requirements", response_class=HTMLResponse)
+def edit_requirements(request: Request, trip_id: str) -> Response:
+    user = current_user(request)
+    if not user:
+        return RedirectResponse(url="/", status_code=303)
+    trip = get_owned_trip_or_404(trip_id, user)
+    return _requirements_page(request, trip, user)
+
+
+def _requirements_page(request: Request, trip, user: User, values: dict | None = None, error: str = "", status_code: int = 200) -> HTMLResponse:
+    if values is None:
+        values = {key: getattr(trip, key) for key in BASIC_FIELDS}
+        values.update({key: getattr(trip.requirements, key) for key in PROFILE_FIELDS})
+        for key in LIST_FIELDS:
+            values[key] = "\n".join(values[key])
+        values["revision"] = trip.requirements.revision
+    return templates.TemplateResponse(request, "requirements.html", {
+        "trip": trip, "current_user": user, "values": values, "error": error,
+        "saved": request.query_params.get("saved") == "1",
+        "idea_cards": store.idea_cards[trip.id],
+    }, status_code=status_code)
+
+
+@app.post("/workspace/{trip_id}/requirements", response_class=HTMLResponse)
+async def save_requirements(request: Request, trip_id: str) -> Response:
+    user = current_user(request)
+    if not user:
+        return RedirectResponse(url="/", status_code=303)
+    trip = get_owned_trip_or_404(trip_id, user)
+    data = await request.form()
+    values = {key: data.get(key, "") for key in BASIC_FIELDS | PROFILE_FIELDS | {"revision"}}
+    try:
+        if not all(isinstance(value, str) for value in values.values()):
+            raise ValueError("需求格式不正确")
+        if not values["revision"].isdigit():
+            raise ValueError("请刷新页面后再保存")
+        changes = {key: value for key, value in values.items() if key != "revision"}
+        for key in LIST_FIELDS:
+            changes[key] = changes[key].splitlines()
+        store.update_trip_requirements(trip_id, changes, int(values["revision"]))
+    except ValueError as exc:
+        return _requirements_page(request, trip, user, values, str(exc), 400)
+    return RedirectResponse(url=f"/workspace/{trip_id}/requirements?saved=1", status_code=303)
+
+
 @app.get("/workspace/{trip_id}", response_class=HTMLResponse)
 def workspace(request: Request, trip_id: str, tab: str = "chat") -> Response:
     user = current_user(request)
@@ -315,12 +360,85 @@ def workspace(request: Request, trip_id: str, tab: str = "chat") -> Response:
             "tab": active_tab,
             "messages": store.messages[trip_id],
             "idea_cards": store.idea_cards[trip_id],
+            "wall_cards": store.idea_cards[trip_id][-IDEA_WALL_LIMIT:],
             "plan": store.plans[trip_id],
             "plan_versions": store.plan_versions[trip_id],
             "metrics": store.trip_metrics(trip_id),
             "current_user": user,
+            "travel_tasks": store.list_tasks(trip_id),
         },
     )
+
+
+@app.get("/api/trips/{trip_id}/tasks")
+def api_tasks(request: Request, trip_id: str) -> Response:
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"error": "请先登录"}, status_code=401)
+    get_owned_trip_or_404(trip_id, user)
+    return JSONResponse({"tasks": store.list_tasks(trip_id)}, headers={"Cache-Control": "no-store"})
+
+
+def task_response(request: Request, trip_id: str, kind: str, payload: dict, request_id: str, background_tasks: BackgroundTasks, retry_of: str = "") -> Response:
+    try:
+        task, created = store.submit_task(trip_id, kind, payload, request_id, retry_of)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=409 if isinstance(exc, TaskConflict) else 400)
+    if created:
+        background_tasks.add_task(store.run_task, task["id"])
+    return JSONResponse({"task": task}, status_code=202 if task["status"] in {"queued", "running"} else 200)
+
+
+@app.post("/api/trips/{trip_id}/tasks")
+async def api_submit_task(request: Request, trip_id: str, background_tasks: BackgroundTasks) -> Response:
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"error": "请先登录"}, status_code=401)
+    get_owned_trip_or_404(trip_id, user)
+    try:
+        data = await request.json()
+        if not isinstance(data, dict):
+            raise ValueError()
+        kind, request_id = data.get("kind"), data.get("request_id")
+        if not isinstance(kind, str) or not isinstance(request_id, str):
+            raise ValueError()
+        payload = data.get("payload", {})
+        if not isinstance(payload, dict):
+            raise ValueError()
+        if kind == "plan":
+            payload = {}
+        elif kind == "revision":
+            if not isinstance(payload.get("feedback"), str) or not 1 <= len(payload["feedback"].strip()) <= 2000:
+                raise ValueError()
+            if payload.get("item_id") is not None and not isinstance(payload["item_id"], str):
+                raise ValueError()
+            payload = {"feedback": payload["feedback"].strip(), "item_id": payload.get("item_id")}
+        elif kind == "chat":
+            if not isinstance(payload.get("body"), str):
+                raise ValueError()
+            payload = {"body": payload["body"].strip()}
+        else:
+            raise ValueError()
+    except (ValueError, UnicodeDecodeError):
+        return JSONResponse({"error": "任务内容不正确"}, status_code=400)
+    return task_response(request, trip_id, kind, payload, request_id, background_tasks)
+
+
+@app.post("/api/trips/{trip_id}/tasks/{task_id}/retry")
+async def api_retry_task(request: Request, trip_id: str, task_id: str, background_tasks: BackgroundTasks) -> Response:
+    user = current_user(request)
+    if not user:
+        return JSONResponse({"error": "请先登录"}, status_code=401)
+    get_owned_trip_or_404(trip_id, user)
+    original = next((task for task in store.list_tasks(trip_id) if task["id"] == task_id), None)
+    if not original:
+        return JSONResponse({"error": "任务不存在"}, status_code=404)
+    try:
+        data = await request.json()
+        request_id = data.get("request_id") if isinstance(data, dict) else None
+    except (ValueError, UnicodeDecodeError):
+        request_id = None
+    return task_response(request, trip_id, original["kind"], original["payload"], request_id, background_tasks, task_id)
 
 
 @app.get("/api/trips/{trip_id}/messages")
@@ -354,9 +472,15 @@ async def api_add_message(request: Request, trip_id: str, background_tasks: Back
     body = data["body"].strip()
     if not body:
         return JSONResponse({"error": "消息不能为空"}, status_code=400)
-    message, thinking = await run_in_threadpool(store.queue_user_message, trip_id, body, user.id)
-    background_tasks.add_task(finish_agent_message_task, trip_id, body, user.id, thinking.id)
-    return JSONResponse({"messages": [message_to_dict(message), message_to_dict(thinking)]})
+    request_id = data.get("request_id", uuid4().hex)
+    try:
+        task, created = await run_in_threadpool(store.submit_task, trip_id, "chat", {"body": body}, request_id)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=409 if isinstance(exc, TaskConflict) else 400)
+    if created:
+        background_tasks.add_task(store.run_task, task["id"])
+    messages = [message for message in store.messages[trip_id] if message.id in {task["message_id"], task["thinking_id"]}]
+    return JSONResponse({"messages": [message_to_dict(message) for message in messages], "task": task})
 
 
 @app.get("/workspace/{trip_id}/messages/partial", response_class=HTMLResponse)
@@ -373,14 +497,18 @@ def messages_partial(request: Request, trip_id: str) -> Response:
 
 
 @app.post("/workspace/{trip_id}/messages")
-def add_message(request: Request, trip_id: str, background_tasks: BackgroundTasks, body: str = Form("")) -> RedirectResponse:
+def add_message(request: Request, trip_id: str, background_tasks: BackgroundTasks, body: str = Form(""), request_id: str = Form("")) -> RedirectResponse:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
     if body.strip():
-        _, thinking = store.queue_user_message(trip_id, body, user.id)
-        background_tasks.add_task(finish_agent_message_task, trip_id, body, user.id, thinking.id)
+        try:
+            task, created = store.submit_task(trip_id, "chat", {"body": body.strip()}, request_id or uuid4().hex)
+        except ValueError as exc:
+            return JSONResponse({"error": str(exc)}, status_code=409)
+        if created:
+            background_tasks.add_task(store.run_task, task["id"])
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=chat", status_code=303)
 
 
@@ -417,27 +545,33 @@ def delete_idea(request: Request, trip_id: str, idea_id: str = Form("")) -> Redi
 
 
 @app.post("/workspace/{trip_id}/revision")
-def request_revision(request: Request, trip_id: str, item_id: str | None = Form(None), feedback: str = Form("")) -> RedirectResponse:
+def request_revision(request: Request, trip_id: str, background_tasks: BackgroundTasks, item_id: str | None = Form(None), feedback: str = Form(""), request_id: str = Form("")) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
-    before = len(store.plan_versions[trip_id])
-    store.request_revision(trip_id, item_id, feedback, user)
-    tab = "itinerary" if len(store.plan_versions[trip_id]) > before else "chat"
-    return RedirectResponse(url=f"/workspace/{trip_id}?tab={tab}", status_code=303)
+    try:
+        task, created = store.submit_task(trip_id, "revision", {"item_id": item_id, "feedback": feedback.strip()}, request_id or uuid4().hex)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=409 if isinstance(exc, TaskConflict) else 400)
+    if created:
+        background_tasks.add_task(store.run_task, task["id"])
+    return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary&task={task['id']}", status_code=303)
 
 
 @app.post("/workspace/{trip_id}/plan")
-def generate_plan(request: Request, trip_id: str) -> RedirectResponse:
+def generate_plan(request: Request, trip_id: str, background_tasks: BackgroundTasks, request_id: str = Form("")) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
-    before = len(store.plan_versions[trip_id])
-    store.generate_plan(trip_id)
-    tab = "itinerary" if len(store.plan_versions[trip_id]) > before else "chat"
-    return RedirectResponse(url=f"/workspace/{trip_id}?tab={tab}", status_code=303)
+    try:
+        task, created = store.submit_task(trip_id, "plan", {}, request_id or uuid4().hex)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=409 if isinstance(exc, TaskConflict) else 400)
+    if created:
+        background_tasks.add_task(store.run_task, task["id"])
+    return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary&task={task['id']}", status_code=303)
 
 
 @app.post("/workspace/{trip_id}/plan/confirm")

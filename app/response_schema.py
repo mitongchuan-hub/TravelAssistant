@@ -1,4 +1,5 @@
 from __future__ import annotations
+from copy import deepcopy
 
 
 TRAVEL_RESULT_SCHEMA = {
@@ -94,6 +95,10 @@ TRAVEL_RESULT_SCHEMA = {
                                     "type": "object",
                                     "additionalProperties": False,
                                     "properties": {
+                                        "id": {"type": "string"},
+                                        "travel_mode": {"type": "string", "enum": ["walking", "transit", "driving"]},
+                                        "poi_id": {"type": "string"},
+                                        "place_scope": {"type": "string", "enum": ["unknown", "area"]},
                                         "category": {"type": "string", "enum": ["activity", "meal", "transport", "accommodation", "rest"]},
                                         "meal": {
                                             "type": ["object", "null"],
@@ -115,7 +120,7 @@ TRAVEL_RESULT_SCHEMA = {
                                         "notes": {"type": "string", "description": "用餐、温度、穿衣、雨具和待确认事项"},
                                         "satisfies": {"type": "array", "items": {"type": "string"}},
                                     },
-                                    "required": ["category", "meal", "time", "title", "location", "duration", "reason", "notes", "satisfies"],
+                                    "required": ["id", "travel_mode", "poi_id", "place_scope", "category", "meal", "time", "title", "location", "duration", "reason", "notes", "satisfies"],
                                 },
                             },
                         },
@@ -137,3 +142,7 @@ TRAVEL_RESULT_RESPONSE_FORMAT = {
         "schema": TRAVEL_RESULT_SCHEMA,
     },
 }
+
+PLANNING_RESULT_RESPONSE_FORMAT = deepcopy(TRAVEL_RESULT_RESPONSE_FORMAT)
+PLANNING_RESULT_RESPONSE_FORMAT['json_schema']['name'] = 'travel_plan'
+PLANNING_RESULT_RESPONSE_FORMAT['json_schema']['schema']['properties']['plan']['type'] = 'object'

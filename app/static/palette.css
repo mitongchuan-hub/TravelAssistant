@@ -316,9 +316,10 @@ blockquote,
 
 /* Navigation and conversation */
 .bottom-nav {
-  border: 1px solid var(--line);
+  border: 0;
+  border-top: 1px solid var(--line);
   background: var(--surface);
-  box-shadow: var(--shadow-soft);
+  box-shadow: none;
 }
 
 .bottom-nav a {

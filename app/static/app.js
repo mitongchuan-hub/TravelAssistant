@@ -1,6 +1,10 @@
+function createTravelRequestId() {
+  return typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
 document.addEventListener('submit', (event) => {
   const form = event.target;
-  if (!(form instanceof HTMLFormElement)) {
+  if (event.defaultPrevented || !(form instanceof HTMLFormElement)) {
     return;
   }
 
@@ -40,8 +44,11 @@ async function submitComposerMessage(form) {
     return;
   }
 
+  const requestId = form.dataset.retryRequestId || createTravelRequestId();
+  delete form.dataset.retryRequestId;
   const user = currentUser(form);
   const pendingMessage = appendUserMessage(body, user);
+  pendingMessage.dataset.requestId = requestId;
   input.value = '';
   input.disabled = true;
   form.setAttribute('aria-busy', 'true');
@@ -52,23 +59,31 @@ async function submitComposerMessage(form) {
   const thinkingMessage = appendAgentThinkingMessage();
   scrollChatToLatest();
 
+  const taskStorageKey = `travelassistant:task-submit:${(form.dataset.apiUrl || '').replace(/\/messages$/, '/tasks')}`;
+  try { sessionStorage.setItem(taskStorageKey, JSON.stringify({kind: 'chat', payload: {body}, request_id: requestId})); } catch { /* Keep same ID on the message for retry. */ }
   try {
     const response = await fetch(form.dataset.apiUrl || form.action, {
       method: 'post',
       headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' },
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body, request_id: requestId }),
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) {
+      try { sessionStorage.removeItem(taskStorageKey); } catch { /* Storage unavailable. */ }
       throw new Error('send failed');
     }
     const payload = await response.json();
-    pendingMessage.dataset.messageId = payload.messages[0].id;
+    try { sessionStorage.removeItem(taskStorageKey); } catch { /* Storage unavailable. */ }
+    const accepted = payload.messages[0];
+    if (!accepted) throw new Error('missing message');
+    const existing = Array.from(chatList.querySelectorAll('[data-message-id]')).find(node => node !== pendingMessage && node.dataset.messageId === accepted.id);
+    if (existing) pendingMessage.remove();
+    else pendingMessage.dataset.messageId = accepted.id;
     pendingMessage.dataset.status = 'sent';
     pendingMessage.classList.remove('pending-message');
-    if (thinkingMessage) {
+    if (thinkingMessage && payload.messages[1]) {
       thinkingMessage.dataset.messageId = payload.messages[1].id;
-    }
+    } else thinkingMessage?.remove();
     await refreshChatMessages(chatList, { force: true });
   } catch (error) {
     markMessageFailed(pendingMessage, body);
@@ -118,7 +133,22 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     closeIdeaDetail();
   }
+  if (event.key === 'Tab') {
+    const sheet = document.querySelector('[data-idea-detail-sheet].open');
+    if (!sheet) return;
+    const buttons = Array.from(sheet.querySelectorAll('button:not(:disabled)'));
+    const first = buttons[0], last = buttons[buttons.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
 });
+
+let ideaDetailReturnFocus = null;
 
 function openIdeaDetail(trigger) {
   const sheet = document.querySelector('[data-idea-detail-sheet]');
@@ -126,6 +156,7 @@ function openIdeaDetail(trigger) {
     return;
   }
 
+  ideaDetailReturnFocus = trigger;
   setDetailText('[data-idea-detail-title]', trigger.dataset.title);
   setDetailText('[data-idea-detail-kind]', trigger.dataset.kind);
   setDetailText('[data-idea-detail-body]', trigger.dataset.body);
@@ -150,9 +181,11 @@ function closeIdeaDetail() {
     return;
   }
 
+  const wasOpen = sheet.classList.contains('open');
   sheet.setAttribute('aria-hidden', 'true');
   sheet.classList.remove('open');
   document.body.classList.remove('sheet-open');
+  if (wasOpen) ideaDetailReturnFocus?.focus({ preventScroll: true });
 }
 
 function setDetailText(selector, value) {
@@ -251,6 +284,7 @@ function retryFailedMessage(button) {
   if (form.dataset.submitting === 'true') {
     return;
   }
+  form.dataset.retryRequestId = messageElement.dataset.requestId || createTravelRequestId();
   input.value = messageElement.dataset.failedBody || '';
   messageElement.remove();
   form.requestSubmit();

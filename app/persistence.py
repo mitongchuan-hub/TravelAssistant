@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -14,17 +15,22 @@ from .models import (
     Message,
     MealRecommendation,
     PlanVersion,
+    RouteDetails,
+    PlaceDetails,
     PreparationItem,
     Trip,
     TripDay,
     TripItem,
     TripPlan,
+    TripRequirements,
     TravelPreparation,
     User,
 )
 
+from .requirements import initial_requirements
+
 SNAPSHOT_KEY = "demo_store_v1"
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 
 
@@ -107,6 +113,8 @@ def ensure_relational_schema(db_path: str | Path) -> None:
             );
             """
         )
+        if "requirements_json" not in {row[1] for row in connection.execute("PRAGMA table_info(trips)")}:
+            connection.execute("ALTER TABLE trips ADD COLUMN requirements_json TEXT NOT NULL DEFAULT '{}'")
 
 
 def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, Any]) -> None:
@@ -122,8 +130,8 @@ def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, A
     for trip_id, trip in snapshot.get("trips", {}).items():
         connection.execute(
             """
-            INSERT INTO trips (id, destination, date_range, budget, style, note, owner_id, status, last_activity)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO trips (id, destination, date_range, budget, style, note, owner_id, status, last_activity, requirements_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 trip_id,
@@ -135,6 +143,7 @@ def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, A
                 trip["owner"]["id"],
                 trip["status"],
                 trip["last_activity"],
+                json.dumps(trip.get("requirements", {}), ensure_ascii=False),
             ),
         )
     for trip_id, messages in snapshot.get("messages", {}).items():
@@ -221,6 +230,7 @@ def load_snapshot(db_path: str | Path) -> dict[str, Any] | None:
 
 def serialize_state(store: Any, users: dict[str, User]) -> dict[str, Any]:
     return {
+        "tasks": deepcopy(store.tasks),
         "schema_version": CURRENT_SCHEMA_VERSION,
         "users": {user_id: asdict(user) for user_id, user in users.items()},
         "trips": {trip_id: asdict(trip) for trip_id, trip in store.trips.items()},
@@ -232,7 +242,7 @@ def serialize_state(store: Any, users: dict[str, User]) -> dict[str, Any]:
 
 
 def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) -> int:
-    legacy = int(snapshot.get("schema_version", 1)) < CURRENT_SCHEMA_VERSION
+    legacy = int(snapshot.get("schema_version", 1)) < 2
     users.clear()
     users.update({user_id: _user(raw_user) for user_id, raw_user in snapshot.get("users", {}).items()})
     if "agent" not in users:
@@ -265,6 +275,7 @@ def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) 
         for trip_id, raw_cards in snapshot.get("idea_cards", {}).items()
         if trip_id in store.trips
     }
+    store.tasks = deepcopy(snapshot.get("tasks", {}))
     return _next_numeric_id(snapshot)
 
 
@@ -286,6 +297,10 @@ def _trip(raw: dict[str, Any], legacy: bool = False) -> Trip:
         owner=_user(owner),
         status=str(raw["status"]),
         last_activity=_solo_text(str(raw["last_activity"])) if legacy else str(raw["last_activity"]),
+        requirements=(
+            TripRequirements(**raw["requirements"]) if isinstance(raw.get("requirements"), dict)
+            else initial_requirements(str(raw["budget"]), str(raw["style"]))
+        ),
     )
 
 
@@ -351,6 +366,11 @@ def _item(raw: dict[str, Any], legacy: bool = False) -> TripItem:
         satisfies=satisfies,
         category=str(raw.get("category") or "activity"),
         meal=_meal(raw.get("meal")),
+        place=PlaceDetails(**raw["place"]) if isinstance(raw.get("place"), dict) else None,
+        travel_mode=str(raw.get('travel_mode') or 'transit'),
+        incoming_route=RouteDetails(**raw['incoming_route']) if isinstance(raw.get('incoming_route'), dict) else None,
+        departure_route=RouteDetails(**raw['departure_route']) if isinstance(raw.get('departure_route'), dict) else None,
+        place_scope=str(raw.get("place_scope") or "unknown"),
     )
 
 

@@ -465,8 +465,15 @@ blockquote {
 
 .chat-header-actions {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
   margin-left: auto;
+}
+
+.chat-header-actions > a {
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .clear-chat-button {
@@ -792,31 +799,21 @@ blockquote {
 
 .bottom-nav {
   position: fixed;
-  right: calc((100vw - min(100vw, 430px)) / 2 + 16px);
-  bottom: max(12px, env(safe-area-inset-bottom));
-  left: calc((100vw - min(100vw, 430px)) / 2 + 16px);
+  right: auto;
+  bottom: 0;
+  left: 50%;
+  width: min(100%, 430px);
+  transform: translateX(-50%);
   z-index: 20;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 6px;
-  padding: 7px;
-  border: 1px solid rgb(228 216 197 / 82%);
-  border-radius: 28px;
-  background: rgb(255 250 240 / 88%);
-  box-shadow: 0 16px 34px rgb(21 27 34 / 16%);
-  backdrop-filter: blur(18px);
-}
-
-.bottom-nav::before {
-  position: fixed;
-  right: calc((100vw - min(100vw, 430px)) / 2);
-  bottom: 0;
-  left: calc((100vw - min(100vw, 430px)) / 2);
-  z-index: -1;
-  height: 112px;
-  background: linear-gradient(180deg, rgb(246 241 232 / 0%) 0%, var(--bg) 52%, var(--bg) 100%);
-  content: "";
-  pointer-events: none;
+  padding: 7px max(8px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  box-shadow: none;
 }
 
 .bottom-nav a {
@@ -3553,20 +3550,6 @@ blockquote {
   color: var(--muted);
 }
 
-.bottom-nav {
-  gap: 6px;
-  padding: 7px;
-  border: 1.5px solid var(--ink);
-  border-radius: 18px;
-  background: rgb(251 252 253 / 92%);
-  box-shadow: 3px 4px 0 rgb(43 46 52 / 82%);
-  backdrop-filter: blur(16px);
-}
-
-.bottom-nav::before {
-  display: none;
-}
-
 .bottom-nav a {
   min-height: 54px;
   gap: 4px;
@@ -4220,7 +4203,6 @@ blockquote {
   background: rgb(255 255 255 / 72%);
 }
 
-.preparation-item span,
 .item-category {
   color: #8b5e34;
   font-size: 12px;
@@ -4345,23 +4327,6 @@ blockquote {
   font-weight: 800;
 }
 
-.itinerary-summary-note {
-  display: grid;
-  gap: 3px;
-  margin: 0;
-  padding: 9px 11px;
-  border-radius: 12px;
-  background: rgb(219 226 239 / 48%);
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.itinerary-summary-note strong {
-  color: var(--ink);
-  font-size: 11px;
-}
-
 .itinerary-summary-action {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -4424,3 +4389,388 @@ blockquote {
     max-width: none;
   }
 }
+
+/* Plan notes: compact disclosure panels for the mobile itinerary. */
+.plan-details {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.plan-details > .plan-details-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 4px 7px;
+  border-bottom: 1px solid var(--line);
+}
+
+.plan-details-heading strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.plan-detail-group {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgb(255 255 255 / 42%);
+}
+
+.plan-detail-group summary {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 850;
+  cursor: pointer;
+  list-style: none;
+}
+
+.plan-detail-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.plan-detail-group summary::after {
+  color: var(--green);
+  content: "+";
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.plan-detail-group[open] summary {
+  background: rgb(219 226 239 / 48%);
+}
+
+.plan-detail-group[open] summary::after {
+  content: "−";
+}
+
+.plan-detail-group > p,
+.plan-detail-group > ul {
+  margin: 0;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.plan-detail-group > ul {
+  display: grid;
+  gap: 5px;
+  padding-left: 28px;
+}
+
+.plan-detail-group > p {
+  color: var(--muted);
+}
+
+@media (max-width: 360px) {
+  .plan-details {
+    padding: 8px;
+  }
+}
+
+/* Preparation cards: action-first travel readiness on mobile. */
+.preparation-panel {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.preparation-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.preparation-heading .muted {
+  margin: 0 0 4px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.preparation-heading h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 21px;
+  line-height: 1.2;
+}
+
+.preparation-heading > span {
+  max-width: 128px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1.4;
+  text-align: right;
+}
+
+.preparation-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.preparation-group {
+  min-width: 0;
+}
+
+.preparation-group-title {
+  margin: 0 0 7px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.preparation-item {
+  margin: 0;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 66%);
+  box-shadow: none;
+}
+
+.preparation-item-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+
+.preparation-item-status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.preparation-item h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.preparation-item p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .preparation-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .preparation-panel {
+    padding: 14px;
+  }
+
+  .preparation-heading > span {
+    max-width: 112px;
+  }
+}
+
+/* Timeline details: keep the day view focused on the next action. */
+.timeline-details {
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.timeline-details > summary {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  list-style: none;
+}
+
+.timeline-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.timeline-details > summary::after {
+  content: "+";
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.timeline-details[open] > summary::after {
+  content: "−";
+}
+
+.timeline-details-body {
+  display: grid;
+  gap: 8px;
+  padding: 2px 0 2px;
+}
+
+.timeline-reason,
+.timeline-notes {
+  margin: 0;
+}
+
+.timeline-reason {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.timeline-notes {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.plan-detail-group > ul.action-list {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  list-style: none;
+}
+
+.action-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.action-list li span {
+  min-width: 0;
+}
+
+.action-list a {
+  flex: 0 0 auto;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 850;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.action-list a::after {
+  content: " →";
+}
+
+@media (max-width: 360px) {
+  .action-list li {
+    display: grid;
+    gap: 5px;
+  }
+}
+
+.itinerary-summary-coverage {
+  margin: 6px 0 0;
+  color: #a15c43;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.4;
+}
+
+.day-heading p {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.day-item-count {
+  display: inline-flex;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.timeline-item--transport > div {
+  border-color: rgb(17 45 78 / 9%);
+  background: rgb(219 226 239 / 34%);
+  box-shadow: none;
+}
+
+.timeline-item--rest > div {
+  border-color: rgb(17 45 78 / 8%);
+  background: rgb(249 247 247 / 76%);
+  box-shadow: none;
+}
+
+.timeline-item--accommodation > div {
+  border-color: rgb(63 114 175 / 18%);
+  background: rgb(219 226 239 / 28%);
+  box-shadow: none;
+}
+
+.timeline-item--meal > div {
+  border-color: rgb(63 114 175 / 22%);
+}
+
+.meal-recommendation strong {
+  color: var(--ink);
+}
+
+.meal-recommendation span {
+  color: var(--muted);
+}
+
+/* Reserve the fixed navigation height once, including the device safe area. */
+.workspace {
+  --bottom-nav-height: calc(69px + env(safe-area-inset-bottom));
+  padding-bottom: 0;
+}
+
+.travel-tab-screen {
+  padding-bottom: calc(var(--bottom-nav-height) + 20px);
+}
+
+.travel-tab-screen.chat-screen {
+  padding-bottom: calc(var(--bottom-nav-height) + 84px);
+}
+
+.chat-dock {
+  bottom: calc(var(--bottom-nav-height) + 8px);
+}
+
+.idea-wall-screen {
+  padding-bottom: calc(var(--bottom-nav-height) + 16px);
+}
+
+/* Task feedback is shown only when a task needs attention. */
+.travel-task-status { position: fixed; left: 50%; bottom: calc(145px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 32px), 390px); z-index: 25; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-soft); }
+.travel-task-status[hidden] { display: none; }
+.travel-task-status p { margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; max-height: 140px; overflow-y: auto; }
+.travel-task-status button, .travel-task-status a { display: inline-flex; margin-top: 8px; min-height: 32px; padding: 6px 10px; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: inherit; font-size: 13px; }
+.travel-task-status button[hidden], .travel-task-status a[hidden] { display: none; }

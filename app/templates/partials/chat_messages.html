@@ -27,7 +27,7 @@
             <div class="card-actions">
               {% for action in message.agent_card.actions %}
                 {% if action.target == "generate" %}
-                  <form action="/workspace/{{ trip.id }}/plan" method="post"><button type="submit">{{ action.label }}</button></form>
+                  <form action="/workspace/{{ trip.id }}/plan" method="post"><input type="hidden" name="request_id" value="plan-{{ message.id }}" /><button type="submit">{{ action.label }}</button></form>
                 {% else %}
                   <a href="/workspace/{{ trip.id }}?tab={{ action.target }}">{{ action.label }}</a>
                 {% endif %}

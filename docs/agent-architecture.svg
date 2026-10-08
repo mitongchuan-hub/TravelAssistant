@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc">
+  <title id="title">TravelAssistant 分层 Agent 架构</title>
+  <desc id="desc">一个旅行 Agent 分为理解、决策规划、沟通三种职责；天气、景点、美食、地点和路线工具组成事实层；确定性系统负责校验、状态和保存。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#eef2f7"/>
+    </linearGradient>
+    <linearGradient id="agent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eef2ff"/>
+      <stop offset="1" stop-color="#e1e8ff"/>
+    </linearGradient>
+    <linearGradient id="facts" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ecfdf5"/>
+      <stop offset="1" stop-color="#d9f7e9"/>
+    </linearGradient>
+    <linearGradient id="system" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7ed"/>
+      <stop offset="1" stop-color="#ffedd5"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#64748b" flood-opacity="0.16"/>
+    </filter>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#64748b" flood-opacity="0.12"/>
+    </filter>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#536dfe"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#159570"/>
+    </marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#d97706"/>
+    </marker>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .title { font: 700 30px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #172033; }
+      .subtitle { font: 400 15px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #64748b; }
+      .section { font: 700 18px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #263248; }
+      .box-title { font: 700 18px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #172033; }
+      .box-text { font: 400 14px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #526074; }
+      .small-title { font: 700 15px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #263248; }
+      .small-text { font: 400 12px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #64748b; }
+      .pill { font: 600 12px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; }
+      .label { font: 600 12px "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #526074; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1040" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <text x="80" y="66" class="title">TravelAssistant · 分层 Agent 方案</text>
+  <text x="80" y="96" class="subtitle">Agent 负责理解、取舍和协商；事实由工具提供，规则由系统校验，状态由系统保存。</text>
+  <rect x="1265" y="48" width="255" height="34" rx="17" fill="#ffffff" stroke="#dbe3ef"/>
+  <circle cx="1288" cy="65" r="6" fill="#536dfe"/>
+  <text x="1303" y="70" class="label">一个 Agent · 多个确定性服务</text>
+
+  <!-- Main Agent boundary -->
+  <rect x="80" y="145" width="1440" height="350" rx="22" fill="url(#agent)" stroke="#aebcff" stroke-width="2" filter="url(#shadow)"/>
+  <text x="112" y="183" class="section">旅行 Agent：规划协作者</text>
+  <text x="112" y="210" class="box-text">把逐步形成的想法转化为符合个人偏好、受现实约束、可以解释和修改的旅行方案。</text>
+
+  <!-- User -->
+  <rect x="110" y="260" width="190" height="154" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#softShadow)"/>
+  <circle cx="152" cy="301" r="18" fill="#e0e7ff"/>
+  <path d="M143 307c3-8 15-8 18 0M148 296a5 5 0 1 0 10 0" fill="none" stroke="#536dfe" stroke-width="2" stroke-linecap="round"/>
+  <text x="181" y="307" class="box-title">用户表达</text>
+  <text x="130" y="345" class="box-text">想去哪里</text>
+  <text x="130" y="368" class="box-text">喜欢什么 / 避开什么</text>
+  <text x="130" y="391" class="box-text">生成、询问或修改方案</text>
+
+  <!-- Three agent roles -->
+  <rect x="340" y="247" width="310" height="190" rx="16" fill="#ffffff" stroke="#aebcff" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="360" y="268" width="82" height="25" rx="12.5" fill="#e7ebff"/>
+  <text x="401" y="285" text-anchor="middle" class="pill" fill="#4557c9">理解职责</text>
+  <text x="360" y="326" class="box-title">用户到底想要什么？</text>
+  <text x="360" y="356" class="box-text">识别意图与需求变化</text>
+  <text x="360" y="379" class="box-text">区分硬约束、偏好和未知</text>
+  <text x="360" y="402" class="box-text">发现歧义，决定是否提问</text>
+
+  <rect x="690" y="247" width="310" height="190" rx="16" fill="#ffffff" stroke="#8f9ffb" stroke-width="2" filter="url(#softShadow)"/>
+  <rect x="710" y="268" width="106" height="25" rx="12.5" fill="#dce3ff"/>
+  <text x="763" y="285" text-anchor="middle" class="pill" fill="#3f51b5">决策 / 规划</text>
+  <text x="710" y="326" class="box-title">现实限制下怎么安排？</text>
+  <text x="710" y="356" class="box-text">决定缺什么信息、需要查什么</text>
+  <text x="710" y="379" class="box-text">在时间、预算、体力与兴趣间取舍</text>
+  <text x="710" y="402" class="box-text">形成、修改并解释旅行方案</text>
+
+  <rect x="1040" y="247" width="310" height="190" rx="16" fill="#ffffff" stroke="#aebcff" stroke-width="1.5" filter="url(#softShadow)"/>
+  <rect x="1060" y="268" width="82" height="25" rx="12.5" fill="#e7ebff"/>
+  <text x="1101" y="285" text-anchor="middle" class="pill" fill="#4557c9">沟通职责</text>
+  <text x="1060" y="326" class="box-title">怎样和用户协商？</text>
+  <text x="1060" y="356" class="box-text">解释为什么这样安排</text>
+  <text x="1060" y="379" class="box-text">区分事实、建议和待核实事项</text>
+  <text x="1060" y="402" class="box-text">只提出影响当前目标的问题</text>
+
+  <!-- Arrows within agent -->
+  <path d="M300 337 C318 337 320 337 340 337" fill="none" stroke="#536dfe" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <path d="M650 337 C668 337 672 337 690 337" fill="none" stroke="#536dfe" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <path d="M1000 337 C1018 337 1022 337 1040 337" fill="none" stroke="#536dfe" stroke-width="2.5" marker-end="url(#arrowBlue)"/>
+  <path d="M1040 455 C850 478 470 478 300 414" fill="none" stroke="#536dfe" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrowBlue)"/>
+  <text x="690" y="476" text-anchor="middle" class="label">用户继续补充、确认或修改</text>
+
+  <!-- Facts layer -->
+  <rect x="80" y="545" width="900" height="290" rx="22" fill="url(#facts)" stroke="#9bd9c2" stroke-width="2" filter="url(#shadow)"/>
+  <text x="112" y="583" class="section">工具与事实层</text>
+  <text x="112" y="610" class="box-text">规划层决定需要查询什么；工具返回有来源、时间和适用范围的事实。</text>
+
+  <!-- Tools -->
+  <rect x="112" y="650" width="160" height="112" rx="14" fill="#ffffff" stroke="#b7e5d4" filter="url(#softShadow)"/>
+  <circle cx="142" cy="681" r="14" fill="#d8f5e8"/>
+  <path d="M135 681h14M142 674v14" stroke="#159570" stroke-width="2" stroke-linecap="round"/>
+  <text x="166" y="686" class="small-title">天气</text>
+  <text x="130" y="717" class="small-text">城市 / 日期</text>
+  <text x="130" y="740" class="small-text">预报范围与更新时间</text>
+
+  <rect x="288" y="650" width="160" height="112" rx="14" fill="#ffffff" stroke="#b7e5d4" filter="url(#softShadow)"/>
+  <circle cx="318" cy="681" r="14" fill="#d8f5e8"/>
+  <path d="M311 685l5-8 5 5 4-3 4 8z" fill="none" stroke="#159570" stroke-width="2" stroke-linejoin="round"/>
+  <text x="342" y="686" class="small-title">热门景点</text>
+  <text x="306" y="717" class="small-text">候选、热度或评分</text>
+  <text x="306" y="740" class="small-text">必须注明统计口径</text>
+
+  <rect x="464" y="650" width="160" height="112" rx="14" fill="#ffffff" stroke="#b7e5d4" filter="url(#softShadow)"/>
+  <circle cx="494" cy="681" r="14" fill="#d8f5e8"/>
+  <path d="M486 676h16v11h-16zM489 673h10" fill="none" stroke="#159570" stroke-width="2" stroke-linecap="round"/>
+  <text x="518" y="686" class="small-title">美食 / 榜单</text>
+  <text x="482" y="717" class="small-text">门店、价格、评分</text>
+  <text x="482" y="740" class="small-text">平台、时间与排序依据</text>
+
+  <rect x="640" y="650" width="160" height="112" rx="14" fill="#ffffff" stroke="#b7e5d4" filter="url(#softShadow)"/>
+  <circle cx="670" cy="681" r="14" fill="#d8f5e8"/>
+  <path d="M663 674h14v14h-14zM666 678h8M666 682h8" fill="none" stroke="#159570" stroke-width="2" stroke-linecap="round"/>
+  <text x="694" y="686" class="small-title">地点匹配</text>
+  <text x="658" y="717" class="small-text">真实 POI ID、地址、坐标</text>
+  <text x="658" y="740" class="small-text">重名不默认选择</text>
+
+  <rect x="816" y="650" width="132" height="112" rx="14" fill="#ffffff" stroke="#b7e5d4" filter="url(#softShadow)"/>
+  <circle cx="846" cy="681" r="14" fill="#d8f5e8"/>
+  <path d="M839 687l6-12 8 12M841 683h9" fill="none" stroke="#159570" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="870" y="686" class="small-title">交通路线</text>
+  <text x="832" y="717" class="small-text">方式、耗时、距离</text>
+  <text x="832" y="740" class="small-text">查询时估算</text>
+
+  <!-- Facts rules -->
+  <rect x="112" y="783" width="836" height="31" rx="12" fill="#f7fffb" stroke="#c5ecdd"/>
+  <text x="530" y="804" text-anchor="middle" class="label" fill="#24765f">查不到 = 保持未知 · 有结果 ≠ 已确认开放、营业或预约</text>
+
+  <!-- System layer -->
+  <rect x="1020" y="545" width="500" height="290" rx="22" fill="url(#system)" stroke="#f4c78a" stroke-width="2" filter="url(#shadow)"/>
+  <text x="1052" y="583" class="section">确定性系统层</text>
+  <text x="1052" y="610" class="box-text">不替 Agent 做偏好取舍，负责事实约束、变更安全和状态可靠。</text>
+
+  <rect x="1052" y="650" width="202" height="112" rx="14" fill="#ffffff" stroke="#f5d3a5" filter="url(#softShadow)"/>
+  <text x="1072" y="682" class="small-title">事实证据管理</text>
+  <text x="1072" y="712" class="small-text">来源、查询时间、适用范围</text>
+  <text x="1072" y="735" class="small-text">地点与路线可信绑定</text>
+
+  <rect x="1274" y="650" width="214" height="112" rx="14" fill="#ffffff" stroke="#f5d3a5" filter="url(#softShadow)"/>
+  <text x="1294" y="682" class="small-title">规则校验与变更合并</text>
+  <text x="1294" y="712" class="small-text">日期、时间、抵离、路线</text>
+  <text x="1294" y="735" class="small-text">版本保护与局部修改边界</text>
+
+  <!-- Flow arrows between layers -->
+  <path d="M845 495 C845 520 770 525 670 545" fill="none" stroke="#159570" stroke-width="2.5" marker-end="url(#arrowGreen)"/>
+  <text x="748" y="526" class="label" fill="#24765f">查询事实</text>
+  <path d="M950 730 C990 730 995 730 1020 730" fill="none" stroke="#d97706" stroke-width="2.5" marker-end="url(#arrowOrange)"/>
+  <text x="970" y="716" class="label" fill="#a65b05">校验 / 绑定</text>
+  <path d="M1160 545 C1100 520 1000 505 900 490" fill="none" stroke="#d97706" stroke-width="2.5" stroke-dasharray="7 7" marker-end="url(#arrowOrange)"/>
+  <text x="1022" y="518" class="label" fill="#a65b05">问题与证据回流规划</text>
+
+  <!-- Bottom result pipeline -->
+  <rect x="80" y="885" width="1440" height="112" rx="20" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="112" y="918" class="section">结果语义</text>
+
+  <rect x="300" y="902" width="250" height="54" rx="12" fill="#eef2ff" stroke="#c7d2fe"/>
+  <text x="425" y="925" text-anchor="middle" class="small-title">内容状态</text>
+  <text x="425" y="945" text-anchor="middle" class="small-text">方向建议 · 草案 · 已确认方案</text>
+
+  <rect x="580" y="902" width="250" height="54" rx="12" fill="#ecfdf5" stroke="#bbf7d0"/>
+  <text x="705" y="925" text-anchor="middle" class="small-title">证据覆盖</text>
+  <text x="705" y="945" text-anchor="middle" class="small-text">已查询 · 未知 · 待出发前核实</text>
+
+  <rect x="860" y="902" width="250" height="54" rx="12" fill="#fff7ed" stroke="#fed7aa"/>
+  <text x="985" y="925" text-anchor="middle" class="small-title">校验状态</text>
+  <text x="985" y="945" text-anchor="middle" class="small-text">通过 · 未能检查 · 存在冲突</text>
+
+  <rect x="1140" y="902" width="250" height="54" rx="12" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="1265" y="925" text-anchor="middle" class="small-title">保存状态</text>
+  <text x="1265" y="945" text-anchor="middle" class="small-text">未保存 · 已保存 · 版本号</text>
+
+  <!-- Legend -->
+  <line x1="112" y1="1018" x2="1488" y2="1018" stroke="#dbe3ef"/>
+  <circle cx="128" cy="1032" r="5" fill="#536dfe"/>
+  <text x="142" y="1037" class="small-text">Agent 职责与协商流程</text>
+  <circle cx="332" cy="1032" r="5" fill="#159570"/>
+  <text x="346" y="1037" class="small-text">外部事实与工具结果</text>
+  <circle cx="540" cy="1032" r="5" fill="#d97706"/>
+  <text x="554" y="1037" class="small-text">确定性校验、证据与保存</text>
+  <text x="1488" y="1037" text-anchor="end" class="small-text">讨论稿 · 不代表已实施代码</text>
+</svg>

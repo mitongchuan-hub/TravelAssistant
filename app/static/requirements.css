@@ -1,0 +1,22 @@
+/* Durable requirements editor and the full idea archive. */
+.requirements-intro, .requirements-footer { color: var(--muted); line-height: 1.65; margin: 0; }
+.requirements-notice { margin: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); line-height: 1.65; overflow-wrap: anywhere; }
+.requirements-notice--error { border-color: #b44c4c; color: #8c3030; }
+.requirements-notice a { color: inherit; text-decoration: underline; }
+.requirements-form fieldset { display: grid; gap: 14px; margin: 0; padding: 18px 14px; min-width: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.requirements-form legend { padding: 0 6px; font-size: 16px; font-weight: 700; color: var(--ink); }
+.requirements-form small { color: var(--muted); line-height: 1.6; }
+.requirements-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.requirements-row label, .requirements-form input, .requirements-form select { min-width: 0; }
+.requirements-form select { width: 100%; min-height: 46px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; }
+.requirements-form input[type='date'] { padding-inline: 8px; }
+.requirements-form input[readonly] { color: var(--muted); background: var(--bg); }
+.requirements-form textarea { resize: vertical; }
+.all-ideas { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.all-ideas > summary { padding: 15px; cursor: pointer; font-weight: 600; }
+.all-ideas-list { display: grid; gap: 10px; padding: 0 12px 12px; }
+.idea-list-item { display: grid; gap: 6px; width: 100%; padding: 12px; text-align: left; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--ink); font: inherit; overflow-wrap: anywhere; }
+.idea-list-item span { font-size: 13px; line-height: 1.6; white-space: pre-line; }
+.idea-list-item small { color: var(--muted); }
+.idea-list-item:focus-visible, .requirements-form select:focus-visible { outline: 2px solid var(--ocean); outline-offset: 3px; }
+@media (max-width: 359px) { .requirements-row { grid-template-columns: minmax(0, 1fr); } }

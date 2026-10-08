@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from copy import deepcopy
-from dataclasses import replace
-from datetime import datetime
+from dataclasses import asdict, replace
+from datetime import date, datetime
 from functools import wraps
 from threading import RLock
 from itertools import count
@@ -25,6 +26,11 @@ from .models import (
     TravelPreparation,
     User,
 )
+from .routes import route_from_raw
+from .places import resolve_place
+from .tasks import TravelTasks
+from .plan_validation import PlanValidationError, validate_plan
+from .requirements import chat_changes, initial_requirements, update_requirements
 from .persistence import CURRENT_SCHEMA_VERSION, load_snapshot, restore_state, save_snapshot, serialize_state
 
 USERS = {
@@ -34,8 +40,58 @@ USERS = {
 
 _id_counter = count(100)
 
-MAX_IDEA_CARDS = 8
+IDEA_WALL_LIMIT = 8
 IDEA_ROTATIONS = ["-1.4deg", "1deg", "0.6deg", "-0.8deg", "1.3deg", "0.8deg", "-0.7deg", "1.1deg"]
+
+
+def _date_range_bounds(value: str) -> tuple[date, date] | None:
+    text = (value or "").strip()
+    chinese = re.search(
+        r"(?:(\d{4})年)?(\d{1,2})月(\d{1,2})日\s*[-—至]\s*(?:(\d{4})年)?(?:(\d{1,2})月)?(\d{1,2})日",
+        text,
+    )
+    if chinese:
+        start_year = int(chinese.group(1) or datetime.now().year)
+        start_month = int(chinese.group(2))
+        end_year = int(chinese.group(4) or start_year)
+        end_month = int(chinese.group(5) or start_month)
+        try:
+            return date(start_year, start_month, int(chinese.group(3))), date(end_year, end_month, int(chinese.group(6)))
+        except ValueError:
+            return None
+    dotted = re.search(
+        r"(?:(\d{4})[./])?(\d{1,2})[./](\d{1,2})\s*[-—至]\s*(?:(\d{4})[./])?(\d{1,2})[./](\d{1,2})",
+        text,
+    )
+    if dotted:
+        start_year = int(dotted.group(1) or datetime.now().year)
+        end_year = int(dotted.group(4) or start_year)
+        try:
+            return date(start_year, int(dotted.group(2)), int(dotted.group(3))), date(end_year, int(dotted.group(5)), int(dotted.group(6)))
+        except ValueError:
+            return None
+    return None
+
+
+def _date_coverage_note(trip: Trip, plan: TripPlan) -> str:
+    bounds = _date_range_bounds(trip.date_range)
+    if not bounds or not plan.days:
+        return ""
+    start, end = bounds
+    planned_dates = {day.date.strip() for day in plan.days if day.date.strip()}
+    if not planned_dates:
+        return f"日期范围共 {(end - start).days + 1} 天，具体安排待补充"
+    missing = []
+    current = start
+    while current <= end:
+        if current.isoformat() not in planned_dates:
+            missing.append(current)
+        current = date.fromordinal(current.toordinal() + 1)
+    if not missing:
+        return ""
+    if len(missing) == 1 and missing[0] == end:
+        return f"返程日（{end.month}月{end.day}日）尚未安排"
+    return f"还有 {len(missing)} 天未安排"
 
 
 def _state_locked(method):
@@ -80,11 +136,12 @@ def _preparation_from_raw(raw: object) -> TravelPreparation:
     return TravelPreparation(clothing=items("clothing"), accommodation=items("accommodation"))
 
 
-class DemoStore:
+class DemoStore(TravelTasks):
     def __init__(self, db_path: str | None = None, persistence_enabled: bool | None = None) -> None:
         self.db_path = db_path or os.getenv("TRAVEL_DB_PATH", ".cache/travelassistant.sqlite3")
         self.persistence_enabled = self._resolve_persistence_enabled(persistence_enabled)
         self._lock = RLock()
+        self.tasks: dict[str, dict] = {}
         self._agent_locks: dict[str, RLock] = {}
         self.trips: dict[str, Trip] = {
             "trip-hangzhou": Trip(
@@ -104,6 +161,8 @@ class DemoStore:
         self.plan_versions: dict[str, list[PlanVersion]] = {"trip-hangzhou": []}
         self._save_plan_version("trip-hangzhou", "初版行程草案")
         self.idea_cards: dict[str, list[IdeaCard]] = {"trip-hangzhou": self._seed_idea_cards()}
+        for trip in self.trips.values():
+            trip.requirements = initial_requirements(trip.budget, trip.style)
         self._load_persisted_state()
 
     @staticmethod
@@ -162,10 +221,11 @@ class DemoStore:
             for message in list(messages):
                 if message.status == "thinking":
                     self.fail_agent_task(trip_id, message.id)
+        self.recover_tasks()
 
     @_state_locked
     def _persist(self) -> None:
-        if self.persistence_enabled:
+        if self.persistence_enabled and not getattr(self, '_defer_persist', 0):
             save_snapshot(self.db_path, serialize_state(self, USERS))
 
     def list_trips(self, owner_id: str | None = None) -> list[Trip]:
@@ -203,6 +263,7 @@ class DemoStore:
             "version_count": len(versions),
             "latest_version": latest_version,
             "latest_change": latest_change,
+            "date_coverage_note": _date_coverage_note(self.trips[trip_id], plan),
         }
 
     @_state_locked
@@ -219,6 +280,7 @@ class DemoStore:
             owner=owner,
             status="未生成",
             last_activity="旅行已创建，开始和 Agent 对话",
+            requirements=initial_requirements(budget, style),
         )
         self.trips[trip_id] = trip
         self.messages[trip_id] = [
@@ -242,6 +304,17 @@ class DemoStore:
         self.idea_cards[trip_id] = []
         self._persist()
         return trip
+
+    @_state_locked
+    def update_trip_requirements(self, trip_id: str, changes: dict, expected_revision: int) -> Trip:
+        trip = self.trips[trip_id]
+        if expected_revision != trip.requirements.revision:
+            raise ValueError("旅行需求已经更新，请刷新后再编辑，当前内容未被覆盖")
+        updated = update_requirements(trip, changes)
+        updated.last_activity = "旅行需求已更新"
+        self.trips[trip_id] = updated
+        self._persist()
+        return updated
 
     @_state_locked
     def clear_chat(self, trip_id: str) -> None:
@@ -298,7 +371,7 @@ class DemoStore:
         with self._lock:
             return self._agent_locks.setdefault(trip_id, RLock())
 
-    def _generate_reply(self, trip_id: str, body: str, thinking_message_id: str | None = None, *, planning_requested: bool = False) -> AgentReply | None:
+    def _generate_reply(self, trip_id: str, body: str, thinking_message_id: str | None = None, *, planning_requested: bool = False, target_item_id: str | None = None, agent_role: str | None = None) -> AgentReply | None:
         with self._lock:
             messages = self.messages[trip_id]
             if thinking_message_id:
@@ -313,25 +386,45 @@ class DemoStore:
                 "metrics": self.trip_metrics(trip_id),
             })
         # Only the explicit plan endpoint bypasses conversational intent classification.
+        original_revision = context["trip"].requirements.revision
         reply = generate_agent_reply(
             user_body=body,
             planning_mode=planning_requested,
+            target_item_id=target_item_id,
+            **({'agent_role': agent_role} if agent_role else {}),
             **context,
         )
+        changes = {}
+        if reply and reply.requirements_patch and not planning_requested:
+            try:
+                changes = chat_changes(reply.requirements_patch, body, context["trip"])
+                if changes:
+                    context["trip"] = update_requirements(context["trip"], changes)
+            except ValueError:
+                return replace(self._revision_failure(
+                    "这次需求更新未能确认，原需求已保留。请在旅行需求中检查或直接修改。"
+                ), requirements_revision=original_revision)
         if (
             not planning_requested
             and reply
+            and not reply.orchestrated
             and reply.next_action == "generate_plan"
         ):
-            # Let the model classify a semantic confirmation such as “出一版方案吧”.
-            # Only after that classification do we run the tool and final-plan pass.
+            # The final planning pass must see requirements from this same message.
             planning_reply = generate_agent_reply(
                 user_body=body,
                 planning_mode=True,
                 **context,
             )
-            reply = planning_reply
-        return reply
+            reply = planning_reply or self._revision_failure("需求已记录，但这次生成没有完成，请稍后重试。")
+        if reply and reply.plan:
+            try:
+                validate_plan(reply.plan, context["trip"])
+            except PlanValidationError as exc:
+                reply = self._revision_failure(f"行程安排未通过检查：{exc}。原行程已保留，请调整需求或重新生成。")
+        return replace(reply, requirements_patch=changes, requirements_revision=original_revision,
+                       expected_plan_id=context["plan"].id,
+                       expected_plan_snapshot=asdict(context["plan"])) if reply else None
 
     def finish_agent_task(self, trip_id: str, body: str, sender_id: str, thinking_message_id: str | None = None, *, planning_requested: bool = False) -> None:
         with self._agent_lock(trip_id):
@@ -365,6 +458,7 @@ class DemoStore:
                 id=f"m-{next(_id_counter)}",
                 sender=USERS["agent"],
                 sender_type="agent",
+                status="failed",
                 body="我刚刚没有完成回复，可以直接重新发送上一条消息。",
                 created_at=_now_label(),
                 agent_card=AgentCard(
@@ -428,7 +522,6 @@ class DemoStore:
             rotation=rotation,
         )
         self.idea_cards[trip_id].append(card)
-        self.idea_cards[trip_id] = self.idea_cards[trip_id][-MAX_IDEA_CARDS:]
         self.trips[trip_id].last_activity = "已添加新的旅行想法"
         self._persist()
         return card
@@ -446,10 +539,11 @@ class DemoStore:
             instruction = f"请修改现有行程。用户反馈：{feedback.strip() or '希望安排更轻松一点'}。"
             if target:
                 instruction += f"仅修改条目 id={target.id}（{target.title}），返回完整 plan，目标条目必须带原 id；其他安排保持不变。"
-            reply = self._generate_reply(trip_id, instruction, planning_requested=True)
+            reply = self._generate_reply(trip_id, instruction, planning_requested=True, target_item_id=target.id if target else None, agent_role='revision')
             with self._lock:
                 applied = False
-                if self.plans[trip_id] != original:
+                if self.plans[trip_id] != original or (reply and reply.requirements_revision is not None
+                        and reply.requirements_revision != self.trips[trip_id].requirements.revision):
                     reply = self._revision_failure("行程在处理期间已变化，请基于最新版本重试。")
                 elif reply and reply.plan:
                     if target:
@@ -457,21 +551,18 @@ class DemoStore:
                         if len(matches) != 1:
                             reply = self._revision_failure("模型未能准确定位要修改的条目，原行程保持不变。")
                         else:
-                            raw = matches[0]
-                            updated = replace(target, **{key: raw[key] for key in (
-                                'time', 'title', 'location', 'duration', 'reason', 'notes', 'satisfies', 'category'
-                            )}, meal=_meal_from_raw(raw.get('meal')))
-                            revised = deepcopy(original)
-                            revised.days = [replace(day, items=[updated if item.id == target.id else item for item in day.items]) for day in revised.days]
-                            revised.status = '草案'
-                            revised.id = f"plan-{next(_id_counter)}"
-                            self.plans[trip_id] = revised
-                            self.trips[trip_id].status = '草案'
-                            self._save_plan_version(trip_id, f"修改 {target.title}：{feedback}")
+                            try:
+                                self._apply_agent_revision(trip_id, reply.plan, target.id, reply.verified_places,
+                                                           f"修改 {target.title}：{feedback}")
+                            except PlanValidationError as exc:
+                                self.messages[trip_id].append(self._agent_reply(trip_id, instruction, sender,
+                                    self._revision_failure(f"调整后存在问题：{exc}。原行程已保留。")))
+                                self._persist()
+                                return
                             applied = True
                             reply = replace(reply, plan=None)
                     else:
-                        self._apply_agent_plan(trip_id, reply.plan, f"根据反馈调整：{feedback}")
+                        self._apply_agent_plan(trip_id, reply.plan, f"根据反馈调整：{feedback}", reply.verified_places)
                         applied = True
                         reply = replace(reply, plan=None)
                 if applied:
@@ -486,7 +577,7 @@ class DemoStore:
             body=reason,
             card=AgentCard(kind="missing-info", title="本次未修改行程", summary=reason,
                            bullets=["原行程和版本保持不变"], actions=[AgentAction(label="查看行程", target="itinerary")]),
-            idea_cards=[],
+            idea_cards=[], failed=True,
         )
 
     def _item_title(self, trip_id: str, item_id: str | None) -> str:
@@ -511,8 +602,6 @@ class DemoStore:
                 rotation=rotation,
             )
         )
-        self.idea_cards[trip_id] = self.idea_cards[trip_id][-MAX_IDEA_CARDS:]
-
     @staticmethod
     def _feedback_kind(feedback: str) -> str:
         if any(word in feedback for word in ("预算", "贵", "便宜", "人均")):
@@ -591,7 +680,7 @@ class DemoStore:
         if reply:
             self._add_agent_idea_cards(trip_id, reply.idea_cards, sender)
             if reply.plan:
-                self._apply_agent_plan(trip_id, reply.plan, change_summary)
+                self._apply_agent_plan(trip_id, reply.plan, change_summary, reply.verified_places)
             card = reply.card
             body = reply.body
         else:
@@ -607,9 +696,33 @@ class DemoStore:
 
     def _agent_reply(self, trip_id: str, body: str, sender: User | None = None, llm_reply: AgentReply | None = None) -> Message:
         if llm_reply:
+            trip = self.trips[trip_id]
+            if llm_reply.requirements_revision is not None and llm_reply.requirements_revision != trip.requirements.revision:
+                llm_reply = self._revision_failure("旅行需求在处理期间已更新，请基于最新需求重试。当前需求和行程已保留。")
+            elif (llm_reply.plan or llm_reply.version_action) and (
+                llm_reply.expected_plan_id is not None and llm_reply.expected_plan_id != self.plans[trip_id].id
+                or llm_reply.expected_plan_snapshot is not None and llm_reply.expected_plan_snapshot != asdict(self.plans[trip_id])
+            ):
+                llm_reply = self._revision_failure("行程在处理期间已变化，请基于最新行程重试。当前行程和版本已保留。")
+            elif llm_reply.requirements_patch:
+                self.trips[trip_id] = update_requirements(trip, llm_reply.requirements_patch)
+                if llm_reply.failed:
+                    llm_reply = replace(llm_reply, body='本轮明确的需求变更已保存。\n\n' + llm_reply.body)
             self._add_agent_idea_cards(trip_id, llm_reply.idea_cards, sender)
             if llm_reply.plan:
-                self._apply_agent_plan(trip_id, llm_reply.plan)
+                if llm_reply.target_item_id:
+                    self._apply_agent_revision(trip_id, llm_reply.plan, llm_reply.target_item_id, llm_reply.verified_places)
+                else:
+                    self._apply_agent_plan(trip_id, llm_reply.plan, verified_places=llm_reply.verified_places)
+            if llm_reply.version_action:
+                action = llm_reply.version_action
+                if action.get('operation') == 'confirm' and action.get('version_id') == self.plans[trip_id].id and self.plans[trip_id].days:
+                    self.plans[trip_id].status = self.trips[trip_id].status = '已确认'
+                    self._save_plan_version(trip_id, '确认当前行程')
+                elif action.get('operation') == 'restore' and self.restore_plan_version(trip_id, action.get('version_id', '')):
+                    pass
+                else:
+                    llm_reply = self._revision_failure('目标版本已变化，本次没有确认或恢复行程。')
             return Message(
                 id=f"m-{next(_id_counter)}",
                 sender=USERS["agent"],
@@ -617,10 +730,11 @@ class DemoStore:
                 body=llm_reply.body,
                 created_at=_now_label(),
                 agent_card=llm_reply.card,
+                status="failed" if llm_reply.failed else "sent",
             )
 
         return Message(
-            id=f"m-{next(_id_counter)}", sender=USERS["agent"], sender_type="agent",
+            id=f"m-{next(_id_counter)}", sender=USERS["agent"], sender_type="agent", status="failed",
             body="模型服务当前不可用，本次未生成或修改行程。你的消息已保留，请稍后重试。",
             created_at=_now_label(),
             agent_card=AgentCard(
@@ -667,7 +781,6 @@ class DemoStore:
                     rotation=rotation,
                 )
             )
-        self.idea_cards[trip_id] = self.idea_cards[trip_id][-MAX_IDEA_CARDS:]
 
     def _local_summary_reply(self, trip_id: str) -> Message:
         recent_user_messages = [message for message in self.messages[trip_id][-12:] if message.sender_type == "user"]
@@ -734,11 +847,44 @@ class DemoStore:
                 return index
         return None
 
-    def _apply_agent_plan(self, trip_id: str, raw_plan: dict, change_summary: str | None = None) -> None:
+    def _apply_agent_revision(self, trip_id: str, raw_plan: dict, target_id: str, verified_places: dict, change_summary: str | None = None) -> None:
+        """Apply a delegated chat revision with the same scope as the item editor."""
+        original = self.plans[trip_id]
+        target = next((item for day in original.days for item in day.items if item.id == target_id), None)
+        matches = [item for day in raw_plan['days'] for item in day['items'] if item.get('id') == target_id]
+        if target is None or len(matches) != 1:
+            raise PlanValidationError('目标行程条目已变化，原行程保持不变')
+        raw = matches[0]
+        same_place = raw.get('place_scope') != 'area' and all(raw.get(key) == getattr(target, key) for key in ('title', 'location', 'category'))
+        updated = replace(target, **{key: raw[key] for key in (
+            'time', 'title', 'location', 'duration', 'reason', 'notes', 'satisfies', 'category'
+        )}, meal=_meal_from_raw(raw.get('meal')),
+            place=resolve_place(raw, verified_places) or (target.place if same_place else None),
+            place_scope=target.place_scope if same_place else raw.get('place_scope', 'unknown'),
+            travel_mode=raw.get('travel_mode', 'transit'))
+        revised = deepcopy(original)
+        route_items = {item.get('id'): item for day in raw_plan['days'] for item in day['items']}
+        revised.days = [replace(day, items=[replace(updated if item.id == target_id else item,
+            incoming_route=route_from_raw(route_items.get(item.id, {}).get('incoming_route')),
+            departure_route=route_from_raw(route_items.get(item.id, {}).get('departure_route')))
+            for item in day.items]) for day in revised.days]
+        revised.pending_items = list(raw_plan.get('pending_items', revised.pending_items))
+        revised.risks = list(raw_plan.get('risks', revised.risks))
+        validate_plan(revised, self.trips[trip_id])
+        revised.id = f'plan-{next(_id_counter)}'
+        revised.status = self.trips[trip_id].status = '草案'
+        self.plans[trip_id] = revised
+        self._save_plan_version(trip_id, change_summary or f'根据聊天反馈调整：{target.title}')
+
+    def _apply_agent_plan(self, trip_id: str, raw_plan: dict, change_summary: str | None = None, verified_places: dict | None = None) -> None:
+        validate_plan(raw_plan, self.trips[trip_id])
         days = []
+        existing_items = {item.id: item for day in self.plans[trip_id].days for item in day.items}
         for day_index, raw_day in enumerate(raw_plan.get("days", []), start=1):
             items = []
             for item_index, raw_item in enumerate(raw_day.get("items", []), start=1):
+                previous = existing_items.get(raw_item.get('id'))
+                same_place = previous and raw_item.get('place_scope') != 'area' and all(str(raw_item.get(key) or '') == getattr(previous, key) for key in ('title', 'location', 'category'))
                 items.append(
                     TripItem(
                         id=f"item-{next(_id_counter)}",
@@ -751,6 +897,11 @@ class DemoStore:
                         satisfies=[str(item) for item in raw_item.get("satisfies", [])],
                         category=str(raw_item.get("category") or "activity"),
                         meal=_meal_from_raw(raw_item.get("meal")),
+                        place=resolve_place(raw_item, verified_places) or (previous.place if same_place else None),
+                        travel_mode=raw_item.get('travel_mode', 'transit'),
+                        incoming_route=route_from_raw(raw_item.get('incoming_route')),
+                        departure_route=route_from_raw(raw_item.get('departure_route')),
+                        place_scope=previous.place_scope if same_place else ("area" if raw_item.get("place_scope") == "area" else "unknown"),
                     )
                 )
             if items:

@@ -8,13 +8,16 @@ import uuid
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
+from time import monotonic
+from copy import deepcopy
 
 from dotenv import load_dotenv
 
+from .routes import seed_places
+from .places import collect_places
+from .plan_validation import PlanValidationError
 from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripPlan
-from .prompts import BASE_SYSTEM_PROMPT, CHAT_PROMPT, FINALIZE_TRIP_PLAN_PROMPT, GATHER_TRIP_INFORMATION_PROMPT
-from .tools import run_tool, tool_specs
-from .response_schema import TRAVEL_RESULT_RESPONSE_FORMAT
+from .tools import run_tool
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -29,18 +32,24 @@ class AgentReply:
     idea_cards: list[dict]
     plan: dict | None = None
     next_action: str = "continue_chat"
+    requirements_patch: dict = field(default_factory=dict)
+    requirements_revision: int | None = None
+    failed: bool = False
+    expected_plan_id: str | None = None
+    verified_places: dict = field(default_factory=dict)
+    orchestrated: bool = False
+    target_item_id: str | None = None
+    version_action: dict = field(default_factory=dict)
+    expected_plan_snapshot: dict | None = None
+    needs_input: bool = False
 
 
 VALID_CARD_KINDS = {"requirement-summary", "missing-info", "conflict", "itinerary-draft", "revision"}
 VALID_IDEA_KINDS = {"地点", "预算", "节奏", "禁忌", "待归类"}
 
 
-MAX_TOOL_ROUNDS = 1
 MAX_CONTEXT_MESSAGES = 12
 MAX_CONTEXT_VERSIONS = 3
-
-
-SYSTEM_PROMPT = f"{BASE_SYSTEM_PROMPT}\n\n{CHAT_PROMPT}"
 
 
 class ModelOutputError(ValueError):
@@ -97,6 +106,8 @@ def generate_agent_reply(
     plan_versions: list[PlanVersion] | None = None,
     metrics: dict[str, int | str] | None = None,
     planning_mode: bool = False,
+    target_item_id: str | None = None,
+    agent_role: str | None = None,
 ) -> AgentReply | None:
     trace = ConversationTrace(
         request_id=uuid.uuid4().hex[:12],
@@ -120,8 +131,10 @@ def generate_agent_reply(
         trace.write()
         return None
 
+    client = None
+    route_cache = {}
     try:
-        from openai import BadRequestError, OpenAI
+        from openai import OpenAI
 
         client = OpenAI(
             api_key=os.getenv("OPENAI_API_KEY"),
@@ -130,36 +143,47 @@ def generate_agent_reply(
             max_retries=0,
         )
         model = os.getenv("OPENAI_MODEL") or os.getenv("MODEL_ID") or "qwen-plus"
-        context = _build_context(
-            trip,
-            messages,
-            user_body,
-            idea_cards=idea_cards,
-            plan=plan,
-            plan_versions=plan_versions,
-            metrics=metrics,
-        )
-
+        context = _build_chat_context(messages, user_body)
+        snapshot = deepcopy({
+            'trip': trip, 'messages': messages, 'user_body': user_body,
+            'idea_cards': idea_cards or [], 'plan': plan,
+            'plan_versions': plan_versions or [], 'metrics': metrics or {},
+            'recent_chat': [{'id': m.id, 'role': m.sender_type, 'body': m.body}
+                            for m in messages if m.status == 'sent'][-8:],
+            'current_date': datetime.now().date().isoformat(),
+        })
+        place_catalog = seed_places(plan)
+        route_cache = {}
         try:
-            response = _request_model(client, model, context, planning_mode, trace=trace)
+            response = _request_model(client, model, context, planning_mode, trace=trace, trip=trip, place_catalog=place_catalog, route_cache=route_cache, existing_plan=plan, target_item_id=target_item_id, snapshot=snapshot, agent_role=agent_role)
         except Exception as exc:
             fallback_model = os.getenv("OPENAI_FALLBACK_MODEL", "qwen-plus").strip()
             if not _is_rate_limit_error(exc) or not fallback_model or fallback_model == model:
                 raise
             logger.warning("Primary model was rate limited; trying fallback model")
             trace.add("切换备用模型", {"from": model, "to": fallback_model, "reason": str(exc)})
-            response = _request_model(client, fallback_model, context, planning_mode, trace=trace)
+            response = _request_model(client, fallback_model, context, planning_mode, trace=trace, trip=trip, place_catalog=place_catalog, route_cache=route_cache, existing_plan=plan, target_item_id=target_item_id, snapshot=snapshot, agent_role=agent_role)
 
-        content = (response.choices[0].message.content or "").strip()
-        trace.add("最终模型原始回复", content)
+        content = (response.choices[0].message.content or '').strip() if response else ''
+        trace.add('最终模型原始回复', content)
+        runtime_reply = route_cache.get('final_reply')
+        if runtime_reply is not None:
+            body = runtime_reply.body
+            if runtime_reply.plan and any(text.startswith('路线待核实：') for text in runtime_reply.plan.get('pending_items', [])):
+                body += '\n\n部分地点或路段尚待核实，当前尚未完成全部路线可行性检查，详见行程中的待确认事项。'
+            return replace(runtime_reply, body=body, verified_places=place_catalog)
         if not content:
-            raise ValueError("Empty model response")
+            raise ValueError('Empty model response')
         try:
             reply = _parse_planning_reply(content) if planning_mode else _parse_reply(content)
             if not planning_mode and reply.plan is not None:
                 trace.add("普通聊天响应", "忽略模型擅自返回的 plan；普通聊天不更新行程。")
                 reply = replace(reply, plan=None)
-            return reply
+            final_plan = route_cache.get('final_plan', reply.plan)
+            body = reply.body
+            if final_plan and any(text.startswith('路线待核实：') for text in final_plan.get('pending_items', [])):
+                body += '\n\n部分地点或路段尚待核实，当前尚未完成全部路线可行性检查，详见行程中的待确认事项。'
+            return replace(reply, verified_places=place_catalog, plan=final_plan, body=body)
         except json.JSONDecodeError:
             # Plain text is usable; broken structured output is not a successful reply.
             if planning_mode or content.startswith(("{", "[", "```")):
@@ -182,8 +206,25 @@ def generate_agent_reply(
         # The standard application logger still avoids provider responses and credentials.
         status_code = getattr(exc, "status_code", None)
         logger.warning("Agent reply failed (%s, status=%s)", type(exc).__name__, status_code)
+        def failed_reply(**kwargs):
+            reply = AgentReply(**kwargs)
+            patch = route_cache.get('requirements_patch', {})
+            ideas = route_cache.get('idea_cards', [])
+            return replace(reply, requirements_patch=patch, idea_cards=ideas, orchestrated=True) if patch or ideas else reply
+        from .agent_runtime import AgentBudgetError
+        if isinstance(exc, AgentBudgetError):
+            return failed_reply(body=str(exc), card=AgentCard('missing-info', '本次任务已停止', str(exc), [], []),
+                                idea_cards=[], failed=True)
+        if isinstance(exc, PlanValidationError):
+            reason = str(exc)
+            return failed_reply(
+                body=f"行程安排未通过检查：{reason}。本次未保存新版本，原行程已保留。",
+                card=AgentCard(kind="conflict", title="行程安排需要调整", summary="日期、时间或抵离边界存在问题。",
+                    bullets=[reason, "请调整需求或重新生成"], actions=[AgentAction(label="查看原行程", target="itinerary")]),
+                idea_cards=[], failed=True,
+            )
         if isinstance(exc, ModelOutputError):
-            return AgentReply(
+            return failed_reply(
                 body="模型已返回内容，但行程结构不符合要求，本次未保存新版本，原行程保持不变。请稍后重试。",
                 card=AgentCard(
                     kind="missing-info", title="行程格式校验失败",
@@ -191,10 +232,10 @@ def generate_agent_reply(
                     bullets=["原行程和历史版本已保留", "不是 API Key 或登录问题", "可以稍后重新生成"],
                     actions=[AgentAction(label="查看原行程", target="itinerary")],
                 ),
-                idea_cards=[],
+                idea_cards=[], failed=True,
             )
         if type(exc).__name__ == "RateLimitError" or status_code == 429:
-            return AgentReply(
+            return failed_reply(
                 body="模型服务当前比较繁忙，你的消息已保留，请稍后再试。",
                 card=AgentCard(
                     kind="missing-info",
@@ -203,11 +244,11 @@ def generate_agent_reply(
                     bullets=["消息已经保留", "稍后可以重新生成", "也可以先继续补充饮食和穿衣偏好"],
                     actions=[AgentAction(label="稍后重试", target="chat")],
                 ),
-                idea_cards=[],
+                idea_cards=[], failed=True,
                 plan=None,
             )
         if "timeout" in type(exc).__name__.lower():
-            return AgentReply(
+            return failed_reply(
                 body="模型服务响应超时，你的消息已保留，请稍后重试。",
                 card=AgentCard(
                     kind="missing-info",
@@ -216,10 +257,10 @@ def generate_agent_reply(
                     bullets=["消息已经保留", "稍后可以重新生成", "复杂行程可能需要更长时间"],
                     actions=[AgentAction(label="稍后重试", target="chat")],
                 ),
-                idea_cards=[],
+                idea_cards=[], failed=True,
                 plan=None,
             )
-        return AgentReply(
+        return failed_reply(
             body="这次模型回复没有完成，你的消息已保留，请稍后重试。",
             card=AgentCard(
                 kind="missing-info",
@@ -228,118 +269,44 @@ def generate_agent_reply(
                 bullets=["消息已经保留", "请检查模型服务配置", "稍后可以直接重新发送"],
                 actions=[AgentAction(label="查看旅行想法", target="board")],
             ),
-            idea_cards=[],
+            idea_cards=[], failed=True,
             plan=None,
         )
     finally:
+        if client is not None and callable(getattr(client, 'close', None)):
+            client.close()
         if not any(event.startswith("\n==================== 调用异常") for event in trace.events):
             trace.write()
 
 
-def _request_model(client, model: str, context: str, planning_mode: bool, *, trace: ConversationTrace | None = None) -> object:
-    if planning_mode:
-        tool_messages = []
-        try:
-            tool_messages = _collect_tool_messages(client, model, context, trace=trace)
-        except Exception as exc:
-            # Some OpenAI-compatible providers expose chat completions but not tools.
-            # The final structured call can still produce a useful plan without weather.
-            if _looks_like_unsupported_tools(exc) and type(exc).__name__ == "BadRequestError":
-                logger.info("Model does not support tool calls; continuing without tools")
-            else:
-                raise
-        messages = [
-            {"role": "system", "content": f"{BASE_SYSTEM_PROMPT}\n\n{FINALIZE_TRIP_PLAN_PROMPT}"},
-            {"role": "user", "content": context},
-            *tool_messages,
-        ]
-        for attempt in range(2):
-            response = _create_chat_completion(
-                client, model, messages, response_format={"type": "json_object"}, trace=trace,
-            )
-            content = (response.choices[0].message.content or "").strip()
-            try:
-                _parse_planning_reply(content)
-                return response
-            except ModelOutputError as exc:
-                if trace:
-                    trace.add("行程格式校验", {"attempt": attempt + 1, "content": content, "error": str(exc)})
-                if attempt == 1:
-                    raise ModelOutputError(f"行程重生成后仍未通过校验：{exc}") from exc
-                messages = [*messages,
-                    {"role": "assistant", "content": content},
-                    {"role": "user", "content": (
-                        f"上次输出未通过结构校验：{exc}。请依据原始旅行信息和已有工具结果重新输出完整 JSON。"
-                        "严格使用模板字段名，不得为键名添加冒号、句点等前缀；days 必须位于 plan 下，"
-                        "每天和每个行程项必须是完整对象，不能用编号数组代替。"
-                        "不要只返回修改说明或局部补丁，也不要再次查询工具。"
-                    )},
-                ]
+def _request_model(client, model: str, context: str, planning_mode: bool, *, trace: ConversationTrace | None = None, trip: Trip | None = None, place_catalog: dict | None = None, route_cache: dict | None = None, existing_plan: TripPlan | None = None, target_item_id: str | None = None, snapshot: dict | None = None, agent_role: str | None = None) -> object:
+    from .agent_runtime import TravelAgentRuntime
+    snapshot = snapshot or {'trip': trip, 'plan': existing_plan, 'user_body': context,
+                            'current_date': datetime.now().date().isoformat()}
+    runtime = TravelAgentRuntime(client, model, snapshot, trace=trace,
+                                 catalog=place_catalog, cache=route_cache, request=_create_chat_completion)
+    role = (agent_role or ('revision' if target_item_id else 'planning')) if planning_mode else 'main'
+    scope = 'item' if target_item_id else ('all' if role == 'revision' else '')
+    return runtime.run(role, snapshot['user_body'], scope=scope, target_item_id=target_item_id)
 
-    return _create_chat_completion(
-        client,
-        model,
-        [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": context},
-        ],
-        trace=trace,
-    )
+
+def _build_chat_context(messages: list[Message], user_body: str) -> str:
+    recent = [{'role': message.sender_type, 'body': message.body}
+              for message in messages if message.status == 'sent'][-8:]
+    return json.dumps({'current_date': datetime.now().date().isoformat(),
+                       'conversation': recent, 'user_message': user_body}, ensure_ascii=False)
+
+
+
+
+
+
 
 
 def _is_rate_limit_error(exc: Exception) -> bool:
     return type(exc).__name__ == "RateLimitError" or getattr(exc, "status_code", None) == 429
 
 
-def _collect_tool_messages(client, model: str, context: str, *, trace: ConversationTrace | None = None) -> list[dict]:
-    messages: list[dict] = [
-        {"role": "system", "content": f"{BASE_SYSTEM_PROMPT}\n\n{GATHER_TRIP_INFORMATION_PROMPT}"},
-        {"role": "user", "content": context},
-    ]
-    tool_messages: list[dict] = []
-    for _ in range(MAX_TOOL_ROUNDS):
-        response = _create_chat_completion(client, model, messages, tools=tool_specs(), trace=trace)
-        assistant = response.choices[0].message
-        calls = list(getattr(assistant, "tool_calls", None) or [])
-        if not calls:
-            break
-        assistant_message = {"role": "assistant", "content": getattr(assistant, "content", None) or ""}
-        assistant_message["tool_calls"] = []
-        for call in calls:
-            function = getattr(call, "function", None)
-            assistant_message["tool_calls"].append({
-                "id": getattr(call, "id", "tool-call"),
-                "type": "function",
-                "function": {
-                    "name": getattr(function, "name", ""),
-                    "arguments": getattr(function, "arguments", "{}") or "{}",
-                },
-            })
-        messages.append(assistant_message)
-        tool_messages.append(assistant_message)
-        for call in calls:
-            function = getattr(call, "function", None)
-            name = getattr(function, "name", "")
-            raw_arguments = getattr(function, "arguments", "{}") or "{}"
-            arguments: object = raw_arguments
-            try:
-                arguments = json.loads(raw_arguments)
-                if not isinstance(arguments, dict):
-                    raise ValueError("tool arguments must be an object")
-                result = run_tool(name, arguments)
-            except (TypeError, ValueError, json.JSONDecodeError):
-                result = {"status": "unavailable", "reason": "工具参数无法解析，结果待确认。"}
-            if trace:
-                trace.add("工具执行", {"name": name, "arguments": arguments, "result": result})
-            tool_message = {
-                "role": "tool",
-                "tool_call_id": getattr(call, "id", "tool-call"),
-                "name": name,
-                "content": json.dumps(result, ensure_ascii=False),
-            }
-            messages.append(tool_message)
-            tool_messages.append(tool_message)
-    return tool_messages
 
 
 def _looks_like_unsupported_tools(exc: Exception) -> bool:
@@ -355,23 +322,51 @@ def _create_chat_completion(
     tools: list[dict] | None = None,
     response_format: dict | None = None,
     trace: ConversationTrace | None = None,
+    budget=None,
+    reasoning_effort: str | None = None,
+    agent_role: str | None = None,
 ) -> object:
     from openai import BadRequestError
 
     params: dict[str, object] = {"model": model, "messages": messages}
+    rejection_key = (str(getattr(client, 'base_url', '')), model, reasoning_effort or '')
+    rejections = budget.reasoning_rejections if budget is not None else set()
+    reasoning_status = 'provider_default'
+    if reasoning_effort is not None:
+        if rejection_key in rejections:
+            reasoning_status = 'provider_default_after_rejection'
+        else:
+            params['reasoning_effort'] = reasoning_effort
+            reasoning_status = 'requested'
     if tools:
         params["tools"] = tools
     if response_format:
         params["response_format"] = response_format
-    if trace:
-        trace.add("模型请求", {"model": model, "params": params})
-
     while True:
         try:
+            if budget is not None:
+                budget.model()
+                params['timeout'] = min(float(os.getenv('OPENAI_TIMEOUT_SECONDS', '180')), budget.remaining())
+            if trace:
+                trace.add('模型请求', {'model': model, 'agent_role': agent_role, 'params': params,
+                                     'reasoning': {'requested': reasoning_effort, 'sent': params.get('reasoning_effort'),
+                                                   'status': reasoning_status}})
+            started = monotonic()
             response = client.chat.completions.create(**params)
             if trace:
                 message = response.choices[0].message
+                usage = getattr(response, 'usage', None)
+                details = getattr(usage, 'completion_tokens_details', None)
                 trace.add("模型响应", {
+                    'agent_role': agent_role,
+                    'seconds': round(monotonic() - started, 3),
+                    'reasoning_effort_sent': params.get('reasoning_effort'),
+                    'reasoning_status': 'parameter_accepted' if 'reasoning_effort' in params else reasoning_status,
+                    'usage': {
+                        'prompt_tokens': getattr(usage, 'prompt_tokens', None),
+                        'completion_tokens': getattr(usage, 'completion_tokens', None),
+                        'reasoning_tokens': getattr(details, 'reasoning_tokens', None),
+                    },
                     "content": getattr(message, "content", None),
                     "tool_calls": [
                         {
@@ -385,6 +380,16 @@ def _create_chat_completion(
             return response
         except BadRequestError as exc:
             text = str(exc).lower()
+            if 'reasoning_effort' in params and _rejects_reasoning_effort(exc):
+                rejections.add(rejection_key)
+                params.pop('reasoning_effort')
+                reasoning_status = 'provider_default_after_rejection'
+                logger.info('Model rejected reasoning_effort; retrying with provider default')
+                if trace:
+                    trace.add('思考参数降级', {'model': model, 'agent_role': agent_role,
+                                           'requested': reasoning_effort, 'sent': None,
+                                           'status': reasoning_status, 'reason': '服务明确拒绝该思考参数或档位；移除参数后重试一次。'})
+                continue
             if "response_format" in params and _looks_like_unsupported_response_format(text):
                 if isinstance(params["response_format"], dict) and params["response_format"].get("type") == "json_schema":
                     if trace:
@@ -398,6 +403,24 @@ def _create_chat_completion(
             if "tools" in params and _looks_like_unsupported_tools(exc):
                 raise
             raise
+
+
+def _rejects_reasoning_effort(exc: Exception) -> bool:
+    """Only drop effort when the provider explicitly rejects that parameter/value."""
+    body = getattr(exc, 'body', None)
+    error = body.get('error', body) if isinstance(body, dict) else {}
+    error = error if isinstance(error, dict) else {}
+    text = str(error.get('message') or exc).lower()
+    parameter = str(error.get('param') or '').lower()
+    mentions_effort = 'reasoning_effort' in text or parameter == 'reasoning_effort'
+    rejects = any(term in text for term in (
+        'not supported', 'unsupported', 'not support', 'does not support', 'not allowed',
+        'unknown parameter', 'unrecognized', 'unrecognised', 'unexpected keyword',
+        'invalid', 'must be one of', 'only supports', 'not available', '不支持', '无效',
+    )) or str(error.get('code') or '') in {'unsupported_parameter', 'unsupported_value', 'unknown_parameter', 'invalid_parameter_error'}
+    # A generic tools/schema error mentioning effort is not enough to drop it.
+    conflicting_parameter = parameter and parameter != 'reasoning_effort'
+    return bool(mentions_effort and rejects and not conflicting_parameter)
 
 
 def _looks_like_unsupported_response_format(text: str) -> bool:
@@ -446,6 +469,12 @@ def _build_context(
             f"预算：{trip.budget}",
             f"风格：{trip.style}",
             f"备注：{trip.note or '无'}",
+            "",
+            "旅行需求档案 / 当前有效要求（优先于旧消息、旧想法和旧行程；未填写的字段保持待定，不从历史自动恢复已移除的需求）：",
+            json.dumps(asdict(trip.requirements), ensure_ascii=False),
+            "抵离边界（旅游城市当地时间）：",
+            f"到达：{trip.requirements.start_date or '日期待定'} {trip.requirements.arrival_time or '时间待定'}；离开：{trip.requirements.end_date or '日期待定'} {trip.requirements.departure_time or '时间待定'}。首末日按实际可用时间安排，未知时间不得假定为全天。",
+            f"抵达地点：{trip.requirements.arrival_location or '待确认'}；离开地点：{trip.requirements.departure_location or '待确认'}；地点名称由用户提供，不代表坐标和接驳耗时已核实。",
             "",
             "全局整理指标：",
             *(metric_lines or ["- 暂无指标"]),
@@ -513,6 +542,9 @@ def _parse_reply(content: str, *, strict_plan: bool = False) -> AgentReply:
     else:
         actions = [AgentAction(label="查看行程" if action_target == "itinerary" else "查看旅行想法", target=action_target)]
 
+    patch = data.get("requirements_patch", {})
+    if not isinstance(patch, dict):
+        raise ValueError("Requirements patch must be an object")
     return AgentReply(
         body=body.strip(),
         card=AgentCard(
@@ -525,6 +557,7 @@ def _parse_reply(content: str, *, strict_plan: bool = False) -> AgentReply:
         next_action=next_action,
         idea_cards=_parse_idea_cards(data.get("idea_cards")),
         plan=_parse_plan(data.get("plan")),
+        requirements_patch=patch,
     )
 
 
@@ -618,6 +651,9 @@ def _parse_plan(raw_plan: object) -> dict | None:
                     "notes": str(raw_item.get("notes") or "可以继续在对话里调整。").strip()[:120],
                     "satisfies": [str(item).strip()[:16] for item in satisfies if str(item).strip()][:4],
                     "category": category,
+                    "travel_mode": raw_item.get('travel_mode') if raw_item.get('travel_mode') in ('walking', 'transit', 'driving') else 'transit',
+                    "poi_id": str(raw_item.get("poi_id") or ""),
+                    "place_scope": "area" if raw_item.get("place_scope") == "area" else "unknown",
                     "meal": _parse_meal(raw_item.get("meal")),
                 }
             )

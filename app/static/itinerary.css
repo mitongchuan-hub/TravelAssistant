@@ -1,0 +1,429 @@
+/* Itinerary layout loads after the shared theme. */
+.phone-shell--itinerary {
+  overflow: clip; /* Clip the shell without making it a scroll container. */
+}
+
+.itinerary-screen {
+  --day-nav-height: 78px;
+  --time-width: 64px;
+  --time-gap: 22px;
+}
+
+.itinerary-day-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: calc(8px + env(safe-area-inset-top)) 2px 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  scrollbar-width: thin;
+  scroll-padding-inline: 2px;
+}
+
+.itinerary-day-nav a {
+  display: grid;
+  flex: 0 0 auto;
+  min-width: 82px;
+  max-width: 150px;
+  min-height: 56px;
+  align-content: center;
+  gap: 3px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+
+.itinerary-day-nav a span {
+  font-size: 11px;
+}
+
+.itinerary-day-nav a strong {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.itinerary-day-nav a[aria-current] {
+  border-color: var(--ocean);
+  background: var(--mist);
+  color: var(--navy);
+}
+
+.itinerary-screen .day-block,
+.itinerary-screen .timeline-item {
+  scroll-margin-top: calc(var(--day-nav-height) + 16px);
+}
+
+.itinerary-screen .day-block {
+  gap: 0;
+  padding: 0;
+}
+
+.itinerary-screen .day-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 14px 0 18px;
+}
+
+.itinerary-screen .day-heading > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.itinerary-screen .day-heading h3 {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.itinerary-screen .day-heading h3 span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.itinerary-screen .day-heading p {
+  display: block;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.itinerary-screen .day-item-count {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  padding: 2px 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.itinerary-screen .timeline-item {
+  grid-template-columns: var(--time-width) minmax(0, 1fr);
+  gap: var(--time-gap);
+  padding-bottom: 18px;
+}
+
+.itinerary-screen .timeline-item::before {
+  top: 17px;
+  bottom: -17px;
+  left: calc(var(--time-width) + 9px);
+  width: 1px;
+  background: var(--line);
+}
+
+.itinerary-screen .timeline-item:last-child::before {
+  display: none;
+}
+
+.itinerary-screen .timeline-item::after {
+  position: absolute;
+  left: calc(var(--time-width) + 5px);
+  top: 13px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--ocean);
+  border-radius: 50%;
+  background: var(--ocean);
+  content: '';
+}
+
+.itinerary-screen .timeline-time {
+  display: flex;
+  align-self: start;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 0;
+  margin: 0;
+  padding: 9px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.itinerary-screen .timeline-time-end {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.itinerary-screen .timeline-item > .timeline-card {
+  min-width: 0;
+  gap: 7px;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  overflow-wrap: anywhere;
+}
+
+.itinerary-screen .timeline-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.itinerary-screen .item-category {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.itinerary-screen .timeline-adjust {
+  min-width: 44px;
+  min-height: 44px;
+  margin: -6px -4px -4px 0;
+  padding: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ocean);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.itinerary-screen .timeline-adjust:hover {
+  background: var(--mist);
+}
+
+.itinerary-screen .timeline-card h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.itinerary-screen .timeline-card p,
+.itinerary-screen .timeline-card small {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+.itinerary-screen .timeline-details > summary {
+  min-height: 44px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.itinerary-screen .timeline-item--transport > .timeline-card,
+.itinerary-screen .timeline-item--rest > .timeline-card {
+  border-color: transparent;
+  background: var(--surface-accent);
+  box-shadow: none;
+}
+
+.itinerary-screen .timeline-item--transport::after,
+.itinerary-screen .timeline-item--rest::after {
+  border-color: var(--muted);
+  background: var(--bg);
+}
+
+.itinerary-screen .timeline-item--transport h4,
+.itinerary-screen .timeline-item--rest h4 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.itinerary-screen .meal-recommendation {
+  margin: 0;
+  padding: 10px;
+  border-left: 2px solid var(--ocean);
+  background: var(--surface-accent);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.itinerary-screen .meal-recommendation span {
+  color: var(--muted);
+}
+
+.revision-sheet {
+  position: fixed;
+  inset: auto 0 0;
+  width: min(100%, 430px);
+  max-width: 100%;
+  max-height: calc(100dvh - 16px);
+  margin: 0 auto;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 22px 22px 0 0;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 -12px 36px rgb(17 45 78 / 14%);
+}
+
+.revision-sheet::backdrop {
+  background: rgb(17 45 78 / 40%);
+}
+
+html.revision-sheet-open {
+  overflow: hidden;
+}
+
+.revision-sheet-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.revision-sheet-heading h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.revision-sheet-heading button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.revision-sheet-context {
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--surface-strong);
+  overflow-wrap: anywhere;
+}
+
+.revision-sheet-context strong {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.revision-sheet-context p {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.revision-sheet form {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.revision-sheet label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.revision-sheet textarea {
+  width: 100%;
+  min-height: 110px;
+  max-height: 32dvh;
+  padding: 12px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.revision-sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 8px;
+}
+
+.revision-sheet-actions button {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.revision-sheet-actions button[type='submit'] {
+  border-color: var(--ocean);
+  background: var(--ocean);
+  color: var(--on-action);
+}
+
+.revision-sheet-feedback,
+.itinerary-update-notice {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.itinerary-update-notice:not([hidden]) {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-accent);
+}
+
+.revision-sheet button:disabled,
+.itinerary-screen .timeline-adjust:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+@media (max-width: 360px) {
+  .itinerary-screen {
+    --time-width: 56px;
+    --time-gap: 18px;
+  }
+  .itinerary-screen .timeline-item > .timeline-card {
+    padding-inline: 10px;
+  }
+  .revision-sheet {
+    padding-inline: 16px;
+  }
+}

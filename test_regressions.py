@@ -368,13 +368,19 @@ def test_planning_tool_loop_preserves_assistant_tool_call_and_result(monkeypatch
         SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=None, tool_calls=[call]))]),
         SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="已完成", tool_calls=[]))]),
     ]
-    monkeypatch.setattr(agent_client, "_create_chat_completion", lambda *args, **kwargs: responses.pop(0))
-    monkeypatch.setattr(agent_client, "run_tool", lambda name, arguments: {"status": "available", "city": arguments["city"]})
-    messages = agent_client._collect_tool_messages(object(), "test-model", "context")
-    assert messages[0]["role"] == "assistant"
-    assert messages[0]["tool_calls"][0]["function"]["name"] == "query_weather"
-    assert messages[1]["role"] == "tool"
-    assert '"city": "杭州"' in messages[1]["content"]
+    from app.agent_runtime import TravelAgentRuntime
+    requests = []
+    def request(*args, **kwargs):
+        requests.append(deepcopy(args[2]))
+        return responses.pop(0)
+    monkeypatch.setattr(agent_client, 'run_tool', lambda name, arguments: {'status': 'available', 'city': arguments['city']})
+    runtime = TravelAgentRuntime(object(), 'test-model', {'user_body': '杭州天气'}, request=request)
+    runtime.run('research', '杭州天气')
+    messages = requests[-1][2:]
+    assert messages[0]['role'] == 'assistant'
+    assert messages[0]['tool_calls'][0]['function']['name'] == 'query_weather'
+    assert messages[1]['role'] == 'tool'
+    assert '"city": "杭州"' in messages[1]['content']
 
 
 def test_schema_retry_drops_only_unsupported_response_format():

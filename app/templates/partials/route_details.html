@@ -1,0 +1,14 @@
+{% macro render_route(route, label) %}
+  {% if route %}
+    <section class="timeline-route" aria-label="{{ label }}">
+      <strong>{{ label }}</strong>
+      <p>{{ route.origin_name }} → {{ route.destination_name }}</p>
+      {% if route.status == 'available' %}
+        <p>{{ {'walking': '步行', 'transit': '公交', 'driving': '驾车'}.get(route.mode, '交通') }} · 预计 {{ route.duration_minutes }} 分钟{% if route.distance_meters is not none %} · {{ '%.1f'|format(route.distance_meters / 1000) }} 公里{% endif %}</p>
+        <small class="place-meta">{{ route.source }}{% if route.fetched_at %} · 查询时间 {{ place_query_time(route.fetched_at) }}{% endif %}。{{ route.reason }}</small>
+      {% else %}
+        <small class="place-meta">交通耗时待核实 · {{ route.reason }}</small>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endmacro %}

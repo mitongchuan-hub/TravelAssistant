@@ -7,11 +7,13 @@
     <title>{% block title %}TravelAssistant{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', path='/styles.css') }}?v={{ static_version }}" />
     <link rel="stylesheet" href="{{ url_for('static', path='/palette.css') }}?v={{ static_version }}-mist-blue-2" />
+    {% block page_styles %}{% endblock %}
   </head>
   <body>
-    <main class="phone-shell">
+    <main class="phone-shell{{ ' phone-shell--itinerary' if tab | default('') == 'itinerary' else '' }}">
       {% block content %}{% endblock %}
     </main>
     <script src="{{ url_for('static', path='/app.js') }}?v={{ static_version }}"></script>
+    {% block page_scripts %}{% endblock %}
   </body>
 </html>

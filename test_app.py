@@ -716,14 +716,25 @@ def test_confirm_and_restore_plan_versions(successful_model):
     assert store.plan_versions[trip.id][-1].change_summary == "从 v1 恢复为新草案"
 
 
-def test_idea_board_keeps_at_most_eight_cards():
-    trip = store.create_trip("八张想法墙", "10月1日", "3000", "轻松", "")
+def test_idea_board_preserves_all_cards_and_limits_only_wall_display():
+    trip = store.create_trip("完整想法墙", "10月1日", "3000", "轻松", "")
 
     for index in range(10):
         store.add_idea(trip.id, f"新增想法 {index}")
 
-    assert len(store.idea_cards[trip.id]) == 8
+    assert len(store.idea_cards[trip.id]) == 10
+    assert store.idea_cards[trip.id][0].title == "新增想法 0"
     assert store.idea_cards[trip.id][-1].title == "新增想法 9"
+    response = client.get(f"/workspace/{trip.id}?tab=board")
+    assert response.text.count('class="floating-idea"') == 8
+    assert 'class="requirements-preview"' not in response.text
+    assert 'class="all-ideas"' not in response.text
+    assert '/requirements.css' not in response.text
+    archive = client.get(f'/workspace/{trip.id}/requirements')
+    assert archive.text.count('class="idea-list-item"') == 10
+    assert "新增想法 0" in archive.text
+    chat = client.get(f'/workspace/{trip.id}?tab=chat')
+    assert f'/workspace/{trip.id}/requirements' in chat.text
 
 
 def test_frontend_assets_reflect_solo_chat_flow():
@@ -751,7 +762,9 @@ def test_itinerary_page_renders_requirement_labels_not_member_names():
     assert "西湖傍晚散步" in response.text
     assert "对应偏好" in response.text
     assert "茶园体验" in response.text
-    assert "满足需求" not in response.text
+    assert "查看安排说明" in response.text
+    assert "让 Agent 调整这项" not in response.text
+    assert "成员偏好" not in response.text
 
 
 # --- search_food tool (Amap) ---

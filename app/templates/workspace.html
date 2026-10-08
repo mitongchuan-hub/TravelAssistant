@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from 'partials/route_details.html' import render_route %}
 
 {% macro bottom_nav(trip, active_tab) -%}
   <nav class="bottom-nav" aria-label="底部导航">
@@ -10,18 +11,37 @@
 
 {% block title %}{{ trip.destination }}{% endblock %}
 
+{% block page_styles %}
+  {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/places.css') }}?v={{ static_version }}" />{% endif %}
+  {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/itinerary.css') }}?v={{ static_version }}" />{% endif %}
+{% endblock %}
+{% block page_scripts %}
+  {% if travel_tasks is defined %}<script src="{{ url_for('static', path='/tasks.js') }}?v={{ static_version }}"></script>{% endif %}
+  {% if tab == 'itinerary' %}<script src="{{ url_for('static', path='/places.js') }}?v={{ static_version }}"></script>{% endif %}
+  {% if tab == 'itinerary' %}<script src="{{ url_for('static', path='/itinerary.js') }}?v={{ static_version }}"></script>{% endif %}
+{% endblock %}
+
 {% block content %}
-<section class="workspace {{ 'workspace--board' if tab == 'board' else '' }}">
+<section class="workspace {{ 'workspace--board' if tab == 'board' else '' }}"{% if travel_tasks is defined %} data-travel-tasks-url="/api/trips/{{ trip.id }}/tasks"{% endif %}>
+  {% if travel_tasks is defined %}
+    <aside class="travel-task-status" role="status" data-task-status hidden>
+      <p data-task-message></p>
+      <button type="button" data-task-retry hidden>重试</button>
+      <a data-task-result hidden>查看结果</a>
+    </aside>
+  {% endif %}
   {% if tab == "board" %}
     <section class="idea-wall-screen">
       <header class="idea-wall-top">
         <a href="/trips"><span>旅行想法</span>{{ trip.destination | replace("周末旅行", "想法墙") }}</a>
         <form action="/workspace/{{ trip.id }}/plan" method="post">
+          {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
           <button class="generate-plan" type="submit">生成计划</button>
         </form>
       </header>
 
-      <section class="idea-wall-canvas" data-route-board data-card-count="{{ idea_cards | length }}" aria-label="旅行想法白板">
+      {% set visible_cards = wall_cards | default(idea_cards[-8:]) %}
+      <section class="idea-wall-canvas" data-route-board data-card-count="{{ visible_cards | length }}" aria-label="旅行想法白板">
         <h2 class="sr-only">旅行想法白板</h2>
         <svg class="travel-route" viewBox="0 0 260 360" aria-hidden="true">
           <path data-route-path />
@@ -33,7 +53,7 @@
             <span>从下面开始记录第一条想法</span>
           </div>
         {% endif %}
-        {% for card in idea_cards %}
+        {% for card in visible_cards %}
           <button
             class="floating-idea"
             type="button"
@@ -51,36 +71,7 @@
         {% endfor %}
       </section>
 
-      <section class="idea-detail-sheet" aria-label="想法详情" aria-hidden="true" data-idea-detail-sheet>
-        <button class="sheet-scrim" type="button" aria-label="关闭想法详情" data-idea-detail-close></button>
-        <article class="idea-detail-panel" role="dialog" aria-modal="true" aria-labelledby="idea-detail-title">
-          <div class="sheet-handle" aria-hidden="true"></div>
-          <div class="idea-detail-heading">
-            <span>旅行想法</span>
-            <button type="button" data-idea-detail-close>关闭</button>
-          </div>
-          <h2 id="idea-detail-title" data-idea-detail-title>想法</h2>
-          <p data-idea-detail-body></p>
-          <div class="idea-detail-statusbar">
-            <strong data-idea-detail-status></strong>
-            <span data-idea-detail-author></span>
-          </div>
-          <dl>
-            <div>
-              <dt>来源</dt>
-              <dd data-idea-detail-author></dd>
-            </div>
-            <div>
-              <dt>采纳状态</dt>
-              <dd data-idea-detail-status></dd>
-            </div>
-          </dl>
-          <form class="idea-delete-form" action="/workspace/{{ trip.id }}/ideas/delete" method="post" onsubmit="return confirm('确定要删除这条旅行想法吗？删除后无法恢复。');">
-            <input type="hidden" name="idea_id" data-idea-delete-id />
-            <button type="submit">删除这条想法</button>
-          </form>
-        </article>
-      </section>
+      {% include "partials/idea_detail.html" %}
 
       <form class="wall-quick-add" action="/workspace/{{ trip.id }}/ideas" method="post">
         <input name="body" placeholder="写一个旅行想法" autocomplete="off" required />
@@ -98,6 +89,7 @@
           <p>{{ trip.date_range }} · 旅行规划 Agent</p>
         </div>
         <div class="chat-header-actions">
+          <a class="text-link" href="/workspace/{{ trip.id }}/requirements">旅行需求</a>
           <form action="/workspace/{{ trip.id }}/messages/clear" method="post" onsubmit="return confirm('确定要清空这次旅行的全部聊天记录吗？清空后无法恢复。');">
             <button type="submit" class="clear-chat-button">清空聊天</button>
           </form>
@@ -109,14 +101,15 @@
       </section>
       <section class="chat-dock" aria-label="聊天输入区">
         <form class="composer" action="/workspace/{{ trip.id }}/messages" method="post" data-api-url="/api/trips/{{ trip.id }}/messages" data-current-name="{{ current_user.name }}" data-current-initials="{{ current_user.initials }}">
-          <input name="body" placeholder="告诉 Agent 你的旅行想法" autocomplete="off" required />
+          {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
+          <input name="body" value="{{ request.query_params.get('draft', '') }}" placeholder="告诉 Agent 你的旅行想法" autocomplete="off" required />
           <button type="submit" aria-label="发送消息" title="发送消息"><span aria-hidden="true">↑</span></button>
         </form>
       </section>
       {{ bottom_nav(trip, "chat") }}
     </section>
   {% elif tab == "itinerary" %}
-    <section class="travel-tab-screen">
+    <section class="travel-tab-screen itinerary-screen">
       <header class="travel-page-top">
         <a href="/trips">我的旅行</a>
         <div>
@@ -130,49 +123,69 @@
           <div class="itinerary-summary-heading">
             <div class="itinerary-summary-copy">
               <p class="itinerary-summary-kicker">行程概览</p>
-              <p class="itinerary-summary-date">{{ trip.date_range }}</p>
+              <p class="itinerary-summary-date">{{ trip.date_range | replace("-", "—") }}</p>
+              {% if metrics.date_coverage_note %}<p class="itinerary-summary-coverage">{{ metrics.date_coverage_note }}</p>{% endif %}
             </div>
           </div>
           <div class="itinerary-summary-stats" aria-label="行程统计">
             <div><strong>{{ metrics.plan_day_count }}</strong><span>天已安排</span></div>
             <div><strong>{{ metrics.plan_item_count }}</strong><span>个行程安排</span></div>
           </div>
-          {% if plan_versions %}
-          <p class="itinerary-summary-note"><strong>行程说明</strong>已根据你的旅行想法和聊天内容整理，具体安排请查看下方每日时间线。</p>
-          {% endif %}
         </section>
         {% if plan.overview or plan.constraints_met or plan.pending_items or plan.risks %}
-          <section class="plan-details" aria-label="计划说明">
+          <section class="plan-details" aria-label="安排说明">
+            <div class="plan-details-heading">
+              <strong>安排说明</strong>
+            </div>
             {% if plan.overview %}
-              <div class="plan-overview"><strong>计划概览</strong><p>{{ plan.overview }}</p></div>
+              <details class="plan-detail-group">
+                <summary>整体安排</summary>
+                <p>{{ plan.overview }}</p>
+              </details>
             {% endif %}
             {% if plan.constraints_met %}
-              <div><strong>已满足需求</strong><ul>{% for item in plan.constraints_met %}<li>{{ item }}</li>{% endfor %}</ul></div>
+              <details class="plan-detail-group">
+                <summary>已纳入行程</summary>
+                <ul>{% for item in plan.constraints_met %}<li>{{ item }}</li>{% endfor %}</ul>
+              </details>
             {% endif %}
             {% if plan.pending_items %}
-              <div><strong>待确认</strong><ul>{% for item in plan.pending_items %}<li>{{ item }}</li>{% endfor %}</ul></div>
+              <details class="plan-detail-group">
+                <summary>待处理事项</summary>
+                <ul class="action-list">
+                  {% for item in plan.pending_items %}
+                    <li>
+                      <span>{{ item }}</span>
+                      <a href="/workspace/{{ trip.id }}?tab=chat&draft={{ ('请帮我确认：' ~ item) | urlencode }}">去聊天确认</a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </details>
             {% endif %}
             {% if plan.risks %}
-              <div><strong>风险提醒</strong><ul>{% for item in plan.risks %}<li>{{ item }}</li>{% endfor %}</ul></div>
+              <details class="plan-detail-group">
+                <summary>出行提醒</summary>
+                <ul>{% for item in plan.risks %}<li>{{ item }}</li>{% endfor %}</ul>
+              </details>
             {% endif %}
           </section>
-        {% endif %}
-        {% if plan.days %}
           {% if plan.preparation.clothing or plan.preparation.accommodation %}
-            <section class="preparation-panel" aria-label="旅行准备">
-              <div class="travel-section-title">
+            <section class="preparation-panel" aria-label="出发前准备">
+              <div class="preparation-heading">
                 <div>
                   <p class="muted">出发前准备</p>
-                  <h3>衣物与住宿</h3>
+                  <h3>行前清单</h3>
                 </div>
               </div>
               <div class="preparation-columns">
                 {% if plan.preparation.clothing %}
-                  <div>
-                    <strong>衣物与装备</strong>
+                  <div class="preparation-group">
+                    <h4 class="preparation-group-title">衣物与装备</h4>
                     {% for item in plan.preparation.clothing %}
                       <article class="preparation-item">
-                        <span>{{ item.status }}</span>
+                        <div class="preparation-item-heading">
+                          <span class="preparation-item-status">{{ item.status }}</span>
+                        </div>
                         <h4>{{ item.title }}</h4>
                         <p>{{ item.body }}</p>
                       </article>
@@ -180,11 +193,13 @@
                   </div>
                 {% endif %}
                 {% if plan.preparation.accommodation %}
-                  <div>
-                    <strong>住宿</strong>
+                  <div class="preparation-group">
+                    <h4 class="preparation-group-title">住宿区域</h4>
                     {% for item in plan.preparation.accommodation %}
                       <article class="preparation-item">
-                        <span>{{ item.status }}</span>
+                        <div class="preparation-item-heading">
+                          <span class="preparation-item-status">{{ item.status }}</span>
+                        </div>
                         <h4>{{ item.title }}</h4>
                         <p>{{ item.body }}</p>
                       </article>
@@ -196,43 +211,77 @@
           {% endif %}
         {% endif %}
         {% if plan.days %}
+          <nav class="itinerary-day-nav" aria-label="按日期查看行程" data-day-nav>
+            {% for day in plan.days %}
+              <a href="#itinerary-day-{{ loop.index }}" data-day-link{% if loop.first %} aria-current="location"{% endif %}>
+                <span>第 {{ loop.index }} 天</span>
+                <strong>{{ day.date | day_date_label }}</strong>
+              </a>
+            {% endfor %}
+          </nav>
+          <p class="itinerary-update-notice" role="status" data-revision-notice hidden></p>
           {% for day in plan.days %}
-            <section class="day-block">
-              <div class="day-heading">
-                <h3>{{ day.label }}</h3>
-                {% if day.date or day.theme %}<p>{% if day.date %}{{ day.date }}{% endif %}{% if day.date and day.theme %} · {% endif %}{% if day.theme %}{{ day.theme }}{% endif %}</p>{% endif %}
-              </div>
+            <section class="day-block" id="itinerary-day-{{ loop.index }}" data-itinerary-day aria-labelledby="day-title-{{ loop.index }}">
+              <header class="day-heading">
+                <div>
+                  <h3 id="day-title-{{ loop.index }}">{{ day.date | day_date_label }}<span>第 {{ loop.index }} 天</span></h3>
+                  {% if day.theme %}<p>{{ day.theme }}</p>{% endif %}
+                </div>
+                <span class="day-item-count">{{ day.items | length }} 个安排</span>
+              </header>
               {% for item in day.items %}
-                <article class="timeline-item">
-                  <time>{{ item.time }}</time>
-                  <div>
-                    {% if item.category == "meal" %}<span class="item-category">用餐</span>{% elif item.category == "transport" %}<span class="item-category">交通</span>{% elif item.category == "rest" %}<span class="item-category">休息</span>{% elif item.category == "accommodation" %}<span class="item-category">住宿</span>{% else %}<span class="item-category">游览</span>{% endif %}
+                <article class="timeline-item timeline-item--{{ item.category }}" id="itinerary-item-{{ item.id }}">
+                  {% set time_parts = item.time | timeline_time_parts %}
+                  <time class="timeline-time" aria-label="{{ item.time or '时间待定' }}">
+                    <span>{{ time_parts[0] }}</span>
+                    {% if time_parts[1] %}<span class="timeline-time-end"><span class="sr-only">至</span>{{ time_parts[1] }}</span>{% endif %}
+                  </time>
+                  <div class="timeline-card">
+                    <div class="timeline-card-top">
+                      <span class="item-category">{{ {'meal': '用餐', 'transport': '交通', 'rest': '休息', 'accommodation': '住宿'}.get(item.category, '游览') }}</span>
+                      <button class="timeline-adjust" type="button" data-revision-trigger data-item-id="{{ item.id }}" data-item-title="{{ item.title }}" data-item-time="{{ item.time }}" data-item-location="{{ item.location }}" aria-label="调整：{{ item.title }}" aria-haspopup="dialog" aria-controls="revision-sheet">调整</button>
+                    </div>
                     <h4>{{ item.title }}</h4>
                     <p class="item-location">{{ item.location }} · {{ item.duration }}</p>
-                    {% if item.meal %}
-                      <div class="meal-recommendation">
-                        <strong>{{ item.meal.meal_type }}推荐：{{ item.meal.recommendation }}</strong>
-                        <span>{{ item.meal.cuisine }} · {{ item.meal.budget }} · {{ item.meal.reservation }}</span>
-                      </div>
+                    {% if item.meal or item.satisfies or item.reason or item.notes or item.category in ['activity', 'meal', 'accommodation'] %}
+                      <details class="timeline-details">
+                        <summary>查看安排说明</summary>
+                        <div class="timeline-details-body">
+                          {% if item.meal %}
+                            <div class="meal-recommendation">
+                              <strong>{{ item.meal.meal_type }}推荐：{{ item.meal.recommendation }}</strong>
+                              <span>{{ item.meal.cuisine }} · {{ item.meal.budget }} · {{ item.meal.reservation }}</span>
+                            </div>
+                          {% endif %}
+                          {% if item.satisfies %}
+                            <div class="satisfies">
+                              <strong>对应偏好</strong>
+                              {% for name in item.satisfies %}
+                                <span>{{ name }}</span>
+                              {% endfor %}
+                            </div>
+                          {% endif %}
+                          {% if item.category in ['activity', 'meal', 'accommodation'] %}
+                            {{ render_route(item.incoming_route, '前往这一站') }}
+                            {{ render_route(item.departure_route, '前往离开地点') }}
+                            <section class="timeline-place" aria-label="地点信息">
+                              {% if item.place %}
+                                <strong>{{ item.place.name }}</strong>
+                                <p>{{ item.place.city }} {{ item.place.district }} {{ item.place.address or '详细地址未提供' }}</p>
+                                <div class="place-actions"><a href="{{ place_map_url(item.place) }}" target="_blank" rel="noopener noreferrer">打开地图</a><button type="button" data-copy-address="{{ item.place.city }} {{ item.place.district }} {{ item.place.address or item.place.name }}">复制地址</button></div>
+                                <small class="place-meta">地点已匹配 · {{ item.place.source }} · 查询时间 {{ place_query_time(item.place.fetched_at) }}。开放、营业和预约仍需核实。</small>
+                              {% elif item.place_scope == 'area' %}
+                                <small class="place-meta">区域级建议 · 未指定具体地点</small>
+                              {% else %}
+                                <small class="place-meta">地点待核实 · 地址与坐标尚未确认</small>
+                              {% endif %}
+                            </section>
+                          {% endif %}
+                          {% if item.reason %}<p class="timeline-reason">{{ item.reason }}</p>{% endif %}
+                          {% if item.notes %}<small class="timeline-notes">{{ item.notes }}</small>{% endif %}
+                        </div>
+                      </details>
                     {% endif %}
-                    {% if item.satisfies %}
-                      <div class="satisfies">
-                        <strong>对应偏好</strong>
-                        {% for name in item.satisfies %}
-                          <span>{{ name }}</span>
-                        {% endfor %}
-                      </div>
-                    {% endif %}
-                    <p>{{ item.reason }}</p>
-                    <small>{{ item.notes }}</small>
-                    <details class="revision-drawer">
-                      <summary>让 Agent 调整这项</summary>
-                      <form class="revision-form" action="/workspace/{{ trip.id }}/revision" method="post">
-                        <input type="hidden" name="item_id" value="{{ item.id }}" />
-                        <textarea name="feedback" placeholder="比如：这个太赶，换成室内或留休息时间" required></textarea>
-                        <button type="submit">提交修改意见</button>
-                      </form>
-                    </details>
                   </div>
                 </article>
               {% endfor %}
@@ -243,6 +292,7 @@
             <h2>还没有行程</h2>
             <p>先和 Agent 说说时间、预算和想去的地方，再生成第一版计划。</p>
             <form action="/workspace/{{ trip.id }}/plan" method="post">
+              {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
               <button class="primary-action compact" type="submit">让 Agent 生成第一版</button>
             </form>
             <a class="secondary-action compact" href="/workspace/{{ trip.id }}?tab=chat">回到对话补充需求</a>
@@ -265,6 +315,29 @@
           </details>
         {% endif %}
       </section>
+      {% if plan.days %}
+        <dialog id="revision-sheet" class="revision-sheet" aria-labelledby="revision-sheet-title" aria-describedby="revision-sheet-context" data-revision-sheet>
+          <div class="revision-sheet-heading">
+            <h2 id="revision-sheet-title">调整安排</h2>
+            <button type="button" data-revision-close aria-label="关闭调整面板">关闭</button>
+          </div>
+          <div class="revision-sheet-context" id="revision-sheet-context">
+            <strong data-revision-title></strong>
+            <p><span data-revision-time></span><span data-revision-location></span></p>
+          </div>
+          <form action="/workspace/{{ trip.id }}/revision" method="post" data-revision-form data-workspace-url="/workspace/{{ trip.id }}">
+            {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
+            <input type="hidden" name="item_id" />
+            <label for="revision-feedback">想怎么调整？</label>
+            <textarea id="revision-feedback" name="feedback" rows="4" maxlength="2000" placeholder="例如：推迟半小时，或换成步行更少的安排" required></textarea>
+            <p class="revision-sheet-feedback" role="status" data-revision-feedback hidden></p>
+            <div class="revision-sheet-actions">
+              <button type="button" data-revision-close>暂不调整</button>
+              <button type="submit">提交调整</button>
+            </div>
+          </form>
+        </dialog>
+      {% endif %}
       {{ bottom_nav(trip, "itinerary") }}
     </section>
   {% endif %}

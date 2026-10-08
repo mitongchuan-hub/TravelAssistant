@@ -1,0 +1,8 @@
+.timeline-route { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.timeline-route p { margin: 6px 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.place-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+.place-actions a, .place-actions button { display: inline-flex; align-items: center; min-height: 38px; padding: 8px 12px; color: var(--ink); border: 1px solid var(--line); border-radius: 10px; background: var(--surface); font: inherit; font-size: 13px; }
+.place-meta { display: block; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.timeline-place { padding-top: 10px; border-top: 1px solid var(--line); margin-top: 10px; }
+.timeline-place p { margin: 6px 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.place-actions a:focus-visible, .place-actions button:focus-visible { outline: 2px solid var(--ocean); outline-offset: 3px; }
