@@ -1,82 +1,59 @@
-import json
+"""Plain itinerary responses finish without conversion or format recovery."""
 from copy import deepcopy
-from dataclasses import asdict
-from types import SimpleNamespace
 
 import pytest
 
 from app import agent_client
-from app.agent_roles import PLAN_FORMAT
+from app.agent_runtime import TravelAgentRuntime
 from app.store import DemoStore
-
-MALFORMED = json.dumps({'body': '已完成', 'card': {':title': '新版'},
-                        'plan': {':title': '新版', ':preparation': {':days': [7, 0, 1, 2]}}})
+from test_agent_roles import completion, scripted, ready_for_planning
 
 
-def completion(content, calls=None):
-    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content, tool_calls=calls or []))])
-
-
-def valid_content():
-    local = DemoStore(persistence_enabled=False)
-    return json.dumps({'body': '已生成', 'plan': asdict(local._seed_plan())})
-
-
-def test_recovery_reuses_tool_results_and_records_both_outputs(monkeypatch):
-    calls = [SimpleNamespace(id='weather', function=SimpleNamespace(name='query_weather', arguments='{"city":"杭州"}'))]
-    responses = [completion('', calls), completion(MALFORMED), completion(valid_content())]
-    requests, queries = [], []
-    def create(client, model, messages, **kwargs):
-        requests.append(deepcopy(messages))
-        if len(requests) == 3:
-            assert kwargs['response_format'] == PLAN_FORMAT
-        else:
-            assert 'response_format' not in kwargs
-        return responses.pop(0)
-    monkeypatch.setattr(agent_client, '_create_chat_completion', create)
+def test_planning_reuses_explicit_tool_result_and_saves_prose(monkeypatch):
+    text = '杭州一日行程\n上午游览西湖。\n天气与开放时间待核实。'
+    requests = scripted(monkeypatch, [
+        completion(calls=[('query_weather', {'city': '杭州'})]), completion(text)])
+    queries = []
     monkeypatch.setattr(agent_client, 'run_tool', lambda *a, **kw: queries.append(a) or {'status': 'unavailable'})
-    trace = agent_client.ConversationTrace('test', 'test', 'test', '重新规划')
-    cache = {}
-    result = agent_client._request_model(object(), 'test', '旅行上下文', True, trace=trace, route_cache=cache)
-    assert agent_client._parse_reply(result.choices[0].message.content, strict_plan=True).plan
-    assert len(queries) == 1 and len(requests) == 3
-    assert requests[2][:len(requests[1])] == requests[1]
-    assert requests[2][-2]['content'] == MALFORMED
-    assert '未通过结构或行程安排校验' in requests[2][-1]['content']
-    assert any('attempt' in event and ':title' in event for event in trace.events)
-    assert any(m.get('tool_call_id') == 'weather' for m in requests[2])
-    assert cache['final_reply'].plan
-
-
-def test_valid_plan_does_not_retry(monkeypatch):
-    calls = []
-    monkeypatch.setattr(agent_client, '_create_chat_completion', lambda *a, **kw: calls.append(True) or completion(valid_content()))
-    agent_client._request_model(object(), 'test', 'context', True)
-    assert len(calls) == 1
-
-
-def test_repeated_bad_output_is_reported_without_overwriting_plan(monkeypatch):
     local = DemoStore(persistence_enabled=False)
+    trip = local.create_trip('杭州', '', '', '', '')
+    ready_for_planning(local, trip.id)
+    local.generate_plan(trip.id)
+    assert len(queries) == 1 and len(requests) == 2
+    assert [kw['agent_role'] for _, kw in requests] == ['planning', 'planning']
+    assert all('response_format' not in kw for _, kw in requests)
+    assert any(m.get('tool_call_id') == 'call-0' for m in requests[1][0])
+    assert local.plans[trip.id].text == text
+
+
+def test_prose_with_markdown_and_braces_needs_one_call(monkeypatch):
+    source = '# 行程\n\n下午：西湖散步。\n备注原文：{请灵活安排}\n```text\n交通待确认\n```'
+    calls = scripted(monkeypatch, [completion(source)])
+    local = DemoStore(persistence_enabled=False)
+    ready_for_planning(local, 'trip-hangzhou')
+    local.generate_plan('trip-hangzhou')
+    assert len(calls) == 1 and local.plans['trip-hangzhou'].text == source
+    assert len(local.plan_versions['trip-hangzhou']) == 2
+
+
+def test_empty_output_keeps_previous_plan_without_format_retry(monkeypatch):
+    local = DemoStore(persistence_enabled=False)
+    ready_for_planning(local, 'trip-hangzhou')
     original = deepcopy(local.plans['trip-hangzhou'])
     versions = deepcopy(local.plan_versions['trip-hangzhou'])
-    monkeypatch.setattr(agent_client, 'is_llm_enabled', lambda: True)
-    monkeypatch.setattr('openai.OpenAI', lambda **kw: object())
-    monkeypatch.setattr(agent_client.ConversationTrace, 'write', lambda *a, **kw: None)
-    calls = []
-    monkeypatch.setattr(agent_client, '_create_chat_completion', lambda *a, **kw: calls.append(True) or completion(MALFORMED))
+    calls = scripted(monkeypatch, [completion('')])
     local.generate_plan('trip-hangzhou')
-    assert len(calls) == 2
+    assert len(calls) == 1
     assert local.plans['trip-hangzhou'] == original
     assert local.plan_versions['trip-hangzhou'] == versions
-    assert local.messages['trip-hangzhou'][-1].agent_card.title == '行程格式校验失败'
+    assert local.messages['trip-hangzhou'][-1].status == 'failed'
 
 
-def test_network_failure_does_not_trigger_format_recovery(monkeypatch):
-    calls = []
-    def create(*args, **kwargs):
-        calls.append(True)
-        raise TimeoutError('upstream timeout')
-    monkeypatch.setattr(agent_client, '_create_chat_completion', create)
+def test_network_failure_does_not_trigger_output_recovery(monkeypatch):
+    calls = scripted(monkeypatch, [TimeoutError('upstream timeout')])
+    local = DemoStore(persistence_enabled=False)
+    ready_for_planning(local, 'trip-hangzhou')
+    runtime = TravelAgentRuntime(object(), 'test', {'user_body': '生成', 'trip': local.trips['trip-hangzhou']}, request=agent_client._create_chat_completion)
     with pytest.raises(TimeoutError):
-        agent_client._request_model(object(), 'test', 'context', True)
+        runtime.run('planning')
     assert len(calls) == 1

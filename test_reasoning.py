@@ -13,6 +13,7 @@ from app.agent_runtime import TurnBudget, AgentBudgetError
 
 @pytest.fixture(autouse=True)
 def reasoning_env(monkeypatch):
+    monkeypatch.setenv('OPENAI_WIRE_API', 'chat_completions')
     for key in ['OPENAI_REASONING_EFFORT', *['OPENAI_REASONING_EFFORT_' + role.upper() for role in roles()]]:
         monkeypatch.delenv(key, raising=False)
 
@@ -186,11 +187,13 @@ def test_role_runner_passes_parent_child_effort_and_explain_mode(monkeypatch):
     from test_agent_roles import completion, delegate, scripted, local_trip
     from app.agent_runtime import TravelAgentRuntime
     text = '生成一个行程'
-    requests = scripted(monkeypatch, [delegate('planning', text), completion({'status': 'needs_input', 'body': '请提供日期。', 'plan': None})])
+    requests = scripted(monkeypatch, [delegate('planning', text),
+        completion({'status': 'complete', 'body': '需求未变更', 'requirements_patch': {}}),
+        completion('需要补充：请确认其他要求。')])
     local, trip = local_trip()
     local.add_user_message(trip.id, text)
-    assert [kw['reasoning_effort'] for _, kw in requests] == ['low', 'medium']
-    assert [kw['agent_role'] for _, kw in requests] == ['main', 'planning']
+    assert [kw['reasoning_effort'] for _, kw in requests] == ['low', 'low', 'medium']
+    assert [kw['agent_role'] for _, kw in requests] == ['main', 'requirements', 'planning']
     requests = scripted(monkeypatch, [completion('这是原来的安排。')])
     TravelAgentRuntime(object(), 'test', {'trip': trip, 'user_body': '解释'},
                        request=agent_client._create_chat_completion).run('revision', scope='explain')

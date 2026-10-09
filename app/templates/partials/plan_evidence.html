@@ -1,0 +1,26 @@
+<section class="plan-evidence" aria-label="查询依据" data-plan-evidence>
+  {% if plan.requirements_revision is not none and plan.requirements_revision != trip.requirements.revision %}
+    <p class="plan-basis-notice">需求已更新，当前方案尚未按新需求重新规划。</p>
+  {% endif %}
+  {% if plan.evidence %}
+    <details>
+      <summary>查询依据 · {{ plan.evidence | length }} 条记录</summary>
+      <p>以下记录保留来源、查询时间和适用范围，不代表行程中的每句话都已核实。地点匹配也不代表开放、门票或预约已确认。</p>
+      <ul>
+        {% for record in plan.evidence %}
+          <li>
+            <strong>{{ {'search_places': '地点资料', 'query_weather': '天气资料', 'search_food': '餐饮资料', 'query_route': '交通资料'}.get(record.tool, '查询资料') }}</strong>
+            <span>{{ '已返回资料' if record.result.get('status') == 'available' else '结果未知或不完整' }}</span>
+            {% if record.arguments.get('city') %}<span>{{ record.arguments.city }}</span>{% endif %}
+            {% if record.arguments.get('keywords') %}<span>{{ record.arguments.keywords }}</span>{% endif %}
+            <small>来源：{{ record.result.get('source') or '未提供' }} · 查询记录时间：{{ place_query_time(record.queried_at) }}</small>
+            {% if record.result.get('reason') %}<p>{{ record.result.reason }}</p>{% endif %}
+            {% if record.result.get('note') %}<p>{{ record.result.note }}</p>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </details>
+  {% else %}
+    <p>当前版本没有保存查询依据，相关外部事实仍待核实。</p>
+  {% endif %}
+</section>

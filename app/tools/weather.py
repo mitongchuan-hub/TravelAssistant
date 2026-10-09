@@ -51,7 +51,7 @@ _WEATHER_CODES = {
 }
 
 
-def query_weather(arguments: dict) -> dict:
+def query_weather(arguments: dict, *, cache=None) -> dict:
     """Return a small, model-friendly weather result without raising network errors."""
     city = str(arguments.get("city") or "").strip()
     requested_date = str(arguments.get("date") or "").strip()
@@ -68,24 +68,36 @@ def query_weather(arguments: dict) -> dict:
                 "reason": "日期不是 YYYY-MM-DD 格式，天气待确认。",
             }
 
+    cache = cache if cache is not None else {}
+    location_key = ('weather_location', city.casefold())
+    forecast_key = ('weather_forecast', city.casefold())
     try:
-        place = _fetch_json(_GEOCODING_URL, {
-            "name": city,
-            "count": 1,
-            "language": "zh",
-            "format": "json",
-        })
-        results = place.get("results") or []
-        if not results:
-            return {"status": "unavailable", "city": city, "reason": "没有找到对应城市，天气待确认。"}
-        location = results[0]
-        forecast = _fetch_json(_FORECAST_URL, {
-            "latitude": location["latitude"],
-            "longitude": location["longitude"],
-            "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
-            "timezone": "auto",
-            "forecast_days": 16,
-        })
+        location = cache.get(location_key)
+        if location is None:
+            place = _fetch_json(_GEOCODING_URL, {
+                "name": city,
+                "count": 1,
+                "language": "zh",
+                "format": "json",
+            })
+            results = place.get("results") or []
+            if not results:
+                return {"status": "unavailable", "city": city, "reason": "没有找到对应城市，天气待确认。"}
+            location = results[0]
+            # Store only usable locations; failed forecasts may retry without geocoding.
+            latitude, longitude = location['latitude'], location['longitude']
+            cache[location_key] = location
+        forecast = cache.get(forecast_key)
+        if forecast is None:
+            forecast = _fetch_json(_FORECAST_URL, {
+                "latitude": location["latitude"],
+                "longitude": location["longitude"],
+                "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+                "timezone": "auto",
+                "forecast_days": 16,
+            })
+            if isinstance(forecast.get('daily'), dict) and forecast['daily'].get('time'):
+                cache[forecast_key] = forecast
     except (KeyError, TypeError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError):
         return {
             "status": "unavailable",

@@ -85,11 +85,7 @@ def test_conversation_loop_queries_a_tool_before_returning_reply(monkeypatch):
     responses = iter([
         SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="", tool_calls=[tool_call]))]),
         SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
-            content=json.dumps({
-                "body": "杭州天气需要结合具体日期确认。",
-                "card": {"kind": "missing-info", "title": "天气", "summary": "待确认日期", "bullets": [], "action_target": "board", "next_action": "continue_chat"},
-                "idea_cards": [], "plan": None,
-            }, ensure_ascii=False),
+            content="杭州天气需要结合具体日期确认。",
             tool_calls=[],
         ))]),
     ])
@@ -103,7 +99,6 @@ def test_conversation_loop_queries_a_tool_before_returning_reply(monkeypatch):
     monkeypatch.setattr(agent_client, "run_tool", lambda name, arguments, **kwargs: {
         "status": "available", "city": arguments["city"], "condition": "晴"
     })
-    monkeypatch.setattr(agent_client, "collect_places", lambda messages: {})
     trace = agent_client.ConversationTrace("loop-test", "now", "trip", "杭州天气")
 
     from app.agent_runtime import TravelAgentRuntime

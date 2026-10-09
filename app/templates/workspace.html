@@ -23,13 +23,6 @@
 
 {% block content %}
 <section class="workspace {{ 'workspace--board' if tab == 'board' else '' }}"{% if travel_tasks is defined %} data-travel-tasks-url="/api/trips/{{ trip.id }}/tasks"{% endif %}>
-  {% if travel_tasks is defined %}
-    <aside class="travel-task-status" role="status" data-task-status hidden>
-      <p data-task-message></p>
-      <button type="button" data-task-retry hidden>重试</button>
-      <a data-task-result hidden>查看结果</a>
-    </aside>
-  {% endif %}
   {% if tab == "board" %}
     <section class="idea-wall-screen">
       <header class="idea-wall-top">
@@ -128,8 +121,13 @@
             </div>
           </div>
           <div class="itinerary-summary-stats" aria-label="行程统计">
-            <div><strong>{{ metrics.plan_day_count }}</strong><span>天已安排</span></div>
-            <div><strong>{{ metrics.plan_item_count }}</strong><span>个行程安排</span></div>
+            {% if plan.text %}
+              <div><strong>{{ metrics.latest_version }}</strong><span>当前版本</span></div>
+              <div><strong>{{ plan.status }}</strong><span>行程状态</span></div>
+            {% else %}
+              <div><strong>{{ metrics.plan_day_count }}</strong><span>天已安排</span></div>
+              <div><strong>{{ metrics.plan_item_count }}</strong><span>个行程安排</span></div>
+            {% endif %}
           </div>
         </section>
         {% if plan.overview or plan.constraints_met or plan.pending_items or plan.risks %}
@@ -210,7 +208,27 @@
             </section>
           {% endif %}
         {% endif %}
-        {% if plan.days %}
+        {% if plan.text %}
+          <article class="text-itinerary" aria-label="行程安排">
+            <h2>{{ plan.title }}</h2>
+            <div class="text-itinerary-content" data-itinerary-text>{{ plan.text }}</div>
+          </article>
+          {% include 'partials/plan_evidence.html' %}
+          <section class="text-itinerary-actions" aria-label="行程操作">
+            {% if plan.status != '已确认' %}
+              <form action="/workspace/{{ trip.id }}/plan/confirm" method="post">
+                <button class="primary-action compact" type="submit">确认当前行程</button>
+              </form>
+            {% endif %}
+            <form class="text-itinerary-revision" action="/workspace/{{ trip.id }}/revision" method="post">
+              {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
+              <label for="text-revision-feedback">想怎么调整？</label>
+              <textarea id="text-revision-feedback" name="feedback" rows="4" maxlength="2000" placeholder="例如：第二天下午减少步行，其他安排保留" required></textarea>
+              <p role="status" data-revision-feedback hidden></p>
+              <button class="primary-action compact" type="submit">更新行程</button>
+            </form>
+          </section>
+        {% elif plan.days %}
           <nav class="itinerary-day-nav" aria-label="按日期查看行程" data-day-nav>
             {% for day in plan.days %}
               <a href="#itinerary-day-{{ loop.index }}" data-day-link{% if loop.first %} aria-current="location"{% endif %}>

@@ -22,6 +22,22 @@ def completion(content='', calls=()):
     ))])
 
 
+def plan_text(raw):
+    lines = [raw['title'], raw.get('overview', '')]
+    for day in raw['days']:
+        lines.append('日期：' + day.get('date', '') + '；主题：' + day.get('theme', ''))
+        for item in day['items']:
+            lines.append(item['time'] + ' ' + item['title'])
+            lines.extend(f'{key}：{json.dumps(value, ensure_ascii=False)}' for key, value in item.items()
+                         if key not in {'incoming_route', 'departure_route', 'place', 'time', 'title'})
+    lines.extend(raw.get('pending_items', []))
+    return '\n'.join(lines)
+
+
+def requirements_unchanged():
+    return completion({'status': 'complete', 'body': '全局需求未变更。', 'requirements_patch': {}})
+
+
 def delegate(agent, text, *, finish=True, scope=None):
     args = {'task': text, 'user_quote': text, 'finish_turn': finish}
     if scope:
@@ -49,9 +65,19 @@ def scripted(monkeypatch, responses):
     return requests
 
 
+def ready_for_planning(local, trip_id):
+    """Fixture setup with a known city/date, without simulating a user edit."""
+    profile = local.trips[trip_id].requirements
+    profile.city = profile.city or '杭州'
+    profile.start_date = profile.start_date or '2026-11-14'
+    profile.end_date = profile.end_date or '2026-11-15'
+    profile.day_count = 2
+
+
 def local_trip():
     local = DemoStore(persistence_enabled=False)
     trip = local.create_trip('杭州', '', '人均1500', '轻松', '')
+    ready_for_planning(local, trip.id)
     return local, trip
 
 
@@ -95,7 +121,7 @@ def test_combined_request_uses_staged_requirements_and_preserves_partial_success
     replies = [delegate('requirements', text, finish=False), completion({
         'body': '预算已整理。', 'requirements_patch': {'changes': {'budget_amount': '2000'}, 'evidence': text}}),
         delegate('planning', text)]
-    replies += [TimeoutError('upstream timeout')] if planning_fails else [completion({'body': '方案已整理。', 'plan': raw})]
+    replies += [TimeoutError('upstream timeout')] if planning_fails else [completion(plan_text(raw))]
     requests = scripted(monkeypatch, replies)
     local.add_user_message(trip.id, text)
     assert len(requests) == 4
@@ -118,7 +144,7 @@ def test_research_can_fetch_context_and_tools_but_cannot_write_plan(monkeypatch)
         completion({'body': '日期还未确定，天气待确认。', 'plan': asdict(local._seed_plan()),
                     'requirements_patch': {'changes': {'travelers': 99}, 'evidence': text}})])
     queries = []
-    monkeypatch.setattr(agent_client, 'run_tool', lambda name, args: queries.append((name, args)) or {'status': 'unavailable', 'reason': '日期待定'})
+    monkeypatch.setattr(agent_client, 'run_tool', lambda name, args, **kw: queries.append((name, args)) or {'status': 'unavailable', 'reason': '日期待定'})
     local.add_user_message(trip.id, text)
     assert queries == [('query_weather', {'city': '杭州'})]
     assert not local.plan_versions[trip.id]
@@ -140,36 +166,34 @@ def test_unknown_tool_and_nested_delegation_are_denied(monkeypatch):
     assert all('不允许' in m['content'] for m in requests[-1][0] if m['role'] == 'tool')
 
 
-def test_chat_item_revision_preserves_neighbor_ids_and_arrangements(monkeypatch):
+def test_chat_revision_saves_complete_text_and_preserves_previous_version(monkeypatch):
     local = DemoStore(persistence_enabled=False)
     trip_id = 'trip-hangzhou'
     original = deepcopy(local.plans[trip_id])
-    target = original.days[0].items[0]
     raw = asdict(original)
     raw['days'][0]['items'][0]['notes'] = '用户要求的新备注'
-    raw['days'][-1]['items'][-1]['title'] = '未授权的邻居改动'
+    revised = plan_text(raw)
     text = '改一下第一个安排的备注，其他别动'
-    scripted(monkeypatch, [delegate('revision', text, scope='item'),
-        completion(calls=[('read_context', {'section': 'plan'})]),
-        completion({'body': '目标备注已更新。', 'plan': raw, 'target_item_id': target.id})])
+    requests = scripted(monkeypatch, [delegate('revision', text, scope='item'), requirements_unchanged(),
+        completion(calls=[('read_context', {'section': 'plan'})]), completion(revised)])
     local.add_user_message(trip_id, text)
     saved = local.plans[trip_id]
-    assert saved.days[0].items[0].id == target.id
-    assert saved.days[0].items[0].notes == '用户要求的新备注'
-    assert saved.days[-1].items[-1].title == original.days[-1].items[-1].title
-    assert saved.days[-1].items[-1].id == original.days[-1].items[-1].id
+    assert saved.text == revised and not saved.days
+    assert local.plan_versions[trip_id][0].days == original.days
     assert len(local.plan_versions[trip_id]) == 2
+    assert [kw['agent_role'] for _, kw in requests] == ['main', 'requirements', 'revision', 'revision']
+    assert all('response_format' not in kw for _, kw in requests)
 
 
 def test_ambiguous_revision_stops_before_further_delegation(monkeypatch):
     local = DemoStore(persistence_enabled=False)
     text = '晚饭换一家'
-    requests = scripted(monkeypatch, [delegate('revision', text, scope='item', finish=False),
-        completion({'status': 'needs_input', 'body': '你要换哪一天的晚餐？', 'plan': None})])
+    requests = scripted(monkeypatch, [delegate('revision', text, scope='item', finish=False), requirements_unchanged(),
+        completion('需要补充：你要换哪一天的晚餐？')])
     original = deepcopy(local.plans['trip-hangzhou'])
     local.add_user_message('trip-hangzhou', text)
-    assert len(requests) == 2
-    assert local.messages['trip-hangzhou'][-1].body == '你要换哪一天的晚餐？'
+    assert len(requests) == 3
+    assert local.messages['trip-hangzhou'][-1].body == '需要补充：你要换哪一天的晚餐？'
     assert local.plans['trip-hangzhou'] == original
 
 
@@ -249,10 +273,11 @@ def test_version_action_uses_read_targets_and_preserves_unknowns(monkeypatch, op
 
 def test_same_id_plan_change_during_model_request_blocks_overwrite(monkeypatch):
     local = DemoStore(persistence_enabled=False)
+    ready_for_planning(local, 'trip-hangzhou')
     original = deepcopy(local.plans['trip-hangzhou'])
     def concurrent(messages, kwargs):
         local.confirm_plan('trip-hangzhou')  # confirmation changes content but retains plan.id
-        return completion({'body': '新草案', 'plan': asdict(original)})
+        return completion(plan_text(asdict(original)))
     scripted(monkeypatch, [concurrent])
     local.generate_plan('trip-hangzhou')
     assert local.plans['trip-hangzhou'].status == '已确认'

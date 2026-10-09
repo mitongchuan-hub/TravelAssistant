@@ -15,6 +15,7 @@ from app.routes import prepare_routes, seed_places
 from app.store import DemoStore
 from app.tools import routes as provider
 from app.tools.registry import run_tool
+from test_agent_roles import plan_text, completion, scripted, requirements_unchanged
 
 A = dict(poi_id='a', name='景点甲', address='东路1号', longitude=120.1, latitude=30.2, city='杭州市', district='西湖区', source='高德地图 POI', fetched_at='2026-10-03T00:00:00+00:00')
 B = {**A, 'poi_id': 'b', 'name': '景点乙', 'longitude': 120.2}
@@ -139,55 +140,47 @@ def test_arrival_departure_routes_and_ambiguous_endpoints(network, monkeypatch, 
         validate_plan(raw, trip)
 
 
-def planning_call(monkeypatch, raws, trip, catalog, cache, existing=None, target=None):
-    results = [json.dumps({'body': '已生成', 'card': {}, 'idea_cards': [], 'plan': raw}, ensure_ascii=False) for raw in raws]
-    requests = []
-    def completion(client, model, messages, **kwargs):
-        requests.append(deepcopy(messages))
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=results.pop(0)))])
-    monkeypatch.setattr(agent_client, '_create_chat_completion', completion)
-    agent_client._request_model(object(), 'test', '行程', True, trip=trip, place_catalog=catalog,
-                                route_cache=cache, existing_plan=existing, target_item_id=target)
-    return requests
-
-
-def test_agent_receives_evidence_and_repairs_once_without_duplicate_queries(network, monkeypatch):
-    _, trip, bad = fixture()
-    good = deepcopy(bad)
-    good['days'][0]['items'][1]['time'] = '10:40-11:40'
+def test_text_planning_does_not_implicitly_query_or_repair_routes(network, monkeypatch):
+    _, trip, raw = fixture()
+    source = plan_text(raw)
+    calls = scripted(monkeypatch, [completion(source)])
     cache = {}
-    requests = planning_call(monkeypatch, [bad, good], trip, {'a': A, 'b': B}, cache)
-    assert len(requests) == 2 and len(network) == 1
-    assert any('35' in message.get('content', '') and '真实路线查询结果' in message.get('content', '') for message in requests[1])
-    assert cache['final_plan']['days'][0]['items'][1]['incoming_route']['duration_minutes'] == 35
+    agent_client._request_model(object(), 'test', '行程', True, trip=trip,
+                                place_catalog={'a': A, 'b': B}, route_cache=cache)
+    assert len(calls) == 1 and network == []
+    assert cache['final_reply'].plan_text == source
+    assert 'final_plan' not in cache
 
 
-def test_persistent_conflict_preserves_original_plan(network, monkeypatch):
-    local, trip, raw = fixture()
-    original = deepcopy(local.plans[trip.id])
-    with pytest.raises(PlanValidationError): planning_call(monkeypatch, [raw, raw], trip, {'a': A, 'b': B}, {})
-    assert local.plans[trip.id] == original and len(network) == 1
+def test_planning_can_explicitly_query_a_route_and_reuse_its_cache(network, monkeypatch):
+    _, trip, _ = fixture()
+    arguments = {'origin_poi_id': 'a', 'destination_poi_id': 'b', 'mode': 'walking'}
+    calls = scripted(monkeypatch, [
+        completion(calls=[('query_route', arguments)]),
+        completion(calls=[('query_route', arguments)]),
+        completion('景点甲到景点乙步行预计 35 分钟，来源高德地图。')])
+    cache = {}
+    agent_client._request_model(object(), 'test', '行程', True, trip=trip,
+                                place_catalog={'a': A, 'b': B}, route_cache=cache)
+    assert len(calls) == 3 and len(network) == 1
+    assert '35' in calls[-1][0][-1]['content']
+    assert '35 分钟' in cache['final_reply'].plan_text
 
 
-def test_single_item_repair_checks_actual_merge_and_updates_neighbor_route(network, monkeypatch):
+def test_legacy_item_revision_becomes_text_without_requerying_routes(network, monkeypatch):
     local, trip, original = fixture()
     original['days'][0]['items'][1]['time'] = '10:40-11:40'
     local._apply_agent_plan(trip.id, original, verified_places={'a': A, 'b': B})
-    existing = deepcopy(local.plans[trip.id])
-    target = existing.days[0].items[0]
-    bad = asdict(existing)
-    bad['days'][0]['items'][0]['time'] = '09:00-10:20'
-    bad['days'][0]['items'][1]['time'] = '11:30-12:30'  # Cannot change the neighbor to hide the conflict.
-    good = deepcopy(bad)
-    good['days'][0]['items'][0]['time'] = '09:00-10:00'
-    cache = {}
-    requests = planning_call(monkeypatch, [bad, good], trip, seed_places(existing), cache, existing, target.id)
-    assert len(requests) == 2
-    reply = AgentReply('调整完成', AgentCard('revision', '调整', '', [], []), [], cache['final_plan'], verified_places=seed_places(existing))
-    monkeypatch.setattr(importlib.import_module('app.store'), 'generate_agent_reply', lambda **kwargs: reply)
-    local.request_revision(trip.id, target.id, '改动时间')
-    neighbor = local.plans[trip.id].days[0].items[1]
-    assert neighbor.time == '10:40-11:40' and neighbor.incoming_route.duration_minutes == 35
+    previous = deepcopy(local.plans[trip.id])
+    target = previous.days[0].items[0]
+    source = '杭州一日行程\n景点甲：09:00-10:00，新增备注。\n景点乙：10:40-11:40。'
+    calls = scripted(monkeypatch, [requirements_unchanged(),
+        completion(calls=[('read_context', {'section': 'plan'})]), completion(source)])
+    local.request_revision(trip.id, target.id, '只改备注')
+    assert len(calls) == 3 and network == []
+    assert local.plans[trip.id].text == source and not local.plans[trip.id].days
+    assert local.plan_versions[trip.id][-2].days == previous.days
+    assert local.messages[trip.id][-1].status == 'sent'
 
 
 @pytest.mark.parametrize('hotel_known', [False, True])

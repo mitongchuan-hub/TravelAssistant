@@ -19,6 +19,8 @@ def tool_specs() -> list[dict]:
 
 
 def run_tool(name: str, arguments: dict, *, place_catalog=None, route_cache=None) -> dict:
+    if name == 'query_weather':
+        return query_weather(arguments, cache=route_cache)
     if name == 'query_route':
         return lookup_route(arguments, place_catalog or {}, route_cache if route_cache is not None else {})
     handler = TOOL_HANDLERS.get(name)

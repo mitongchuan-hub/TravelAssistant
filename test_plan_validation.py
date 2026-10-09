@@ -11,13 +11,14 @@ from app.agent_client import AgentReply
 from app.models import AgentCard
 from app.plan_validation import PlanValidationError, validate_plan
 from app.store import DemoStore
+from test_agent_roles import plan_text
 
 
 def fixture():
     local = DemoStore(persistence_enabled=False)
     trip = local.create_trip('杭州', '', '', '', '')
     trip = local.update_trip_requirements(trip.id, {
-        'start_date': '2026-11-01', 'end_date': '2026-11-02',
+        'city': '杭州', 'start_date': '2026-11-01', 'end_date': '2026-11-02',
         'arrival_time': '15:00', 'departure_time': '12:00',
     }, 0)
     raw = asdict(local._seed_plan())
@@ -72,24 +73,21 @@ def content(raw):
     return json.dumps({'body': '行程已整理', 'card': {}, 'idea_cards': [], 'plan': raw}, ensure_ascii=False)
 
 
-@pytest.mark.parametrize('recovery_succeeds', [True, False])
-def test_business_recovery_reuses_tools_and_stops_after_one_retry(monkeypatch, recovery_succeeds):
-    _, trip, good = fixture()
-    bad = deepcopy(good)
-    bad['days'][0]['items'][0]['time'] = '09:00-10:00'
-    requests = []
-    outputs = [content(bad), content(good if recovery_succeeds else bad)]
+@pytest.mark.parametrize('time', ['09:00-10:00', '21:00-'])
+def test_text_generation_does_not_parse_or_repair_timestamps(monkeypatch, time):
+    _, trip, raw = fixture()
+    raw['days'][0]['items'][0]['time'] = time
+    source = plan_text(raw)
+    calls = []
     def create(client, model, messages, **kwargs):
-        requests.append(deepcopy(messages))
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=outputs.pop(0)))])
+        calls.append(kwargs)
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=source))])
     monkeypatch.setattr(agent_client, '_create_chat_completion', create)
-    if recovery_succeeds:
-        agent_client._request_model(object(), 'test', '上下文', True, trip=trip)
-    else:
-        with pytest.raises(PlanValidationError):
-            agent_client._request_model(object(), 'test', '上下文', True, trip=trip)
-    assert len(requests) == 2
-    assert '抵达时间' in requests[1][-1]['content']
+    cache = {}
+    agent_client._request_model(object(), 'test', '上下文', True, trip=trip, route_cache=cache)
+    assert len(calls) == 1 and 'response_format' not in calls[0]
+    assert cache['final_reply'].plan_text == source
+    assert cache['final_reply'].plan is None
 
 
 def test_bad_generation_keeps_original_plan_and_versions(monkeypatch):

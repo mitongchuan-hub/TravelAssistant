@@ -8,7 +8,6 @@ const root = path.resolve(__dirname, '..');
   const tasks = [];
   let executions = 0, loseResponse = false;
   const html = `<!doctype html><meta charset="utf-8"><section data-travel-tasks-url="/api/trips/test/tasks">
-    <aside data-task-status hidden><p data-task-message></p><button data-task-retry hidden>重试</button><a data-task-result hidden>查看结果</a></aside>
     <form action="/workspace/test/plan" method="post"><button type="submit">生成计划</button></form>
     <div id="plan-result">原行程</div>
     </section><script src="/static/app.js"></script><script src="/static/tasks.js"></script>`;
@@ -59,33 +58,32 @@ const root = path.resolve(__dirname, '..');
     await page.goto(origin + '/workspace/test?tab=board');
     loseResponse = true;
     await page.getByRole('button', {name: '生成计划'}).click();
-    await page.waitForFunction(() => /未能确认|等待处理/.test(document.querySelector('[data-task-message]').textContent));
+    await page.waitForFunction(() => document.querySelector('button[type=submit]').disabled);
     assert.equal(executions, 1);
     await page.reload();
-    await page.waitForFunction(() => document.querySelector('[data-task-message]').textContent === '等待处理');
+    await page.waitForFunction(() => document.querySelector('button[type=submit]').disabled);
     assert.equal(executions, 1);
-    assert.equal(await page.getByRole('button', {name: '生成计划'}).isDisabled(), true);
-    console.log('PASS: lost submission response recovers after reload without duplicate execution');
+    assert.equal(await page.locator('[data-task-status]').count(), 0);
+    console.log('PASS: lost response recovers without duplicate execution or status overlay');
     tasks[0].status = 'running'; tasks[0].message = '正在处理';
-    await page.waitForFunction(() => document.querySelector('[data-task-message]').textContent === '正在处理');
     await page.reload();
-    await page.waitForFunction(() => document.querySelector('[data-task-message]').textContent === '正在处理');
-    tasks[0].status = 'failed'; tasks[0].message = '时间冲突，原行程已保留';
-    await page.waitForFunction(() => !document.querySelector('[data-task-retry]').hidden);
+    await page.waitForFunction(() => document.querySelector('button[type=submit]').disabled);
+    tasks[0].status = 'failed'; tasks[0].message = '模型服务响应超时';
+    await page.waitForFunction(() => !document.querySelector('button[type=submit]').disabled);
+    assert.equal(await page.getByText('模型服务响应超时').count(), 0);
+    assert.equal(await page.getByRole('button', {name: '重试', exact: true}).count(), 0);
     assert.equal(await page.locator('#plan-result').innerText(), '原行程');
-    loseResponse = true;
-    await page.getByRole('button', {name: '重试', exact: true}).click();
-    await page.waitForFunction(() => /刷新|等待处理/.test(document.querySelector('[data-task-message]').textContent));
+    console.log('PASS: failure releases controls without a floating error/retry layer');
+    await page.getByRole('button', {name: '生成计划'}).click();
+    await page.waitForFunction(() => document.querySelector('button[type=submit]').disabled);
     assert.equal(executions, 2);
-    await page.reload();
-    await page.waitForFunction(() => document.querySelector('[data-task-message]').textContent === '等待处理');
-    assert.equal(executions, 2);
-    console.log('PASS: running state survives reload; failed retry survives lost response');
     tasks[1].status = 'succeeded'; tasks[1].message = '已完成';
     await page.waitForURL('**/workspace/test?tab=itinerary&task=task-2');
-    await page.waitForFunction(() => !document.querySelector('[data-task-result]').hidden);
+    await page.reload();
+    assert.equal(await page.locator('[data-task-status]').count(), 0);
+    assert.equal(await page.getByRole('link', {name: '查看结果'}).count(), 0);
     assert.equal(executions, 2);
-    console.log('PASS: completion navigates to saved result and exposes result after refresh');
+    console.log('PASS: resubmission and completion navigation work without status UI');
     assert.deepEqual(errors, []);
   } catch (error) {
     console.error('Task page HTML:', await page.content());

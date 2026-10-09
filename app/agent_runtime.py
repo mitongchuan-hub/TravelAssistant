@@ -6,13 +6,13 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, field, replace
 import json
 from time import monotonic
+from datetime import datetime, timezone
 
 from .agent_loop import AgentLoop, AgentLoopState, LoopAction, LoopObservation, LOOP_COMPLETED, LOOP_WAITING_USER
 from .agent_roles import DELEGATIONS, roles, role_reasoning_effort
 from .requirements import chat_changes, update_requirements, LIST_FIELDS
-from .routes import merge_target, prepare_routes
-from .plan_validation import validate_plan, PlanValidationError
 from .places import collect_places
+from .planning import planning_brief
 
 
 class AgentBudgetError(RuntimeError):
@@ -25,6 +25,7 @@ class TurnBudget:
     max_tools: int = 64
     max_external: int = 32
     seconds: float = 240
+    cancelled: object = None
     model_calls: int = 0
     tool_calls: int = 0
     external_calls: int = 0
@@ -34,6 +35,8 @@ class TurnBudget:
         self.deadline = monotonic() + self.seconds
 
     def remaining(self):
+        if self.cancelled and self.cancelled():
+            raise AgentBudgetError('本次任务已由新消息替代。')
         remaining = self.deadline - monotonic()
         if remaining <= 0:
             raise AgentBudgetError('本次任务已达到时间上限，原行程已保留。')
@@ -68,7 +71,7 @@ class TravelAgentRuntime:
         self.user_body = self.snapshot.get('user_body', '')
         self.catalog = catalog if catalog is not None else {}
         self.cache = cache if cache is not None else {}
-        self.budget = self.cache.setdefault('_budget', TurnBudget())
+        self.budget = self.cache.setdefault('_budget', TurnBudget(cancelled=self.snapshot.get('cancelled')))
         self.request = request
         self.configs = roles()
         self.patch = {}
@@ -81,6 +84,9 @@ class TravelAgentRuntime:
         self.failure = None
         self.delegations = 0
         self.evidence = []
+        self.requirements_checked = False
+        self.entry_role = None
+        self.used_saved_evidence = False
 
     def event(self, name, value):
         if self.trace:
@@ -88,6 +94,7 @@ class TravelAgentRuntime:
 
     def run(self, role='main', task='', *, scope='', target_item_id=None):
         try:
+            self.entry_role = role
             result = self.run_role(role, task or self.user_body, scope=scope, target_item_id=target_item_id)
             self.budget.remaining()
             if self.failure and not self.candidate:
@@ -100,8 +107,6 @@ class TravelAgentRuntime:
             self.cache['requirements_patch'] = self.patch
             self.event('Agent 返回结果', asdict(result))
             self.cache['final_reply'] = result
-            if result.plan:
-                self.cache['final_plan'] = result.plan
             return self.last_response
         finally:
             self.cache['requirements_patch'] = self.patch
@@ -119,15 +124,43 @@ class TravelAgentRuntime:
         if role != 'main':
             # Hard constraints are always complete; optional history and plans are read on demand.
             payload['requirements'] = self.read_context({'section': 'requirements'})
+        if role in {'planning', 'revision'}:
+            payload['travel_window'], _ = planning_brief(self.trip)
         prompt = self.configs[role].prompt
         if role == 'revision' and scope == 'explain':
-            prompt = self.configs['revision'].prompt.split('\n\n你是已有行程调整 Agent。')[-1]
-            prompt = '你是已有行程调整 Agent。\n' + prompt + '\n本次是只读解释模式，直接输出解释，不输出行程 JSON。'
+            prompt += '\n本次是只读解释模式，直接输出解释，不交付新行程、不新增版本。'
         return [{'role': 'system', 'content': prompt},
                 {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]
 
+    def prepare_write(self, role):
+        # Every conversational plan/revision write must synchronize requirements once.
+        # A page plan request already operates on saved requirements; page revision
+        # feedback may contain new constraints and goes through the same prerequisite.
+        if role == 'revision' and (not self.plan or not self.plan.has_content):
+            return replace(self.text_reply('需要补充：当前还没有可修改的行程，请先生成方案。'), needs_input=True)
+        needs_sync = self.entry_role == 'main' or role == 'revision' and self.entry_role == 'revision'
+        if needs_sync and not self.requirements_checked:
+            started = monotonic()
+            reply = self.run_role('requirements', self.user_body)
+            self.event('行程写入前需求同步', {'role': role, 'seconds': round(monotonic() - started, 3),
+                                       'needs_input': reply.needs_input, 'failed': reply.failed,
+                                       'requirements_staged': bool(self.patch)})
+            if reply.needs_input or reply.failed:
+                return reply
+        if role != 'planning':
+            return None  # Legacy/current plan edits can preserve unspecified dates.
+        brief, question = planning_brief(self.trip)
+        self.event('规划入口检查', {'travel_window': brief, 'question': question})
+        if question:
+            return replace(self.text_reply(question), needs_input=True)
+        return None
+
     def run_role(self, role, task, *, scope='', target_item_id=None):
         from . import agent_client as api
+        if role == 'planning' or role == 'revision' and scope != 'explain':
+            stopped = self.prepare_write(role)
+            if stopped:
+                return stopped
         config = self.configs[role]
         effort = role_reasoning_effort(config, scope)
         specs = list(config.tools)
@@ -143,13 +176,10 @@ class TravelAgentRuntime:
 
         def decide(current):
             nonlocal tools_supported
-            # Let the model choose tools freely. Strict JSON is used only for a
-            # repair; some compatible providers suppress tool calls when both
-            # tools and response_format are supplied in the initial request.
+            # Only requirements have an internal data contract. Travel plans
+            # remain prose throughout generation, editing, display and storage.
             response_format = config.response_format if repairs else None
-            if role == 'revision' and scope == 'explain':
-                response_format = None
-            kwargs = {'tools': specs if tools_supported else None, 'trace': self.trace, 'budget': self.budget,
+            kwargs = {'tools': specs if specs and tools_supported else None, 'trace': self.trace, 'budget': self.budget,
                       'reasoning_effort': effort, 'agent_role': role}
             if response_format:
                 kwargs['response_format'] = response_format
@@ -183,10 +213,14 @@ class TravelAgentRuntime:
                     assistant_message = {'role': 'assistant', 'content': getattr(action.payload['message'], 'content', None) or '',
                                          'tool_calls': [{'id': call.id, 'type': 'function', 'function': {
                                              'name': call.function.name, 'arguments': call.function.arguments or '{}'}} for call in calls]}
+                    wire_output = getattr(action.payload['message'], '_responses_output', None)
+                    if wire_output is not None:
+                        assistant_message['_responses_output'] = wire_output
                     messages.append(assistant_message)
                     direct = None
                     for call in calls:
                         name = call.function.name
+                        started = monotonic()
                         try:
                             args = json.loads(call.function.arguments or '{}')
                             if not isinstance(args, dict):
@@ -201,7 +235,8 @@ class TravelAgentRuntime:
                         tool_message = {'role': 'tool', 'tool_call_id': call.id, 'name': name,
                                         'content': json.dumps(output, ensure_ascii=False)}
                         messages.append(tool_message)
-                        self.event('角色工具执行', {'role': role, 'name': name, 'arguments': call.function.arguments, 'result': output})
+                        self.event('角色工具执行', {'role': role, 'name': name, 'arguments': call.function.arguments,
+                                                  'seconds': round(monotonic() - started, 3), 'result': output})
                     if direct is not None:
                         result.append(direct)
                     return LoopObservation(tool_calls=len(calls), done=direct is not None,
@@ -209,17 +244,15 @@ class TravelAgentRuntime:
                 content = action.payload['content']
                 try:
                     reply = self.finish_role(role, content, scope, target_item_id)
-                except (api.ModelOutputError, PlanValidationError, ValueError, TypeError) as exc:
-                    if role == 'main' or repairs >= 1:
+                except (ValueError, TypeError) as exc:
+                    if role != 'requirements' or repairs >= 1:
                         raise
                     repairs += 1
-                    route_evidence = [value for key, value in self.cache.items() if isinstance(key, tuple) and len(key) == 7]
                     messages.extend([
                         {'role': 'assistant', 'content': content},
-                        {'role': 'user', 'content': '上次输出未通过结构或行程安排校验：' + str(exc) +
-                         '。请按当前需求和授权范围修正一次，仍无法完成请返回 needs_input。真实路线查询结果：' + json.dumps(route_evidence, ensure_ascii=False)},
+                        {'role': 'user', 'content': '需求更新未通过检查：' + str(exc) + '。仅修正本轮用户明确表达的需求变更；信息不明确时返回 needs_input。'},
                     ])
-                    self.event('行程格式校验', {'role': role, 'attempt': repairs, 'content': content, 'error': str(exc)})
+                    self.event('需求更新校验', {'attempt': repairs, 'error': str(exc)})
                     return LoopObservation(next_phase='repairing', data={'issue': str(exc)})
                 result.append(reply)
                 return LoopObservation(done=True, wait_for_user=reply.needs_input)
@@ -254,7 +287,11 @@ class TravelAgentRuntime:
         if section == 'plan':
             return {'basis': basis, 'plan': asdict(self.plan) if self.plan else None}
         if section == 'evidence':
-            return {'basis': basis, 'places': deepcopy(self.catalog), 'results': deepcopy(self.evidence),
+            self.used_saved_evidence = True
+            saved = deepcopy(self.plan.evidence) if self.plan else []
+            return {'basis': basis, 'places': deepcopy(self.catalog), 'results': saved + deepcopy(self.evidence),
+                    'saved_results': saved, 'turn_results': deepcopy(self.evidence),
+                    'note': '记录查询的来源、时间和适用范围；有结果不代表开放、预约、价格或过敏原均已核实。',
                     'routes': [deepcopy(v) for k, v in self.cache.items() if isinstance(k, tuple) and len(k) == 7]}
         if section not in {'messages', 'ideas', 'versions'}:
             raise ValueError('未知上下文类型')
@@ -278,6 +315,22 @@ class TravelAgentRuntime:
                 'note': '本次检索结果；无匹配不代表历史从未记录。' if query else ''}
 
     def execute_tool(self, role, name, args):
+        started = monotonic()
+        output = None
+        error = None
+        try:
+            output, direct = self._execute_tool(role, name, args)
+            return output, direct
+        except Exception as exc:
+            error = type(exc).__name__
+            raise
+        finally:
+            self.event('工具执行', {'role': role, 'name': name, 'arguments': args,
+                                    'seconds': round(monotonic() - started, 3),
+                                    'result': output, 'error_type': error})
+
+    def _execute_tool(self, role, name, args):
+        self.budget.remaining()
         from . import agent_client as api
         if name == 'read_context':
             return self.read_context(args), None
@@ -290,7 +343,7 @@ class TravelAgentRuntime:
             if not self.versions_read or self.candidate or self.patch or self.version_action:
                 raise ValueError('版本操作须先读取目标，且不能与本轮其他写入混合')
             op, target = args.get('operation'), args.get('version_id')
-            if op == 'confirm' and self.plan and self.plan.days and target == self.plan.id:
+            if op == 'confirm' and self.plan and self.plan.has_content and target == self.plan.id:
                 pass
             elif op == 'restore' and any(v.id == target for v in self.snapshot.get('plan_versions', [])):
                 pass
@@ -317,24 +370,27 @@ class TravelAgentRuntime:
             self.event('委派子 Agent', {'agent': child, 'task': args['task'], 'scope': scope, 'user_quote': args['user_quote']})
             try:
                 reply = self.run_role(child, args['task'], scope=scope)
-            except (api.ModelOutputError, PlanValidationError, AgentBudgetError, ValueError) as exc:
+            except (AgentBudgetError, ValueError) as exc:
                 reply = replace(self.text_reply(f'本次任务未完成：{exc}。原行程已保留。'), failed=True)
                 self.failure = reply
-            if reply.plan:
+            if reply.plan_text:
                 self.candidate = reply
                 self.failure = None
-            output = {'status': 'failed' if reply.failed else ('needs_input' if reply.needs_input else ('ready' if reply.plan or child == 'requirements' and self.patch else 'answered')),
-                      'body': reply.body, 'has_plan': bool(reply.plan), 'requirements_staged': bool(self.patch),
+            output = {'status': 'failed' if reply.failed else ('needs_input' if reply.needs_input else ('ready' if reply.plan_text or child == 'requirements' and self.patch else 'answered')),
+                      'body': reply.body, 'has_plan': bool(reply.plan_text), 'requirements_staged': bool(self.patch),
                       'note': '候选写入在本轮结束时由系统检查版本并保存。'}
             return output, reply if args['finish_turn'] or reply.needs_input or reply.failed else None
         # External tools are only reachable from the role's advertised whitelist.
         if name != 'query_route':
             self.budget.external()
-        output = api.run_tool(name, args, place_catalog=self.catalog, route_cache=self.cache) if name == 'query_route' else api.run_tool(name, args)
+        started = monotonic()
+        output = (api.run_tool(name, args, place_catalog=self.catalog, route_cache=self.cache)
+                  if name in {'query_route', 'query_weather'} else api.run_tool(name, args))
+        seconds = round(monotonic() - started, 3)
         message = {'role': 'tool', 'name': name, 'content': json.dumps(output, ensure_ascii=False)}
         self.catalog.update(collect_places([message]))
-        self.evidence.append({'tool': name, 'arguments': deepcopy(args), 'result': deepcopy(output)})
-        self.event('工具执行', {'name': name, 'arguments': args, 'result': output})
+        self.evidence.append({'tool': name, 'arguments': deepcopy(args), 'result': deepcopy(output),
+                              'queried_at': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'seconds': seconds})
         return output, None
 
     def check_quote(self, args):
@@ -347,13 +403,6 @@ class TravelAgentRuntime:
         if not content:
             raise ValueError('Empty model response')
         if role in {'main', 'research'} or role == 'revision' and scope == 'explain':
-            # Compatibility: accept a body-only JSON reply, never model writes here.
-            if content.startswith(('{', '[', '```')):
-                data = api._load_json(content)
-                body = data.get('body')
-                if not isinstance(body, str) or not body.strip():
-                    raise ValueError('回复缺少正文')
-                content = body
             return self.text_reply(content)
         if role == 'requirements':
             data = api._load_json(content)
@@ -376,31 +425,18 @@ class TravelAgentRuntime:
                     self.patch = {'changes': aggregate, 'evidence': self.user_body}
                     self.trip = updated
             self.ideas.extend(api._parse_idea_cards(data.get('idea_cards')))
+            self.requirements_checked = True
             return reply
-        try:
-            data = api._load_json(content)
-        except (ValueError, TypeError) as exc:
-            raise api.ModelOutputError(str(exc)) from exc
-        if data.get('status') == 'needs_input' and data.get('plan') is None:
-            return replace(self.text_reply(data.get('body', '')), needs_input=True)
-        reply = api._parse_planning_reply(content)
-        target = target_item_id
-        if role == 'revision' and scope == 'item':
-            target = target or data.get('target_item_id')
-            if not target or not self.plan or not any(i.id == target for d in self.plan.days for i in d.items):
-                raise PlanValidationError('必须唯一定位当前行程的原始条目 ID；不明确时请询问用户')
-        raw = merge_target(reply.plan, self.plan, target)
-        prepare_routes(raw, self.trip, self.catalog, self.cache, self.plan)
-        if self.trip:
-            validate_plan(raw, self.trip)
-        raw['status'] = '草案'
-        self.event('路线检查结果', raw)
+        if content.startswith(('需要补充：', '需要补充:', '需要确认：', '需要确认:')):
+            return replace(self.text_reply(content), needs_input=True)
         from .models import AgentCard, AgentAction
-        reply = replace(reply, plan=raw, target_item_id=target, next_action='show_plan',
+        self.event('文字行程', {'role': role, 'scope': scope, 'text': content})
+        saved_evidence = self.plan.evidence if self.plan and (role == 'revision' or self.used_saved_evidence) else []
+        reply = replace(self.text_reply(content), plan_text=content,
+                        evidence=deepcopy(saved_evidence + self.evidence), next_action='show_plan',
                         card=AgentCard('revision' if role == 'revision' else 'itinerary-draft',
                                        '行程调整' if role == 'revision' else '行程草案',
-                                       reply.body[:120], list(raw.get('pending_items', []))[:4],
-                                       [AgentAction('查看行程', 'itinerary')]))
+                                       content[:120], [], [AgentAction('查看行程', 'itinerary')]))
         self.candidate = reply
         return reply
 

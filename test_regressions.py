@@ -19,6 +19,11 @@ from app.store import DemoStore, USERS
 store_module = importlib.import_module("app.store")
 
 
+@pytest.fixture(autouse=True)
+def chat_wire(monkeypatch):
+    monkeypatch.setenv('OPENAI_WIRE_API', 'chat_completions')
+
+
 def reply(body="你好，有什么旅行问题想聊？"):
     return AgentReply(body, AgentCard("missing-info", "继续聊聊", "还需要一些信息", [], []), [])
 
@@ -170,7 +175,7 @@ def test_model_request_omits_temperature_parameter():
     assert "temperature" not in create.call_args.kwargs
 
 
-@pytest.mark.parametrize("content,failed", [("", True), ("{}", True), ('{"body":', True), ("你好！", False)])
+@pytest.mark.parametrize("content,failed", [("", True), ("{}", False), ('{"body":', False), ("你好！", False)])
 def test_model_response_validation_with_real_sdk(monkeypatch, content, failed):
     import httpx
     import openai
@@ -373,7 +378,7 @@ def test_planning_tool_loop_preserves_assistant_tool_call_and_result(monkeypatch
     def request(*args, **kwargs):
         requests.append(deepcopy(args[2]))
         return responses.pop(0)
-    monkeypatch.setattr(agent_client, 'run_tool', lambda name, arguments: {'status': 'available', 'city': arguments['city']})
+    monkeypatch.setattr(agent_client, 'run_tool', lambda name, arguments, **kw: {'status': 'available', 'city': arguments['city']})
     runtime = TravelAgentRuntime(object(), 'test-model', {'user_body': '杭州天气'}, request=request)
     runtime.run('research', '杭州天气')
     messages = requests[-1][2:]

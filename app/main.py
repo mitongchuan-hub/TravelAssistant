@@ -32,7 +32,7 @@ auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20261005-role-agents-itinerary-idea-auth-requirements-tasks-places-routes"
+templates.env.globals["static_version"] = "20261008-write-entry-evidence-latest-message-no-task-overlay-text-itinerary-quiet-generation-role-agents-itinerary-idea-auth-requirements-tasks-places-routes"
 templates.env.filters.update(day_date_label=day_date_label, timeline_time_parts=timeline_time_parts)
 templates.env.globals["task_request_id"] = lambda: uuid4().hex
 templates.env.globals["place_map_url"] = map_url

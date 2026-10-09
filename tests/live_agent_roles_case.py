@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import hashlib
+import tempfile
 from copy import deepcopy
 from dataclasses import asdict
 from datetime import datetime
@@ -17,7 +18,6 @@ os.environ.pop('PYTEST_CURRENT_TEST', None)
 
 from app import agent_client
 from app.store import DemoStore
-from app.plan_validation import validate_plan
 
 
 def digest(path):
@@ -46,7 +46,7 @@ def main():
                 print(json.dumps({'event': 'delegate', 'agent': value['agent'], 'scope': value.get('scope')}, ensure_ascii=False), flush=True)
     agent_client.ConversationTrace.add = observe
     results = []
-    artifact = ROOT / '.cache/role-agents-live-check.json'
+    artifact = Path(tempfile.mkdtemp(prefix='travelassistant-roles-live-')) / 'results.json'
     def turn(name, text):
         print(json.dumps({'event': 'start', 'case': name}, ensure_ascii=False), flush=True)
         start = monotonic()
@@ -73,24 +73,16 @@ def main():
     assert research['new_versions'] == 0
     planning = turn('planning', '现在请生成一天杭州行程：只安排灵隐寺、庆春朴门(灵隐店)午餐和必要休息。休息就在午餐餐厅原地进行，不增加茶馆。东站往返公共交通，寺院到餐厅步行，不安排过夜。按已填写的10:00抵达、20:00离开，查询真实地点和路线，每项活动和交通都写明确起止时段。')
     assert planning['new_versions'] == 1
-    validate_plan(local.plans[trip.id], local.trips[trip.id])
-    items = [item for day in local.plans[trip.id].days for item in day.items]
-    routes = [route for item in items for route in (item.incoming_route,item.departure_route) if route]
-    assert sum(r.status=='available' and (r.duration_minutes or 0)>0 for r in routes)>=3
+    assert local.plans[trip.id].text and not local.plans[trip.id].days
     original = deepcopy(local.plans[trip.id])
     explanation = turn('explain', '解释一下，为什么把休息安排在午餐餐厅？只解释，不修改。')
     assert explanation['new_versions']==0 and local.plans[trip.id]==original
-    meal = next(item for day in original.days for item in day.items if item.category=='meal')
     revision = turn('revision', '只修改午餐这一项的备注：加上“点餐时再次告知不吃海鲜”。地点、时间以及其他安排全部保持原样。')
     assert revision['new_versions']==1
-    changed = next(item for day in local.plans[trip.id].days for item in day.items if item.id==meal.id)
-    assert changed.time==meal.time and changed.location==meal.location and '海鲜' in changed.notes
-    for day in original.days:
-        for item in day.items:
-            saved=next(i for d in local.plans[trip.id].days for i in d.items if i.id==item.id)
-            assert saved.time==item.time and saved.title==item.title and saved.location==item.location
+    assert '点餐时再次告知不吃海鲜' in local.plans[trip.id].text
+    assert local.plan_versions[trip.id][-2].text == original.text
     assert digest(business)==before_digest
-    print(json.dumps({'status':'passed','case_count':len(results),'business_db_unchanged':True,'artifact':str(artifact.relative_to(ROOT))},ensure_ascii=False),flush=True)
+    print(json.dumps({'status':'passed','case_count':len(results),'business_db_unchanged':True,'artifact':str(artifact)},ensure_ascii=False),flush=True)
 
 
 if __name__=='__main__':

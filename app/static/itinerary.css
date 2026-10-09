@@ -1,4 +1,84 @@
 /* Itinerary layout loads after the shared theme. */
+.text-itinerary {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.text-itinerary h2 {
+  margin: 0 0 18px;
+  font-size: 20px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.text-itinerary-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.9;
+  font-size: 15px;
+}
+
+.text-itinerary-actions,
+.text-itinerary-revision {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.text-itinerary-revision label {
+  font-weight: 700;
+}
+
+.text-itinerary-revision textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 110px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--surface);
+  font: inherit;
+  resize: vertical;
+}
+
+.text-itinerary-actions button {
+  justify-self: start;
+}
+
+.plan-evidence {
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.plan-evidence summary {
+  cursor: pointer;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.plan-evidence ul {
+  display: grid;
+  gap: 14px;
+  padding-left: 20px;
+}
+
+.plan-evidence small {
+  display: block;
+}
+
+.plan-basis-notice {
+  color: var(--ink);
+}
+
 .phone-shell--itinerary {
   overflow: clip; /* Clip the shell without making it a scroll container. */
 }

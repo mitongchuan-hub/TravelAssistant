@@ -12,6 +12,7 @@ from app.agent_client import AgentReply, _parse_plan
 from app.models import AgentCard
 from app.places import collect_places
 from app.store import DemoStore
+from test_agent_roles import plan_text, ready_for_planning
 from app.tools import places
 from app.tools.places import map_url, search_places
 
@@ -68,11 +69,12 @@ def test_agent_ids_bind_only_trusted_tool_metadata(poi_id):
     else: assert saved.place is None
 
 
-def test_planning_preserves_catalog_across_format_retry(monkeypatch):
+def test_planning_keeps_tool_catalog_without_format_conversion(monkeypatch):
     local = DemoStore(persistence_enabled=False)
+    ready_for_planning(local, 'trip-hangzhou')
     raw = asdict(local._seed_plan())
     raw['days'][0]['items'][0]['poi_id'] = 'poi-one'
-    replies = ['{}', json.dumps({'body': '已整理', 'card': {}, 'idea_cards': [], 'plan': raw})]
+    replies = [plan_text(raw)]
     queries = []
     def create(*args, **kwargs):
         if not queries:
@@ -83,10 +85,11 @@ def test_planning_preserves_catalog_across_format_retry(monkeypatch):
     monkeypatch.setattr(agent_client, 'run_tool', lambda *a, **kw: json.loads(tool_messages()[0]['content']))
     monkeypatch.setattr(agent_client, '_create_chat_completion', create)
     catalog = {}
-    response = agent_client._request_model(object(), 'test', '上下文', True, place_catalog=catalog)
+    response = agent_client._request_model(object(), 'test', '上下文', True,
+                                          trip=local.trips['trip-hangzhou'], place_catalog=catalog)
     assert catalog['poi-one'] == CANDIDATE and queries == [True]
-    parsed = agent_client._parse_planning_reply(response.choices[0].message.content)
-    assert parsed.plan['days'][0]['items'][0]['poi_id'] == 'poi-one'
+    assert response.choices[0].message.content == plan_text(raw)
+    assert replies == []
 
 
 def test_agent_places_survive_store_save_and_restart(tmp_path, monkeypatch):

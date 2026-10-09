@@ -1,6 +1,8 @@
 # 按 Agent 角色设置思考强度
 
-当前应用通过 OpenAI 兼容 Chat Completions 的 `reasoning_effort` 参数提出思考强度要求。模型仍使用原来的配置，本次没有切换模型。角色共享调用次数和时间预算；思考强度与调用预算是两个独立概念。
+历史的严格结构化响应探测只用于接口兼容性证据；当前行程链路直接保存文字，不发送行程 response_format，也没有结构化角色。
+
+角色默认思考强度没有因文字行程改造变化，具体链路见 [当前实现](agent-role-implementation.md)。
 
 ## 默认值与配置
 
@@ -27,13 +29,25 @@ OPENAI_REASONING_EFFORT_PLANNING=medium
 OPENAI_REASONING_EFFORT_REVISION=medium
 ```
 
-上面展示配置语法，不是项目必须添加的设置。未配置这些变量时直接使用代码默认值。本次本机没有改写包含密钥的 `.env`。
+上面展示配置语法，不是项目必须添加的设置。未配置这些变量时直接使用代码默认值。
 
 显式设置 REVISION 或全局值时，也会覆盖解释模式的默认低档。应用允许 `default / none / minimal / low / medium / high / xhigh / max`，但实际支持集合由模型服务决定；`none` 不等于通用可用的关闭思考开关。非法配置值在发请求前报错，不静默改成别的值。
 
 修改 `.env` 后需重启本地服务才能加载。新模型服务若暂未验证，可先配置 `OPENAI_REASONING_EFFORT=default`，再验证支持情况。
 
-## 当前 Kimi K3 服务的证据
+## 当前 Responses 模型配置
+
+2026-10-08 本机切换为 `https://mirror.xinshu.ai/v1` 的 `gpt-5.6-sol`，使用 `OPENAI_WIRE_API=responses`、`OPENAI_STORE_RESPONSES=false`，并关闭备用模型。`/models` 列出目标模型，实际 `/responses` 调用返回对应模型且状态 completed。
+
+Responses 将统一的角色档位映射到 `reasoning.effort`，工具定义映射为顶层 function，工具结果使用 function_call_output。每次请求发送 store=false，工具续轮在本地重放必要的 reasoning/function_call 条目，不传 previous_response_id；请求 include reasoning.encrypted_content 以兼容无服务端存储的续轮。加密推理状态不写入文字日志或业务数据。非 completed 输出视作失败，不保存部分正文。
+
+协议适配位于 `app/model_transport.py`；`test_model_transport.py` 覆盖真实 SDK 的请求转换、工具续轮、加密条目保留、格式、存储开关、参数拒绝与部分响应保护。共享角色 Loop 和文字行程保存协议沿用现有实现。
+
+此次回归310项通过。真实模型在独立数据中完成聊天、需求更新、查询、规划、修改五类验收，共11次Responses请求，覆盖五个角色、low/medium档位与4次工具续轮，无思考参数降级；每次捕获请求均为目标模型、store=false且无previous_response_id。生成与修改各新增一个文字版本，独立SQLite重启保留内容，业务数据库哈希未变化。查询工具采用受控未知结果，这证明接口与保存链路兼容，不代表整套旅行质量验收已通过。
+
+本机原始结果：`C:\Users\16156\AppData\Local\Temp\travelassistant-gpt-switch-947a71114841491d867d11d982038264\smoke.json`。
+
+## 历史 Kimi K3 服务的证据
 
 核验日期：2026-10-05。实际端点为 `dashscope.aliyuncs.com/compatible-mode/v1`，模型为 `kimi-k3`。
 
@@ -60,10 +74,10 @@ OPENAI_REASONING_EFFORT_REVISION=medium
 
 ## 兼容与日志
 
-- 仅当 HTTP 400 明确指向 `reasoning_effort` 不受支持或档位无效，才移除该参数重试一次。
+- 仅当 HTTP 400 明确指向 `reasoning_effort` 或 Responses 的 `reasoning.effort` 不受支持或档位无效，才移除该参数重试一次。
 - 请求的消息、工具、输出格式保持原样。限流、认证失败、超时、服务错误或其他字段错误不会触发思考参数降级。
 - 重试和格式兼容回退都消耗共享模型调用预算；剩余额度不足时停止。
-- 在本次任务中按服务端点、模型和档位记住明确拒绝，后续相同请求直接采用服务端默认。另一个模型、另一个档位或下一轮任务重新判断，防止主模型拒绝影响备用模型。
+- 在本次任务中按服务端点、协议、模型和档位记住明确拒绝，后续相同请求直接采用服务端默认。另一个模型、另一个档位或下一轮任务重新判断，防止主模型拒绝影响备用模型。
 - 每次实际模型请求记录角色、请求档位、实际发送档位以及默认/降级状态。成功仅标记 `parameter_accepted`，不会伪称已验证内部强度。
 - 响应只增加耗时、prompt/completion/reasoning token 计数；服务未提供时记为 null，不补造为零。不新增 `reasoning_content` 正文日志。
 

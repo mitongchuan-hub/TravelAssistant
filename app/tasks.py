@@ -31,7 +31,7 @@ class TravelTasks:
                 if child:
                     return deepcopy(child), False
             active = next((task for task in self.tasks.values() if task['trip_id'] == trip_id and task['status'] in ACTIVE), None)
-            if active:
+            if active and kind != 'chat':
                 raise TaskConflict('这次旅行还有任务正在处理，请等待完成后再提交')
             original = self.tasks.get(retry_of) if retry_of else None
             if retry_of and (not original or original['trip_id'] != trip_id or original['status'] != 'failed'):
@@ -42,7 +42,7 @@ class TravelTasks:
                 feedback = payload.get('feedback')
                 if not isinstance(feedback, str) or not 1 <= len(feedback.strip()) <= 2000:
                     raise ValueError('修改意见应为 1 到 2000 字的文本')
-                if not self.plans[trip_id].days:
+                if not self.plans[trip_id].has_content:
                     raise ValueError('请先生成行程')
                 target = payload.get('item_id')
                 if target and not any(item.id == target for day in self.plans[trip_id].days for item in day.items):
@@ -52,6 +52,15 @@ class TravelTasks:
                 body = payload.get('body', '').strip()
                 if not body or len(body) > 10000:
                     raise ValueError('消息应为 1 到 10000 字的文本')
+                if active:
+                    for previous in self.tasks.values():
+                        if previous['trip_id'] == trip_id and previous['status'] in ACTIVE:
+                            previous['status'] = 'superseded'
+                            previous['message'] = '已由新消息替代'
+                            previous['updated_at'] = now()
+                            previous['result_url'] = ''
+                            thinking = previous.get('thinking_id')
+                            self.messages[trip_id] = [m for m in self.messages[trip_id] if m.id != thinking]
                 self._defer_persist = getattr(self, '_defer_persist', 0) + 1
                 try:
                     if original:
@@ -85,42 +94,47 @@ class TravelTasks:
             task['status'], task['message'], task['updated_at'] = 'running', '正在处理，请稍候；可以离开页面，回来查看结果。', now()
             self._persist()
         trip_id = task['trip_id']
+        self._task_context.task_id = task_id
         try:
             with self._agent_lock(trip_id):
                 with self._lock:
+                    if task['status'] != 'running':
+                        return
                     if task['kind'] != 'chat' and (
                         self.trips[trip_id].requirements.revision != task['requirements_revision']
                         or self.plans[trip_id].id != task['plan_id']
                     ):
                         raise TaskConflict('需求或行程已变化，请基于最新内容重试')
                     before = len(self.plan_versions[trip_id])
-                    previous_messages = {message.id for message in self.messages[trip_id]}
                 if task['kind'] == 'chat':
-                    self.finish_agent_task(trip_id, task['payload']['body'], self.trips[trip_id].owner.id, task['thinking_id'])
+                    last = self.finish_agent_task(trip_id, task['payload']['body'], self.trips[trip_id].owner.id, task['thinking_id'])
                 elif task['kind'] == 'plan':
-                    self.generate_plan(trip_id)
+                    last = self.generate_plan(trip_id)
                 else:
-                    self.request_revision(trip_id, task['payload'].get('item_id'), task['payload']['feedback'], self.trips[trip_id].owner)
+                    last = self.request_revision(trip_id, task['payload'].get('item_id'), task['payload']['feedback'], self.trips[trip_id].owner)
                 with self._lock:
-                    replies = [message for message in self.messages[trip_id]
-                               if message.sender_type == 'agent' and message.id not in previous_messages and message.status != 'thinking']
-                    last = replies[-1] if replies else None
+                    if task['status'] != 'running':
+                        return
                     saved = len(self.plan_versions[trip_id]) > before
                     success = last is not None and last.status == 'sent' and (saved or task['kind'] == 'chat')
                     task['status'] = 'succeeded' if success else 'failed'
                     task['message'] = '已完成' if success else (last.body if last else '本次处理未完成，请重试')
                     task['result_url'] = f'/workspace/{trip_id}?tab=' + ('itinerary' if success and saved else 'chat')
-                    if success and saved and task['kind'] == 'revision' and task['payload'].get('item_id'):
+                    if success and saved and task['kind'] == 'revision' and task['payload'].get('item_id') and not self.plans[trip_id].text:
                         task['result_url'] += '#itinerary-item-' + task['payload']['item_id']
                     task['updated_at'] = now()
                     self._persist()
         except Exception as exc:
             with self._lock:
+                if task['status'] != 'running':
+                    return
                 if task['kind'] == 'chat':
                     self.fail_agent_task(trip_id, task['thinking_id'])
                 task['status'], task['updated_at'] = 'failed', now()
                 task['message'] = str(exc) if isinstance(exc, TaskConflict) else '本次处理未完成，原行程已保留，请稍后重试。'
                 self._persist()
+        finally:
+            del self._task_context.task_id
 
     def recover_tasks(self):
         changed = False

@@ -14,10 +14,9 @@ from copy import deepcopy
 from dotenv import load_dotenv
 
 from .routes import seed_places
-from .places import collect_places
-from .plan_validation import PlanValidationError
 from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripPlan
 from .tools import run_tool
+from .model_transport import create_completion, response_storage_enabled, visible_params, wire_api
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
@@ -42,6 +41,8 @@ class AgentReply:
     version_action: dict = field(default_factory=dict)
     expected_plan_snapshot: dict | None = None
     needs_input: bool = False
+    plan_text: str = ""
+    evidence: list[dict] | None = None
 
 
 VALID_CARD_KINDS = {"requirement-summary", "missing-info", "conflict", "itinerary-draft", "revision"}
@@ -50,11 +51,6 @@ VALID_IDEA_KINDS = {"地点", "预算", "节奏", "禁忌", "待归类"}
 
 MAX_CONTEXT_MESSAGES = 12
 MAX_CONTEXT_VERSIONS = 3
-
-
-class ModelOutputError(ValueError):
-    """The provider returned content that cannot be saved as a plan."""
-
 
 
 @dataclass
@@ -108,6 +104,7 @@ def generate_agent_reply(
     planning_mode: bool = False,
     target_item_id: str | None = None,
     agent_role: str | None = None,
+    cancelled=None,
 ) -> AgentReply | None:
     trace = ConversationTrace(
         request_id=uuid.uuid4().hex[:12],
@@ -151,6 +148,7 @@ def generate_agent_reply(
             'recent_chat': [{'id': m.id, 'role': m.sender_type, 'body': m.body}
                             for m in messages if m.status == 'sent'][-8:],
             'current_date': datetime.now().date().isoformat(),
+            'cancelled': cancelled,
         })
         place_catalog = seed_places(plan)
         route_cache = {}
@@ -167,39 +165,9 @@ def generate_agent_reply(
         content = (response.choices[0].message.content or '').strip() if response else ''
         trace.add('最终模型原始回复', content)
         runtime_reply = route_cache.get('final_reply')
-        if runtime_reply is not None:
-            body = runtime_reply.body
-            if runtime_reply.plan and any(text.startswith('路线待核实：') for text in runtime_reply.plan.get('pending_items', [])):
-                body += '\n\n部分地点或路段尚待核实，当前尚未完成全部路线可行性检查，详见行程中的待确认事项。'
-            return replace(runtime_reply, body=body, verified_places=place_catalog)
-        if not content:
-            raise ValueError('Empty model response')
-        try:
-            reply = _parse_planning_reply(content) if planning_mode else _parse_reply(content)
-            if not planning_mode and reply.plan is not None:
-                trace.add("普通聊天响应", "忽略模型擅自返回的 plan；普通聊天不更新行程。")
-                reply = replace(reply, plan=None)
-            final_plan = route_cache.get('final_plan', reply.plan)
-            body = reply.body
-            if final_plan and any(text.startswith('路线待核实：') for text in final_plan.get('pending_items', [])):
-                body += '\n\n部分地点或路段尚待核实，当前尚未完成全部路线可行性检查，详见行程中的待确认事项。'
-            return replace(reply, verified_places=place_catalog, plan=final_plan, body=body)
-        except json.JSONDecodeError:
-            # Plain text is usable; broken structured output is not a successful reply.
-            if planning_mode or content.startswith(("{", "[", "```")):
-                raise
-            return AgentReply(
-                body=content,
-                card=AgentCard(
-                    kind="requirement-summary",
-                    title="已收到",
-                    summary=content[:80] or "我会继续结合你的需求整理行程。",
-                    bullets=["回复已直接显示在聊天里", "可以继续补充预算、时间和偏好"],
-                    actions=[AgentAction(label="查看旅行想法", target="board")],
-                ),
-                idea_cards=[],
-                plan=None,
-            )
+        if runtime_reply is None:
+            raise ValueError('Agent 未交付回复')
+        return replace(runtime_reply, verified_places=place_catalog)
     except Exception as exc:
         trace.write(exc)
         # Conversation content is intentionally written to the local trace file above.
@@ -215,25 +183,6 @@ def generate_agent_reply(
         if isinstance(exc, AgentBudgetError):
             return failed_reply(body=str(exc), card=AgentCard('missing-info', '本次任务已停止', str(exc), [], []),
                                 idea_cards=[], failed=True)
-        if isinstance(exc, PlanValidationError):
-            reason = str(exc)
-            return failed_reply(
-                body=f"行程安排未通过检查：{reason}。本次未保存新版本，原行程已保留。",
-                card=AgentCard(kind="conflict", title="行程安排需要调整", summary="日期、时间或抵离边界存在问题。",
-                    bullets=[reason, "请调整需求或重新生成"], actions=[AgentAction(label="查看原行程", target="itinerary")]),
-                idea_cards=[], failed=True,
-            )
-        if isinstance(exc, ModelOutputError):
-            return failed_reply(
-                body="模型已返回内容，但行程结构不符合要求，本次未保存新版本，原行程保持不变。请稍后重试。",
-                card=AgentCard(
-                    kind="missing-info", title="行程格式校验失败",
-                    summary="模型没有返回完整、有效的行程结构。",
-                    bullets=["原行程和历史版本已保留", "不是 API Key 或登录问题", "可以稍后重新生成"],
-                    actions=[AgentAction(label="查看原行程", target="itinerary")],
-                ),
-                idea_cards=[], failed=True,
-            )
         if type(exc).__name__ == "RateLimitError" or status_code == 429:
             return failed_reply(
                 body="模型服务当前比较繁忙，你的消息已保留，请稍后再试。",
@@ -328,8 +277,9 @@ def _create_chat_completion(
 ) -> object:
     from openai import BadRequestError
 
+    api = wire_api()
     params: dict[str, object] = {"model": model, "messages": messages}
-    rejection_key = (str(getattr(client, 'base_url', '')), model, reasoning_effort or '')
+    rejection_key = (str(getattr(client, 'base_url', '')) + '#' + api, model, reasoning_effort or '')
     rejections = budget.reasoning_rejections if budget is not None else set()
     reasoning_status = 'provider_default'
     if reasoning_effort is not None:
@@ -348,11 +298,12 @@ def _create_chat_completion(
                 budget.model()
                 params['timeout'] = min(float(os.getenv('OPENAI_TIMEOUT_SECONDS', '180')), budget.remaining())
             if trace:
-                trace.add('模型请求', {'model': model, 'agent_role': agent_role, 'params': params,
+                trace.add('模型请求', {'model': model, 'agent_role': agent_role, 'params': visible_params(params),
+                                     'wire_api': api, 'store': response_storage_enabled(),
                                      'reasoning': {'requested': reasoning_effort, 'sent': params.get('reasoning_effort'),
                                                    'status': reasoning_status}})
             started = monotonic()
-            response = client.chat.completions.create(**params)
+            response = create_completion(client, params, api)
             if trace:
                 message = response.choices[0].message
                 usage = getattr(response, 'usage', None)
@@ -412,20 +363,22 @@ def _rejects_reasoning_effort(exc: Exception) -> bool:
     error = error if isinstance(error, dict) else {}
     text = str(error.get('message') or exc).lower()
     parameter = str(error.get('param') or '').lower()
-    mentions_effort = 'reasoning_effort' in text or parameter == 'reasoning_effort'
+    effort_parameters = {'reasoning_effort', 'reasoning.effort'}
+    mentions_effort = any(name in text for name in effort_parameters) or parameter in effort_parameters
     rejects = any(term in text for term in (
         'not supported', 'unsupported', 'not support', 'does not support', 'not allowed',
         'unknown parameter', 'unrecognized', 'unrecognised', 'unexpected keyword',
         'invalid', 'must be one of', 'only supports', 'not available', '不支持', '无效',
     )) or str(error.get('code') or '') in {'unsupported_parameter', 'unsupported_value', 'unknown_parameter', 'invalid_parameter_error'}
     # A generic tools/schema error mentioning effort is not enough to drop it.
-    conflicting_parameter = parameter and parameter != 'reasoning_effort'
+    conflicting_parameter = parameter and parameter not in effort_parameters
     return bool(mentions_effort and rejects and not conflicting_parameter)
 
 
 def _looks_like_unsupported_response_format(text: str) -> bool:
     return (
         "response_format" in text
+        or "text.format" in text
         or "json_schema" in text
         or "structured output" in text
         or ("json" in text and ("not supported" in text or "unsupported" in text))
@@ -502,13 +455,8 @@ def _plan_context_lines(plan: TripPlan | None) -> list[str]:
     return [json.dumps(asdict(plan), ensure_ascii=False)]
 
 
-def _parse_planning_reply(content: str) -> AgentReply:
-    try:
-        return _parse_reply(content, strict_plan=True)
-    except (ValueError, TypeError) as exc:
-        raise ModelOutputError(str(exc)) from exc
-
-
+# Legacy result readers retained for older integrations and stored-plan fixtures.
+# Current role replies use prose; the model request path does not call these.
 def _parse_reply(content: str, *, strict_plan: bool = False) -> AgentReply:
     data = _load_json(content)
     if strict_plan:

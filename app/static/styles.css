@@ -4769,8 +4769,3 @@ blockquote {
 }
 
 /* Task feedback is shown only when a task needs attention. */
-.travel-task-status { position: fixed; left: 50%; bottom: calc(145px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(calc(100% - 32px), 390px); z-index: 25; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-soft); }
-.travel-task-status[hidden] { display: none; }
-.travel-task-status p { margin: 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; max-height: 140px; overflow-y: auto; }
-.travel-task-status button, .travel-task-status a { display: inline-flex; margin-top: 8px; min-height: 32px; padding: 6px 10px; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font: inherit; font-size: 13px; }
-.travel-task-status button[hidden], .travel-task-status a[hidden] { display: none; }

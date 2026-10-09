@@ -411,6 +411,9 @@ def _plan(raw: dict[str, Any], legacy: bool = False) -> TripPlan:
         constraints_met=[str(item) for item in raw.get("constraints_met", [])],
         pending_items=[str(item) for item in raw.get("pending_items", [])],
         risks=[str(item) for item in raw.get("risks", [])],
+        text=str(raw.get("text") or ""),
+        evidence=deepcopy(raw.get("evidence") or []),
+        requirements_revision=raw.get("requirements_revision"),
     )
 
 
@@ -429,6 +432,9 @@ def _version(raw: dict[str, Any], legacy: bool = False) -> PlanVersion:
         constraints_met=[str(item) for item in raw.get("constraints_met", [])],
         pending_items=[str(item) for item in raw.get("pending_items", [])],
         risks=[str(item) for item in raw.get("risks", [])],
+        text=str(raw.get("text") or ""),
+        evidence=deepcopy(raw.get("evidence") or []),
+        requirements_revision=raw.get("requirements_revision"),
     )
 
 

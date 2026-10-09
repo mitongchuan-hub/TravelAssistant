@@ -158,6 +158,13 @@ class TripPlan:
     constraints_met: list[str] = field(default_factory=list)
     pending_items: list[str] = field(default_factory=list)
     risks: list[str] = field(default_factory=list)
+    text: str = ""
+    evidence: list[dict] = field(default_factory=list)
+    requirements_revision: int | None = None
+
+    @property
+    def has_content(self) -> bool:
+        return bool(self.text.strip() or self.days)
 
 
 @dataclass(frozen=True)
@@ -174,6 +181,9 @@ class PlanVersion:
     constraints_met: list[str] = field(default_factory=list)
     pending_items: list[str] = field(default_factory=list)
     risks: list[str] = field(default_factory=list)
+    text: str = ""
+    evidence: list[dict] = field(default_factory=list)
+    requirements_revision: int | None = None
 
 
 @dataclass(frozen=True)
