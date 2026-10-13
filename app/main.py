@@ -2,6 +2,8 @@ import json
 import logging
 import os
 import sqlite3
+from contextlib import asynccontextmanager
+from copy import deepcopy
 from pathlib import Path
 from threading import Lock
 
@@ -19,21 +21,36 @@ from .auth import (
     validate_email,
     validate_password,
 )
+from urllib.parse import quote
 from uuid import uuid4
 from .tasks import TaskConflict
 from .tools.places import map_url, query_time_label
 from .models import AgentCard, Message, User
 from .requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
+from .chat_presentation import chat_reply_view, chat_time_break, chat_actions, chat_supplemental
 from .presentation import day_date_label, timeline_time_parts
+from .display_presentation import display_view, coverage_detail
 from .store import IDEA_WALL_LIMIT, USERS, store
 
-app = FastAPI(title="TravelAssistant Python H5")
+@asynccontextmanager
+async def lifespan(application):
+    store.start_display_worker()
+    try:
+        yield
+    finally:
+        store.stop_display_worker()
+
+
+app = FastAPI(title="TravelAssistant Python H5", lifespan=lifespan)
 auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20261008-write-entry-evidence-latest-message-no-task-overlay-text-itinerary-quiet-generation-role-agents-itinerary-idea-auth-requirements-tasks-places-routes"
-templates.env.filters.update(day_date_label=day_date_label, timeline_time_parts=timeline_time_parts)
+templates.env.globals["static_version"] = "20261013-chat-1"
+templates.env.filters.update(day_date_label=day_date_label, timeline_time_parts=timeline_time_parts,
+                             display_view=display_view, coverage_detail=coverage_detail,
+                             chat_reply_view=chat_reply_view, chat_time_break=chat_time_break,
+                             chat_actions=chat_actions, chat_supplemental=chat_supplemental)
 templates.env.globals["task_request_id"] = lambda: uuid4().hex
 templates.env.globals["place_map_url"] = map_url
 templates.env.globals["place_query_time"] = query_time_label
@@ -273,7 +290,12 @@ def trips(request: Request) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse(request, "trips.html", {"trips": store.list_trips(user.id), "current_user": user})
+    return templates.TemplateResponse(request, "trips.html", {
+        "trips": store.list_trips(user.id),
+        "current_user": user,
+        "notice": request.query_params.get("notice", ""),
+        "error": request.query_params.get("error", ""),
+    })
 
 
 @app.get("/trips/new", response_class=HTMLResponse)
@@ -281,23 +303,39 @@ def new_trip(request: Request) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse(request, "create_trip.html", {"current_user": user})
+    return templates.TemplateResponse(request, "create_trip.html", {"current_user": user, "values": {}, "error": ""})
 
 
 @app.post("/trips", response_class=HTMLResponse)
-def create_trip(
-    request: Request,
-    destination: str = Form(""),
-    date_range: str = Form(""),
-    budget: str = Form(""),
-    style: str = Form(""),
-    note: str = Form(""),
-) -> RedirectResponse:
+async def create_trip(request: Request) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
-    trip = store.create_trip(destination, date_range, budget, style, note, user)
+    data = await request.form()
+    fields = {'city', 'start_date', 'end_date', 'arrival_time', 'departure_time', 'arrival_location',
+              'departure_location', 'travelers', 'budget_amount', 'budget_scope', 'budget_coverage'}
+    values = {key: data.get(key, '') for key in fields}
+    try:
+        if not all(isinstance(v, str) and v.strip() for v in values.values()):
+            raise ValueError('请填写完整的五组旅行信息')
+        trip = store.create_trip(values['city'], '', '', '', '', user, requirements=values)
+    except ValueError as exc:
+        return templates.TemplateResponse(request, "create_trip.html", {
+            "current_user": user, "values": values, "error": str(exc)}, status_code=400)
     return RedirectResponse(url=f"/workspace/{trip.id}?tab=chat", status_code=303)
+
+
+@app.post("/trips/{trip_id}/delete")
+def delete_trip_route(request: Request, trip_id: str) -> Response:
+    user = current_user(request)
+    if not user:
+        return RedirectResponse(url="/", status_code=303)
+    get_owned_trip_or_404(trip_id, user)
+    try:
+        store.delete_trip(trip_id)
+    except ValueError as exc:
+        return RedirectResponse(url=f"/trips?error={quote(str(exc))}", status_code=303)
+    return RedirectResponse(url="/trips?notice=旅行已删除", status_code=303)
 
 
 @app.get("/workspace/{trip_id}/requirements", response_class=HTMLResponse)
@@ -362,12 +400,52 @@ def workspace(request: Request, trip_id: str, tab: str = "chat") -> Response:
             "idea_cards": store.idea_cards[trip_id],
             "wall_cards": store.idea_cards[trip_id][-IDEA_WALL_LIMIT:],
             "plan": store.plans[trip_id],
-            "plan_versions": store.plan_versions[trip_id],
             "metrics": store.trip_metrics(trip_id),
             "current_user": user,
             "travel_tasks": store.list_tasks(trip_id),
+            "display_state": store.get_display_state(trip_id),
         },
     )
+
+
+@app.get('/api/trips/{trip_id}/plan-state')
+def api_plan_state(request: Request, trip_id: str) -> Response:
+    user = current_user(request)
+    if not user:
+        return JSONResponse({'error': '请先登录'}, status_code=401)
+    get_owned_trip_or_404(trip_id, user)
+    return JSONResponse(store.get_display_state(trip_id), headers={'Cache-Control': 'no-store'})
+
+
+@app.post('/api/trips/{trip_id}/display')
+async def api_retry_display(request: Request, trip_id: str) -> Response:
+    user = current_user(request)
+    if not user:
+        return JSONResponse({'error': '请先登录'}, status_code=401)
+    get_owned_trip_or_404(trip_id, user)
+    try:
+        data = await request.json()
+        if not isinstance(data, dict) or not isinstance(data.get('plan_id'), str) or not isinstance(data.get('source_hash'), str):
+            raise ValueError('请刷新行程后再整理卡片')
+        store.retry_display(trip_id, data['plan_id'], data['source_hash'])
+    except (ValueError, UnicodeDecodeError) as exc:
+        return JSONResponse({'error': str(exc)}, status_code=409)
+    return JSONResponse(store.get_display_state(trip_id), status_code=202, headers={'Cache-Control': 'no-store'})
+
+
+@app.get('/workspace/{trip_id}/display/partial', response_class=HTMLResponse)
+def display_partial(request: Request, trip_id: str, plan_id: str = '', source_hash: str = '') -> Response:
+    user = current_user(request)
+    if not user:
+        return RedirectResponse(url='/', status_code=303)
+    get_owned_trip_or_404(trip_id, user)
+    with store._lock:
+        state = store.get_display_state(trip_id)
+        if state['plan_id'] != plan_id or state['source_hash'] != source_hash:
+            return Response(status_code=409)
+        plan = deepcopy(store.plans[trip_id])
+    return templates.TemplateResponse(request, 'partials/display_panel.html',
+        {'plan': plan, 'display_state': state}, headers={'Cache-Control': 'no-store'})
 
 
 @app.get("/api/trips/{trip_id}/tasks")
@@ -581,15 +659,4 @@ def confirm_plan(request: Request, trip_id: str) -> RedirectResponse:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
     store.confirm_plan(trip_id)
-    return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary", status_code=303)
-
-
-@app.post("/workspace/{trip_id}/plan/restore")
-def restore_plan(request: Request, trip_id: str, version_id: str = Form("")) -> RedirectResponse:
-    user = current_user(request)
-    if not user:
-        return RedirectResponse(url="/", status_code=303)
-    get_owned_trip_or_404(trip_id, user)
-    if version_id:
-        store.restore_plan_version(trip_id, version_id)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary", status_code=303)

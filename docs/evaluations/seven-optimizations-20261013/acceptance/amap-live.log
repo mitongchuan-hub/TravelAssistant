@@ -1,0 +1,8 @@
+{"tool": "search_places", "status": "available", "seconds": 0.972}
+{"tool": "search_places", "status": "available", "seconds": 0.983}
+{"tool": "search_food", "status": "available", "seconds": 0.893}
+{"tool": "query_route", "status": "available", "seconds": 0.322}
+{"tool": "query_route", "status": "available", "seconds": 0.511}
+{"tool": "query_route", "status": "available", "seconds": 0.323}
+{"tool": "query_route", "status": "available", "seconds": 0.0}
+{"status": "completed", "completed_steps": 7, "available_steps": 7, "mcp_tools_calls": 19}

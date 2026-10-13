@@ -95,6 +95,7 @@ class TravelTasks:
             self._persist()
         trip_id = task['trip_id']
         self._task_context.task_id = task_id
+        self._task_context.needs_input = False
         try:
             with self._agent_lock(trip_id):
                 with self._lock:
@@ -105,7 +106,7 @@ class TravelTasks:
                         or self.plans[trip_id].id != task['plan_id']
                     ):
                         raise TaskConflict('需求或行程已变化，请基于最新内容重试')
-                    before = len(self.plan_versions[trip_id])
+                    before = deepcopy(self.plans[trip_id])
                 if task['kind'] == 'chat':
                     last = self.finish_agent_task(trip_id, task['payload']['body'], self.trips[trip_id].owner.id, task['thinking_id'])
                 elif task['kind'] == 'plan':
@@ -115,10 +116,12 @@ class TravelTasks:
                 with self._lock:
                     if task['status'] != 'running':
                         return
-                    saved = len(self.plan_versions[trip_id]) > before
-                    success = last is not None and last.status == 'sent' and (saved or task['kind'] == 'chat')
+                    saved = self.plans[trip_id] != before
+                    needs_input = self._task_context.needs_input
+                    success = last is not None and last.status == 'sent' and (saved or task['kind'] == 'chat' or needs_input)
                     task['status'] = 'succeeded' if success else 'failed'
-                    task['message'] = '已完成' if success else (last.body if last else '本次处理未完成，请重试')
+                    task['needs_input'] = needs_input
+                    task['message'] = last.body if success and needs_input else '已完成' if success else (last.body if last else '本次处理未完成，请重试')
                     task['result_url'] = f'/workspace/{trip_id}?tab=' + ('itinerary' if success and saved else 'chat')
                     if success and saved and task['kind'] == 'revision' and task['payload'].get('item_id') and not self.plans[trip_id].text:
                         task['result_url'] += '#itinerary-item-' + task['payload']['item_id']
@@ -135,6 +138,8 @@ class TravelTasks:
                 self._persist()
         finally:
             del self._task_context.task_id
+            del self._task_context.needs_input
+            self._notify_display_worker()
 
     def recover_tasks(self):
         changed = False

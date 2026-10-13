@@ -1,11 +1,8 @@
 """AMap route estimates between trusted POIs, never model coordinates."""
-import json
 import math
-import os
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from . import amap_mcp
 
 ROUTE_TOOL_SPEC = {'type': 'function', 'function': {
     'name': 'query_route',
@@ -17,10 +14,7 @@ ROUTE_TOOL_SPEC = {'type': 'function', 'function': {
 
 
 def _fetch_json(endpoint, params):
-    request = Request('https://restapi.amap.com/v3/direction/' + endpoint + '?' + urlencode(params),
-                      headers={'User-Agent': 'TravelAssistant/1.0'})
-    with urlopen(request, timeout=8) as response:
-        return json.loads(response.read().decode('utf-8'))
+    return amap_mcp.route(endpoint, params)
 
 
 def query_route(origin, destination, mode='transit'):
@@ -41,11 +35,10 @@ def query_route(origin, destination, mode='transit'):
     if origin['poi_id'] == destination['poi_id']:
         return {**result, 'status': 'available', 'duration_minutes': 0, 'distance_meters': 0,
                 'source': '同一已匹配地点', 'reason': '同一地点，未计场地内部步行。'}
-    key = os.getenv('AMAP_MAP_KEY', '').strip()
-    if not key or key == 'your_amap_web_service_key':
+    if not amap_mcp.configured():
         return {**result, 'reason': '路线查询暂未开通，交通耗时待核实。'}
-    params = {'key': key, 'origin': f"{origin['longitude']},{origin['latitude']}",
-              'destination': f"{destination['longitude']},{destination['latitude']}", 'extensions': 'base'}
+    params = {'origin': f"{origin['longitude']},{origin['latitude']}",
+              'destination': f"{destination['longitude']},{destination['latitude']}"}
     endpoint = {'walking': 'walking', 'driving': 'driving', 'transit': 'transit/integrated'}[mode]
     if mode == 'transit':
         if not origin.get('city') or not destination.get('city'):
@@ -53,7 +46,7 @@ def query_route(origin, destination, mode='transit'):
         params.update(city=origin['city'], cityd=destination['city'], strategy=0)
     try:
         payload = _fetch_json(endpoint, params)
-        if not isinstance(payload, dict) or str(payload.get('status')) != '1' or str(payload.get('infocode')) != '10000':
+        if not isinstance(payload, dict) or str(payload.get('status', '1')) != '1' or str(payload.get('infocode', '10000')) != '10000':
             return {**result, 'reason': '路线服务权限、配额或请求暂不可用，耗时待核实。'}
         route = payload.get('route')
         paths = route.get('transits' if mode == 'transit' else 'paths', []) if isinstance(route, dict) else []
@@ -63,7 +56,10 @@ def query_route(origin, destination, mode='transit'):
             try:
                 duration = float(path.get('duration'))
                 if not math.isfinite(duration) or duration <= 0: continue
-                distance = float(path['distance']) if path.get('distance') not in (None, '', []) else None
+                distance_value = path.get('distance')
+                if distance_value in (None, '', []):
+                    distance_value = route.get('distance')
+                distance = float(distance_value) if distance_value not in (None, '', []) else None
                 if distance is not None and (not math.isfinite(distance) or distance < 0): continue
             except (ValueError, TypeError):
                 continue
@@ -73,8 +69,8 @@ def query_route(origin, destination, mode='transit'):
         duration, distance = options[0]
         return {**result, 'status': 'available', 'duration_minutes': math.ceil(duration / 60),
                 'distance_meters': round(distance) if distance is not None else None,
-                'reason': '查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。'}
-    except (HTTPError, URLError, TimeoutError, OSError, ValueError, TypeError):
+                'reason': '高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。'}
+    except (amap_mcp.AmapMCPError, HTTPError, URLError, TimeoutError, OSError, ValueError, TypeError):
         return {**result, 'reason': '路线服务暂不可用，交通耗时仍待核实。'}
 
 
@@ -92,5 +88,7 @@ def lookup_route(arguments, catalog, cache):
         budget = cache.get('_budget')
         if budget is not None and origin['poi_id'] != destination['poi_id']:
             budget.external()
-        cache[key] = query_route(origin, destination, mode)
+        budget = cache.get('_budget')
+        with amap_mcp.budget_scope(budget):
+            cache[key] = query_route(origin, destination, mode)
     return cache[key]

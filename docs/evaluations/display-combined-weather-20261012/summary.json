@@ -1,0 +1,46 @@
+[
+  {
+    "case_id": "LAT-012",
+    "strategy": "combined",
+    "attempts": 3,
+    "ready": 3,
+    "successful_median_seconds": 27.067777599999317,
+    "successful_max_seconds": 27.513027900000452,
+    "failed_seconds": 0,
+    "sdk_requests": 3,
+    "clothing_present": 3
+  },
+  {
+    "case_id": "LAT-013",
+    "strategy": "combined",
+    "attempts": 3,
+    "ready": 3,
+    "successful_median_seconds": 51.730174700000134,
+    "successful_max_seconds": 54.1076105000011,
+    "failed_seconds": 0,
+    "sdk_requests": 3,
+    "clothing_present": 3
+  },
+  {
+    "case_id": "LAT-014",
+    "strategy": "combined",
+    "attempts": 3,
+    "ready": 3,
+    "successful_median_seconds": 72.5619454000007,
+    "successful_max_seconds": 74.70562400000017,
+    "failed_seconds": 0,
+    "sdk_requests": 3,
+    "clothing_present": 3
+  },
+  {
+    "case_id": "LAT-015",
+    "strategy": "combined",
+    "attempts": 3,
+    "ready": 3,
+    "successful_median_seconds": 78.32038600000124,
+    "successful_max_seconds": 78.35243509999964,
+    "failed_seconds": 0,
+    "sdk_requests": 3,
+    "clothing_present": 3
+  }
+]

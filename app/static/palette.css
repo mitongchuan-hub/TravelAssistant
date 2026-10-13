@@ -128,7 +128,6 @@ summary:focus-visible {
 .empty-state button.primary-action,
 .login-card .primary-action,
 .confirm-plan button,
-.version-history button,
 .timeline-item button,
 .generate-plan,
 .card-actions a,
@@ -529,8 +528,7 @@ blockquote,
 /* Itinerary */
 .version-summary-card,
 .confirm-plan,
-.timeline-item > div,
-.version-history article {
+.timeline-item > div{
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
@@ -578,27 +576,19 @@ blockquote,
   background: var(--surface);
 }
 
-.revision-drawer summary,
-.version-history summary {
+.revision-drawer summary{
   border-color: var(--line);
   background: var(--surface-accent);
   color: var(--ink);
 }
 
-.revision-drawer[open] summary,
-.version-history[open] summary {
+.revision-drawer[open] summary{
   background: var(--mist);
   color: var(--ink);
 }
 
 .revision-form {
   border-color: var(--line);
-}
-
-.version-history h3,
-.version-history article span,
-.version-history article p {
-  color: var(--muted);
 }
 
 .error-card {

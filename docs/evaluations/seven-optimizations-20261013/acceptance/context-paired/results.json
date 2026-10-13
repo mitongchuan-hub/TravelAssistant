@@ -1,0 +1,134 @@
+[
+  {
+    "attempt": 1,
+    "strategy": "duplicate",
+    "model": "qwen3.8:27b",
+    "message_count": 3,
+    "input_characters": 1459,
+    "usage": {
+      "prompt_tokens": 669,
+      "completion_tokens": 302
+    },
+    "status": "returned",
+    "route": {
+      "intent": "planning",
+      "action": "update_requirements",
+      "scope": "",
+      "user_quote": "预算改成两人合计2500元，费用范围不变，先记录，不要生成行程。",
+      "question": null
+    },
+    "expected_route": true,
+    "seconds": 7.789990300000682,
+    "sdk_requests": 1
+  },
+  {
+    "attempt": 1,
+    "strategy": "compact",
+    "model": "qwen3.8:27b",
+    "message_count": 2,
+    "input_characters": 1427,
+    "usage": {
+      "prompt_tokens": 643,
+      "completion_tokens": 255
+    },
+    "status": "returned",
+    "route": {
+      "intent": "planning",
+      "action": "update_requirements",
+      "scope": "",
+      "user_quote": "先记录，不要生成行程",
+      "question": null
+    },
+    "expected_route": true,
+    "seconds": 5.7591710999995485,
+    "sdk_requests": 1
+  },
+  {
+    "attempt": 2,
+    "strategy": "compact",
+    "model": "qwen3.8:27b",
+    "message_count": 2,
+    "input_characters": 1427,
+    "usage": {
+      "prompt_tokens": 643,
+      "completion_tokens": 321
+    },
+    "status": "returned",
+    "route": {
+      "intent": "planning",
+      "action": "update_requirements",
+      "scope": "",
+      "user_quote": "预算改成两人合计2500元，费用范围不变，先记录，不要生成行程。",
+      "question": null
+    },
+    "expected_route": true,
+    "seconds": 7.099201899999571,
+    "sdk_requests": 1
+  },
+  {
+    "attempt": 2,
+    "strategy": "duplicate",
+    "model": "qwen3.8:27b",
+    "message_count": 3,
+    "input_characters": 1459,
+    "usage": {
+      "prompt_tokens": 669,
+      "completion_tokens": 339
+    },
+    "status": "returned",
+    "route": {
+      "intent": "planning",
+      "action": "update_requirements",
+      "scope": "",
+      "user_quote": "预算改成两人合计2500元，费用范围不变，先记录，不要生成行程。",
+      "question": null
+    },
+    "expected_route": true,
+    "seconds": 7.645679299999756,
+    "sdk_requests": 1
+  },
+  {
+    "attempt": 3,
+    "strategy": "duplicate",
+    "model": "qwen3.8:27b",
+    "message_count": 3,
+    "input_characters": 1459,
+    "usage": {
+      "prompt_tokens": 669,
+      "completion_tokens": 510
+    },
+    "status": "returned",
+    "route": {
+      "intent": "planning",
+      "action": "update_requirements",
+      "scope": "",
+      "user_quote": "预算改成两人合计2500元，费用范围不变，先记录，不要生成行程。",
+      "question": null
+    },
+    "expected_route": true,
+    "seconds": 11.38520999999946,
+    "sdk_requests": 1
+  },
+  {
+    "attempt": 3,
+    "strategy": "compact",
+    "model": "qwen3.8:27b",
+    "message_count": 2,
+    "input_characters": 1427,
+    "usage": {
+      "prompt_tokens": 643,
+      "completion_tokens": 419
+    },
+    "status": "returned",
+    "route": {
+      "intent": "planning",
+      "action": "update_requirements",
+      "scope": "",
+      "user_quote": "预算改成两人合计2500元，费用范围不变，先记录，不要生成行程。",
+      "question": null
+    },
+    "expected_route": true,
+    "seconds": 7.704319299999952,
+    "sdk_requests": 1
+  }
+]

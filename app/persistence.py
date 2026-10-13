@@ -5,6 +5,7 @@ import re
 import sqlite3
 from copy import deepcopy
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +15,6 @@ from .models import (
     IdeaCard,
     Message,
     MealRecommendation,
-    PlanVersion,
     RouteDetails,
     PlaceDetails,
     PreparationItem,
@@ -27,11 +27,22 @@ from .models import (
     User,
 )
 
+from .plan_display import migrate_stored_display
 from .requirements import initial_requirements
 
 SNAPSHOT_KEY = "demo_store_v1"
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 5
 
+
+
+def backup_database(db_path: str | Path) -> Path:
+    path = Path(db_path).resolve()
+    directory = path.parent / 'backups'
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / (path.stem + '-before-schema-' + datetime.now().strftime('%Y%m%d-%H%M%S-%f') + '.sqlite3')
+    with sqlite3.connect(path.as_uri() + '?mode=ro', uri=True) as source, sqlite3.connect(target) as destination:
+        source.backup(destination)
+    return target
 
 
 def ensure_relational_schema(db_path: str | Path) -> None:
@@ -103,14 +114,6 @@ def ensure_relational_schema(db_path: str | Path) -> None:
                 plan_json TEXT NOT NULL,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
-            CREATE TABLE IF NOT EXISTS plan_versions (
-                id TEXT PRIMARY KEY,
-                trip_id TEXT NOT NULL,
-                label TEXT NOT NULL,
-                change_summary TEXT NOT NULL,
-                version_json TEXT NOT NULL,
-                created_at TEXT NOT NULL
-            );
             """
         )
         if "requirements_json" not in {row[1] for row in connection.execute("PRAGMA table_info(trips)")}:
@@ -120,7 +123,8 @@ def ensure_relational_schema(db_path: str | Path) -> None:
 def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, Any]) -> None:
     # executescript() commits an open transaction, which would leave the snapshot
     # and the cleared tables committed even if a subsequent INSERT fails.
-    for table in ("plan_versions", "plans", "ideas", "messages", "trips", "users"):
+    connection.execute("DROP TABLE IF EXISTS plan_versions")
+    for table in ("plans", "ideas", "messages", "trips", "users"):
         connection.execute(f"DELETE FROM {table}")
     for user in snapshot.get("users", {}).values():
         connection.execute(
@@ -178,22 +182,6 @@ def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, A
             "INSERT INTO plans (trip_id, plan_json) VALUES (?, ?)",
             (trip_id, json.dumps(plan, ensure_ascii=False)),
         )
-    for trip_id, versions in snapshot.get("plan_versions", {}).items():
-        for version in versions:
-            connection.execute(
-                """
-                INSERT INTO plan_versions (id, trip_id, label, change_summary, version_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    version["id"],
-                    trip_id,
-                    version["label"],
-                    version["change_summary"],
-                    json.dumps(version, ensure_ascii=False),
-                    version["created_at"],
-                ),
-            )
 
 def save_snapshot(db_path: str | Path, snapshot: dict[str, Any]) -> None:
     path = Path(db_path)
@@ -231,12 +219,12 @@ def load_snapshot(db_path: str | Path) -> dict[str, Any] | None:
 def serialize_state(store: Any, users: dict[str, User]) -> dict[str, Any]:
     return {
         "tasks": deepcopy(store.tasks),
+        "display_jobs": deepcopy(store.display_jobs),
         "schema_version": CURRENT_SCHEMA_VERSION,
         "users": {user_id: asdict(user) for user_id, user in users.items()},
         "trips": {trip_id: asdict(trip) for trip_id, trip in store.trips.items()},
         "messages": {trip_id: [asdict(message) for message in messages] for trip_id, messages in store.messages.items()},
         "plans": {trip_id: asdict(plan) for trip_id, plan in store.plans.items()},
-        "plan_versions": {trip_id: [asdict(version) for version in versions] for trip_id, versions in store.plan_versions.items()},
         "idea_cards": {trip_id: [asdict(card) for card in cards] for trip_id, cards in store.idea_cards.items()},
     }
 
@@ -265,17 +253,14 @@ def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) 
         for trip_id, raw_plan in snapshot.get("plans", {}).items()
         if trip_id in store.trips
     }
-    store.plan_versions = {
-        trip_id: [_version(raw_version, legacy) for raw_version in raw_versions]
-        for trip_id, raw_versions in snapshot.get("plan_versions", {}).items()
-        if trip_id in store.trips
-    }
     store.idea_cards = {
         trip_id: [_idea(raw_card, legacy) for raw_card in raw_cards]
         for trip_id, raw_cards in snapshot.get("idea_cards", {}).items()
         if trip_id in store.trips
     }
     store.tasks = deepcopy(snapshot.get("tasks", {}))
+    store.display_jobs = {jid: deepcopy(job) for jid, job in snapshot.get('display_jobs', {}).items()
+                          if job.get('trip_id') in store.trips}
     return _next_numeric_id(snapshot)
 
 
@@ -296,11 +281,12 @@ def _trip(raw: dict[str, Any], legacy: bool = False) -> Trip:
         note=str(raw.get("note", "")),
         owner=_user(owner),
         status=str(raw["status"]),
-        last_activity=_solo_text(str(raw["last_activity"])) if legacy else str(raw["last_activity"]),
+        last_activity=str(raw["last_activity"]),
         requirements=(
             TripRequirements(**raw["requirements"]) if isinstance(raw.get("requirements"), dict)
             else initial_requirements(str(raw["budget"]), str(raw["style"]))
         ),
+        workflow_state=deepcopy(raw.get("workflow_state") or {}),
     )
 
 
@@ -309,7 +295,7 @@ def _action(raw: dict[str, Any], legacy: bool = False) -> AgentAction:
     label = str(raw["label"])
     if legacy and target == "members":
         return AgentAction(label="查看旅行想法", target="board")
-    return AgentAction(label=_solo_text(label) if legacy else label, target=target)
+    return AgentAction(label=label, target=target)
 
 
 def _card(raw: dict[str, Any] | None, legacy: bool = False) -> AgentCard | None:
@@ -317,9 +303,9 @@ def _card(raw: dict[str, Any] | None, legacy: bool = False) -> AgentCard | None:
         return None
     return AgentCard(
         kind=str(raw["kind"]),
-        title=_solo_text(str(raw["title"])) if legacy else str(raw["title"]),
-        summary=_solo_text(str(raw["summary"])) if legacy else str(raw["summary"]),
-        bullets=[_solo_text(str(item)) if legacy else str(item) for item in raw["bullets"]],
+        title=str(raw["title"]),
+        summary=str(raw["summary"]),
+        bullets=[str(item) for item in raw["bullets"]],
         actions=[_action(action, legacy) for action in raw["actions"]],
     )
 
@@ -332,7 +318,7 @@ def _message(raw: dict[str, Any], owner: User | None = None, legacy: bool = Fals
         id=str(raw["id"]),
         sender=sender,
         sender_type=sender_type,
-        body=_solo_text(body) if legacy else body,
+        body=body,
         created_at=str(raw["created_at"]),
         status=str(raw.get("status", "sent")),
         agent_card=_card(raw.get("agent_card"), legacy),
@@ -353,16 +339,14 @@ def _meal(raw: dict[str, Any] | None) -> MealRecommendation | None:
 
 def _item(raw: dict[str, Any], legacy: bool = False) -> TripItem:
     satisfies = [str(item) for item in raw.get("satisfies", [])]
-    if legacy and satisfies:
-        satisfies = ["你的偏好"]
     return TripItem(
         id=str(raw["id"]),
         time=str(raw["time"]),
         title=str(raw["title"]),
         location=str(raw["location"]),
         duration=str(raw["duration"]),
-        reason=_solo_text(str(raw["reason"])) if legacy else str(raw["reason"]),
-        notes=_solo_text(str(raw["notes"])) if legacy else str(raw["notes"]),
+        reason=str(raw["reason"]),
+        notes=str(raw["notes"]),
         satisfies=satisfies,
         category=str(raw.get("category") or "activity"),
         meal=_meal(raw.get("meal")),
@@ -414,27 +398,10 @@ def _plan(raw: dict[str, Any], legacy: bool = False) -> TripPlan:
         text=str(raw.get("text") or ""),
         evidence=deepcopy(raw.get("evidence") or []),
         requirements_revision=raw.get("requirements_revision"),
-    )
-
-
-def _version(raw: dict[str, Any], legacy: bool = False) -> PlanVersion:
-    change_summary = str(raw["change_summary"])
-    return PlanVersion(
-        id=str(raw["id"]),
-        label=str(raw["label"]),
-        title=str(raw["title"]),
-        status=str(raw["status"]),
-        created_at=str(raw["created_at"]),
-        change_summary=_solo_text(change_summary) if legacy else change_summary,
-        days=[_day(day, legacy) for day in raw.get("days", [])],
-        preparation=_preparation(raw.get("preparation")),
-        overview=str(raw.get("overview") or ""),
-        constraints_met=[str(item) for item in raw.get("constraints_met", [])],
-        pending_items=[str(item) for item in raw.get("pending_items", [])],
-        risks=[str(item) for item in raw.get("risks", [])],
-        text=str(raw.get("text") or ""),
-        evidence=deepcopy(raw.get("evidence") or []),
-        requirements_revision=raw.get("requirements_revision"),
+        display=migrate_stored_display(raw.get("display")),
+        display_source_hash=str(raw.get("display_source_hash") or ""),
+        display_status=str(raw.get("display_status") or "not_requested"),
+        requirements_snapshot=deepcopy(raw.get("requirements_snapshot") or {}),
     )
 
 
@@ -447,27 +414,12 @@ def _idea(raw: dict[str, Any], legacy: bool = False) -> IdeaCard:
     return IdeaCard(
         id=str(raw["id"]),
         kind=str(raw["kind"]),
-        title=_solo_text(title) if legacy else title,
-        body=_solo_text(body) if legacy else body,
+        title=title,
+        body=body,
         author=author,
         status=str(raw["status"]),
         rotation=str(raw.get("rotation", "0deg")),
     )
-
-
-def _solo_text(value: str) -> str:
-    value = re.sub(r"大家\s*(.+?)吧，我想", r"我 \1，想", value)
-    replacements = (
-        ("旅行群", "旅行"),
-        ("群聊", "对话"),
-        ("成员偏好", "旅行想法"),
-        ("大家的", "你的"),
-        ("大家", "你"),
-        ("同行人", "出行偏好"),
-    )
-    for old, new in replacements:
-        value = value.replace(old, new)
-    return value
 
 
 def _next_numeric_id(snapshot: dict[str, Any]) -> int:

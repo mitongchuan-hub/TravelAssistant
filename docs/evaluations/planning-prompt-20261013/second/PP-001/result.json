@@ -1,0 +1,417 @@
+{
+  "case_id": "PP-001",
+  "title": "七日草案与全部外部资料未知",
+  "steps": [
+    {
+      "input": {
+        "action": "plan",
+        "expected_plan_changed": true,
+        "assertions": {
+          "requirements_preserved": [
+            "city",
+            "start_date",
+            "end_date",
+            "travelers",
+            "budget_amount",
+            "budget_scope",
+            "budget_coverage",
+            "must_visit",
+            "avoid",
+            "dietary"
+          ]
+        }
+      },
+      "before": {
+        "trip": {
+          "id": "trip-100",
+          "destination": "杭州",
+          "date_range": "2026年10月16日 - 2026年10月22日",
+          "budget": "总预算 7000 元",
+          "style": "轻松",
+          "note": "每天两三项，休息为主，不要求具体酒店和餐厅；天气、交通、入住和开放未知时保留条件，核实事项合并。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "旅行需求已更新",
+          "requirements": {
+            "start_date": "2026-10-16",
+            "end_date": "2026-10-22",
+            "arrival_time": "10:00",
+            "departure_time": "18:00",
+            "city": "杭州",
+            "arrival_location": "杭州东站",
+            "departure_location": "杭州东站",
+            "day_count": 7,
+            "travelers": 2,
+            "budget_amount": "7000",
+            "budget_scope": "total",
+            "budget_coverage": "含六晚住宿、市内交通、餐饮、门票，不含往返车票",
+            "must_visit": [
+              "西湖湖滨"
+            ],
+            "avoid": [
+              "购物店"
+            ],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [],
+        "ideas": []
+      },
+      "after": {
+        "trip": {
+          "id": "trip-100",
+          "destination": "杭州",
+          "date_range": "2026年10月16日 - 2026年10月22日",
+          "budget": "总预算 7000 元",
+          "style": "轻松",
+          "note": "每天两三项，休息为主，不要求具体酒店和餐厅；天气、交通、入住和开放未知时保留条件，核实事项合并。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "草案",
+          "last_activity": "Agent 已生成行程草案",
+          "requirements": {
+            "start_date": "2026-10-16",
+            "end_date": "2026-10-22",
+            "arrival_time": "10:00",
+            "departure_time": "18:00",
+            "city": "杭州",
+            "arrival_location": "杭州东站",
+            "departure_location": "杭州东站",
+            "day_count": 7,
+            "travelers": 2,
+            "budget_amount": "7000",
+            "budget_scope": "total",
+            "budget_coverage": "含六晚住宿、市内交通、餐饮、门票，不含往返车票",
+            "must_visit": [
+              "西湖湖滨"
+            ],
+            "avoid": [
+              "购物店"
+            ],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "plan-103",
+          "title": "杭州行程",
+          "status": "草案",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "下面是一版基于当前有效需求的完整文字行程。因受控资料未提供杭州 10/16–10/22 的逐日天气，行程中涉及户外/雨天的部分均按\"若天气允许\"处理，不假设具体温度或降雨概率。\n\n## 概览与关键条件\n- **目的地/日期**：杭州，2026-10-16 至 2026-10-22，共 7 天、6 晚。\n- **抵离**：16 日 10:00 抵达杭州东站；22 日 18:00 从杭州东站离开。时刻按旅游城市当地时间。\n- **人数/预算**：2 人，总预算 7000 元（含六晚住宿、市内交通、餐饮、门票；不含往返车票）。\n- **偏好**：必去西湖湖滨；不去购物店；不吃辣；节奏轻松，每天两三项、以休息为主。不指定具体酒店和餐厅，只给区域与预算建议。\n- **待核实（合并清单）**：入住/退房与行李寄存时间、景点开放与预约（灵隐寺、西湖游船、省博等）、市内通勤耗时、逐日天气、餐厅是否提供不辣选项。以上均未确认前按条件安排，不作数值或开放承诺。\n\n## 逐日安排\n**10-16（第1天）抵达 + 湖滨**\n- 10:00 到杭州东站，出站后先确认行李寄存或入住条件；入住时间以酒店确认为准，暂不假设。\n- 上午就近解决午餐后，前往**西湖·湖滨**（必去）一带散步，若音乐喷泉在运营时段可观看（开放与否待核实）。\n- 下午在湖滨/南山路一带自由休息、咖啡，不排满；晚上回住处，早点休息。\n- 取舍：首日以抵达与湖滨为主，不叠加远景点。\n\n**10-17（第2天）西湖环湖轻松线**\n- 上午（若天气允许）：断桥—白堤—孤山一段平缓步行，累了就近休息。\n- 午餐后下午可选：西湖游船（预约与运营待核实）或湖滨茶座休息。\n- 晚上自由。\n\n**10-18（第3天）灵隐方向 + 休息**\n- 上午（若天气允许、且开放/可预约）：灵隐寺一带，节奏放慢。\n- 下午回市区休整，安排咖啡/下午茶或自由时间。\n- 取舍：把较耗体力的灵隐放在一天，其余留白。\n\n**10-19（第4天）茶山/湿地 二选一**\n- 上午（若天气允许）：龙井茶园一带（梅家坞等）慢走品茗；或西溪湿地（预约/开放待核实）。\n- 下午轻松，不排密集项目。\n- 说明：两处二选一即可，避免当日往返过满。\n\n**10-20（第5天）街区文化，避开购物店**\n- 上午：浙江省博物馆（预约/开放待核实）或南宋御街—大井巷一带步行。\n- 下午自由、休息为主。\n- 取舍：主动避开河坊街等以购物店为主的地段，符合\"不去购物店\"偏好。\n\n**10-21（第6天）机动/补充日**\n- 视前几日未走完的湖滨、西湖或前日遗留项目补充；天气合适可再补一处轻户外。\n- 预留机动：若前面有项目因天气/预约取消，本日回填；否则整日轻松。\n\n**10-22（第7天）离杭**\n- 上午退房后（退房时间以酒店为准），近市区安排一顿午餐并预留缓冲。\n- 预留充足候车与出站/进站时间前往杭州东站，确保 18:00 前离开；通勤耗时未核实，不填精确发车或出发时刻，仅建议提前量。\n- 取舍：末日不再新增远景点。\n\n## 预算（总额度分配，非报价）\n总额 7000 元（2 人、含住宿/市内交通/餐饮/门票，不含往返车票），分配上限如下：\n- **住宿**：6 晚，额度约 **4200 元**（约 700/晚；若两人都住一间则按此，若需两间则需相应调整）。这是预算分配上限，非酒店报价。\n- **餐饮**（7 天，2 人）：**1200 元**（约 170/天，选不辣、可点不辣菜的店）。\n- **市内交通**：**500 元**。\n- **门票/游玩意**：**500 元**（灵隐寺、游船等以实际为准）。\n- **机动**：**600 元**。\n- 合计：4200+1200+500+500+600 = **7000 元**，与总预算吻合。说明：此为分配上限，不代表真实费用已核实或必然不超。\n\n## 相关准备建议\n- 出发前确认：入住/退房与行李寄存时间、灵隐寺与西湖游船的开放和预约、省博开放/预约、逐日天气。\n- 餐饮提前确认店家能否做不辣、避免过敏交叉；未确认前不把\"不辣\"当作安全保证。\n- 末日前一天把行李整理好，22 日按酒店实际退房时间预留缓冲。\n\n## 核实清单（合并）\n1. 入住/退房/行李寄存时间（影响 16 日、22 日）。\n2. 灵隐寺、西湖游船、浙江省博物馆的开放与预约。\n3. 市内各点通勤耗时（影响接驳与离站预留）。\n4. 10/16–10/22 逐日天气（决定户外项目是否成行）。\n5. 候选餐厅是否可提供不辣且规避过敏交叉。\n\n以上为条件草案；开放、预约、天气、入住与通勤未确认前，相关活动以\"若满足条件\"为准。",
+          "evidence": [
+            {
+              "tool": "query_weather",
+              "arguments": {
+                "city": "杭州",
+                "date": "2026-10-16"
+              },
+              "result": {
+                "status": "unavailable",
+                "reason": "受控资料无此事实，待核实。",
+                "source": "合成天气资料",
+                "fetched_at": "2026-10-13T00:00:00+00:00"
+              },
+              "queried_at": "2026-10-13T13:14:29+00:00",
+              "seconds": 0.0
+            }
+          ],
+          "requirements_revision": 1,
+          "display": null,
+          "display_source_hash": "41f2f9bb07dd2a71de23c4248e0dc35e5ec6f5e04aa282fd4e4691f4ec481763",
+          "display_status": "pending",
+          "requirements_snapshot": {
+            "start_date": "2026-10-16",
+            "end_date": "2026-10-22",
+            "arrival_time": "10:00",
+            "departure_time": "18:00",
+            "city": "杭州",
+            "arrival_location": "杭州东站",
+            "departure_location": "杭州东站",
+            "day_count": 7,
+            "travelers": 2,
+            "budget_amount": "7000",
+            "budget_scope": "total",
+            "budget_coverage": "含六晚住宿、市内交通、餐饮、门票，不含往返车票",
+            "must_visit": [
+              "西湖湖滨"
+            ],
+            "avoid": [
+              "购物店"
+            ],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          }
+        },
+        "messages": [
+          {
+            "id": "m-104",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "下面是一版基于当前有效需求的完整文字行程。因受控资料未提供杭州 10/16–10/22 的逐日天气，行程中涉及户外/雨天的部分均按\"若天气允许\"处理，不假设具体温度或降雨概率。\n\n## 概览与关键条件\n- **目的地/日期**：杭州，2026-10-16 至 2026-10-22，共 7 天、6 晚。\n- **抵离**：16 日 10:00 抵达杭州东站；22 日 18:00 从杭州东站离开。时刻按旅游城市当地时间。\n- **人数/预算**：2 人，总预算 7000 元（含六晚住宿、市内交通、餐饮、门票；不含往返车票）。\n- **偏好**：必去西湖湖滨；不去购物店；不吃辣；节奏轻松，每天两三项、以休息为主。不指定具体酒店和餐厅，只给区域与预算建议。\n- **待核实（合并清单）**：入住/退房与行李寄存时间、景点开放与预约（灵隐寺、西湖游船、省博等）、市内通勤耗时、逐日天气、餐厅是否提供不辣选项。以上均未确认前按条件安排，不作数值或开放承诺。\n\n## 逐日安排\n**10-16（第1天）抵达 + 湖滨**\n- 10:00 到杭州东站，出站后先确认行李寄存或入住条件；入住时间以酒店确认为准，暂不假设。\n- 上午就近解决午餐后，前往**西湖·湖滨**（必去）一带散步，若音乐喷泉在运营时段可观看（开放与否待核实）。\n- 下午在湖滨/南山路一带自由休息、咖啡，不排满；晚上回住处，早点休息。\n- 取舍：首日以抵达与湖滨为主，不叠加远景点。\n\n**10-17（第2天）西湖环湖轻松线**\n- 上午（若天气允许）：断桥—白堤—孤山一段平缓步行，累了就近休息。\n- 午餐后下午可选：西湖游船（预约与运营待核实）或湖滨茶座休息。\n- 晚上自由。\n\n**10-18（第3天）灵隐方向 + 休息**\n- 上午（若天气允许、且开放/可预约）：灵隐寺一带，节奏放慢。\n- 下午回市区休整，安排咖啡/下午茶或自由时间。\n- 取舍：把较耗体力的灵隐放在一天，其余留白。\n\n**10-19（第4天）茶山/湿地 二选一**\n- 上午（若天气允许）：龙井茶园一带（梅家坞等）慢走品茗；或西溪湿地（预约/开放待核实）。\n- 下午轻松，不排密集项目。\n- 说明：两处二选一即可，避免当日往返过满。\n\n**10-20（第5天）街区文化，避开购物店**\n- 上午：浙江省博物馆（预约/开放待核实）或南宋御街—大井巷一带步行。\n- 下午自由、休息为主。\n- 取舍：主动避开河坊街等以购物店为主的地段，符合\"不去购物店\"偏好。\n\n**10-21（第6天）机动/补充日**\n- 视前几日未走完的湖滨、西湖或前日遗留项目补充；天气合适可再补一处轻户外。\n- 预留机动：若前面有项目因天气/预约取消，本日回填；否则整日轻松。\n\n**10-22（第7天）离杭**\n- 上午退房后（退房时间以酒店为准），近市区安排一顿午餐并预留缓冲。\n- 预留充足候车与出站/进站时间前往杭州东站，确保 18:00 前离开；通勤耗时未核实，不填精确发车或出发时刻，仅建议提前量。\n- 取舍：末日不再新增远景点。\n\n## 预算（总额度分配，非报价）\n总额 7000 元（2 人、含住宿/市内交通/餐饮/门票，不含往返车票），分配上限如下：\n- **住宿**：6 晚，额度约 **4200 元**（约 700/晚；若两人都住一间则按此，若需两间则需相应调整）。这是预算分配上限，非酒店报价。\n- **餐饮**（7 天，2 人）：**1200 元**（约 170/天，选不辣、可点不辣菜的店）。\n- **市内交通**：**500 元**。\n- **门票/游玩意**：**500 元**（灵隐寺、游船等以实际为准）。\n- **机动**：**600 元**。\n- 合计：4200+1200+500+500+600 = **7000 元**，与总预算吻合。说明：此为分配上限，不代表真实费用已核实或必然不超。\n\n## 相关准备建议\n- 出发前确认：入住/退房与行李寄存时间、灵隐寺与西湖游船的开放和预约、省博开放/预约、逐日天气。\n- 餐饮提前确认店家能否做不辣、避免过敏交叉；未确认前不把\"不辣\"当作安全保证。\n- 末日前一天把行李整理好，22 日按酒店实际退房时间预留缓冲。\n\n## 核实清单（合并）\n1. 入住/退房/行李寄存时间（影响 16 日、22 日）。\n2. 灵隐寺、西湖游船、浙江省博物馆的开放与预约。\n3. 市内各点通勤耗时（影响接驳与离站预留）。\n4. 10/16–10/22 逐日天气（决定户外项目是否成行）。\n5. 候选餐厅是否可提供不辣且规避过敏交叉。\n\n以上为条件草案；开放、预约、天气、入住与通勤未确认前，相关活动以\"若满足条件\"为准。",
+            "created_at": "21:15",
+            "status": "sent",
+            "agent_card": {
+              "kind": "itinerary-draft",
+              "title": "行程草案",
+              "summary": "下面是一版基于当前有效需求的完整文字行程。因受控资料未提供杭州 10/16–10/22 的逐日天气，行程中涉及户外/雨天的部分均按\"若天气允许\"处理，不假设具体温度或降雨概率。\n\n## 概览与关键条件\n- **目的地/日期**：杭州，202",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "查看行程",
+                  "target": "itinerary"
+                }
+              ]
+            }
+          }
+        ],
+        "ideas": []
+      },
+      "seconds": 44.55322,
+      "machine_checks": {
+        "plan_change": true,
+        "requirements_preserved.city": true,
+        "requirements_preserved.start_date": true,
+        "requirements_preserved.end_date": true,
+        "requirements_preserved.travelers": true,
+        "requirements_preserved.budget_amount": true,
+        "requirements_preserved.budget_scope": true,
+        "requirements_preserved.budget_coverage": true,
+        "requirements_preserved.must_visit": true,
+        "requirements_preserved.avoid": true,
+        "requirements_preserved.dietary": true,
+        "task_succeeded": true
+      },
+      "machine_checks_pass": true,
+      "task": {
+        "id": "69e75eca4d2d45e89c9a5c89047639ec",
+        "trip_id": "trip-100",
+        "kind": "plan",
+        "payload": {},
+        "request_id": "PP-001-1",
+        "retry_of": "",
+        "status": "succeeded",
+        "message": "已完成",
+        "created_at": "2026-10-13T13:14:18+00:00",
+        "updated_at": "2026-10-13T13:15:03+00:00",
+        "message_id": "",
+        "thinking_id": "m-102",
+        "result_url": "/workspace/trip-100?tab=itinerary",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "needs_input": false
+      },
+      "model_calls": [
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 3701,
+            "completion_tokens": 520
+          },
+          "proposed_tools": [
+            "read_context",
+            "read_context",
+            "query_weather"
+          ],
+          "seconds": 9.337531
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 3993,
+            "completion_tokens": 2328
+          },
+          "proposed_tools": [],
+          "seconds": 34.304078
+        }
+      ],
+      "queries": [
+        {
+          "name": "query_weather",
+          "arguments": {
+            "city": "杭州",
+            "date": "2026-10-16"
+          },
+          "result": {
+            "status": "unavailable",
+            "reason": "受控资料无此事实，待核实。",
+            "source": "合成天气资料",
+            "fetched_at": "2026-10-13T00:00:00+00:00"
+          }
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "read_context",
+        "arguments": {
+          "section": "ideas",
+          "limit": 20
+        },
+        "seconds": 0.0,
+        "result": {
+          "basis": {
+            "requirements_revision": 1,
+            "plan_id": "empty"
+          },
+          "items": [],
+          "total": 0,
+          "next_offset": null,
+          "query": ""
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "read_context",
+        "arguments": {
+          "section": "evidence",
+          "limit": 30
+        },
+        "seconds": 0.0,
+        "result": {
+          "basis": {
+            "requirements_revision": 1,
+            "plan_id": "empty"
+          },
+          "places": {},
+          "results": [],
+          "saved_results": [],
+          "turn_results": [],
+          "routes": []
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-10-16"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "unavailable",
+          "reason": "受控资料无此事实，待核实。",
+          "source": "合成天气资料",
+          "fetched_at": "2026-10-13T00:00:00+00:00"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "Agent Loop 状态",
+      "value": {
+        "mode": "planning",
+        "seconds": 43.642,
+        "status": "completed",
+        "steps": 2,
+        "tool_calls": 3,
+        "stop_reason": "Agent 已完成本次工作。",
+        "history": [
+          {
+            "step": 1,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 3,
+            "error": "",
+            "at": "2026-10-13T13:14:29+00:00"
+          },
+          {
+            "step": 2,
+            "phase": "working",
+            "action": "finish",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 0,
+            "error": "",
+            "at": "2026-10-13T13:15:03+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "title": "共享调用预算",
+      "value": {
+        "model_calls": 2,
+        "tool_calls": 3,
+        "external_calls": 1
+      }
+    }
+  ],
+  "manual_review_checklist": [
+    "7天6晚全部日期覆盖，无自行添加星期",
+    "18:00离站不等于从景点出发或刚到站",
+    "未知交通不伪造线路或耗时",
+    "入住/寄存条件与备选",
+    "住宿预算不默认房型房间数",
+    "分项及机动合计正确，无保证实际不超预算"
+  ],
+  "quality_grade": "pending_manual_review",
+  "display_conversion": "not_run"
+}

@@ -1,0 +1,101 @@
+[
+  {
+    "phase": "after",
+    "case_id": "BOUNDARY-001",
+    "attempt": 1,
+    "seconds": 15.611836400000357,
+    "display_status": "ready",
+    "error_type": null,
+    "available": true,
+    "observations": [
+      {
+        "check": "overview_complete",
+        "pass": true,
+        "detail": "检查已知单字残句，不证明概览全面。"
+      },
+      {
+        "check": "budget_amount",
+        "pass": true,
+        "detail": "检查总预算数字是否仍出现，不证明预算口径完整。"
+      },
+      {
+        "check": "no_technical_notes",
+        "pass": true,
+        "detail": "检查上轮已知技术标签。"
+      }
+    ],
+    "flag_count": 0,
+    "quality_grade": "pending_manual_review"
+  },
+  {
+    "phase": "after",
+    "case_id": "BOUNDARY-002",
+    "attempt": 1,
+    "seconds": 22.3289821999997,
+    "display_status": "ready",
+    "error_type": null,
+    "available": true,
+    "observations": [
+      {
+        "check": "clothing:薄外套",
+        "pass": true,
+        "detail": "原文装备应出现在衣物准备字段；词语检查只覆盖指定表达。"
+      },
+      {
+        "check": "clothing:雨具",
+        "pass": true,
+        "detail": "原文装备应出现在衣物准备字段；词语检查只覆盖指定表达。"
+      },
+      {
+        "check": "overview_complete",
+        "pass": true,
+        "detail": "检查已知单字残句，不证明概览全面。"
+      },
+      {
+        "check": "budget_amount",
+        "pass": true,
+        "detail": "检查总预算数字是否仍出现，不证明预算口径完整。"
+      },
+      {
+        "check": "no_technical_notes",
+        "pass": true,
+        "detail": "检查上轮已知技术标签。"
+      }
+    ],
+    "flag_count": 0,
+    "quality_grade": "pending_manual_review"
+  },
+  {
+    "phase": "after",
+    "case_id": "BOUNDARY-003",
+    "attempt": 1,
+    "seconds": 34.31164220000028,
+    "display_status": "ready",
+    "error_type": null,
+    "available": true,
+    "observations": [
+      {
+        "check": "overview_complete",
+        "pass": true,
+        "detail": "检查已知单字残句，不证明概览全面。"
+      },
+      {
+        "check": "budget_amount",
+        "pass": true,
+        "detail": "检查总预算数字是否仍出现，不证明预算口径完整。"
+      },
+      {
+        "check": "no_technical_notes",
+        "pass": true,
+        "detail": "检查上轮已知技术标签。"
+      },
+      {
+        "check": "category:午餐（三选一）",
+        "pass": true,
+        "detail": "固定样本明确主目的预期为meal。"
+      }
+    ],
+    "flag_count": 0,
+    "quality_grade": "pending_manual_review"
+  }
+]

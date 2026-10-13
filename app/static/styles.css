@@ -290,47 +290,49 @@ button {
   white-space: nowrap;
 }
 
+.trip-card-link {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.delete-trip-button {
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.delete-trip-button:hover {
+  background: var(--red-soft);
+  border-color: var(--red);
+}
+
+.trip-notice {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--green-soft);
+  color: var(--green);
+  font-size: 14px;
+}
+
+.trip-notice-error {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
 .version-line {
   display: block;
   margin-top: 4px;
   color: #7b6f61;
   font-size: 12px;
   font-weight: 850;
-}
-
-.version-history {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 4px;
-}
-
-.version-history h3 {
-  color: #506257;
-  font-size: 14px;
-}
-
-.version-history article {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 8px;
-  padding: 10px 12px;
-  border: 1px solid #eadfce;
-  border-radius: 16px;
-  background: #fffdf8;
-}
-
-.version-history article span {
-  color: #9b8f80;
-  font-size: 12px;
-  text-align: right;
-}
-
-.version-history article p {
-  grid-column: 1 / -1;
-  color: #5d6c62;
-  font-size: 12px;
-  font-weight: 800;
 }
 
 .confirm-plan {
@@ -343,7 +345,6 @@ button {
 }
 
 .confirm-plan button,
-.version-history button,
 .empty-state button.primary-action {
   width: fit-content;
   min-height: 32px;
@@ -360,11 +361,6 @@ button {
   color: #5d6c62;
   font-size: 12px;
   font-weight: 800;
-}
-
-.version-history form {
-  grid-column: 1 / -1;
-  margin: 0;
 }
 
 .avatar {
@@ -2412,8 +2408,7 @@ button:disabled,
 .agent-card,
 .timeline-item > div,
 .version-summary-card,
-.confirm-plan,
-.version-history article {
+.confirm-plan{
   box-shadow: var(--shadow-soft);
 }
 
@@ -2429,7 +2424,6 @@ button:disabled,
 .agent-command-strip button:active,
 .card-actions a:active,
 .confirm-plan button:active,
-.version-history button:active,
 .timeline-item button:active,
 .wall-quick-add button:active,
 .primary-action:active {
@@ -2781,8 +2775,7 @@ button:disabled,
   margin-top: 2px;
 }
 
-.revision-drawer summary,
-.version-history summary {
+.revision-drawer summary{
   width: fit-content;
   min-height: 32px;
   padding: 0 12px;
@@ -2797,13 +2790,11 @@ button:disabled,
   list-style: none;
 }
 
-.revision-drawer summary::-webkit-details-marker,
-.version-history summary::-webkit-details-marker {
+.revision-drawer summary::-webkit-details-marker{
   display: none;
 }
 
-.revision-drawer[open] summary,
-.version-history[open] summary {
+.revision-drawer[open] summary{
   background: var(--green);
   color: white;
 }
@@ -2813,31 +2804,6 @@ button:disabled,
   padding: 10px;
   border-radius: 16px;
   background: #fffaf0;
-}
-
-.version-history {
-  gap: 8px;
-  padding: 2px 0 0;
-}
-
-.version-history[open] {
-  display: flex;
-}
-
-.version-history article {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  border-radius: 16px;
-  box-shadow: 0 8px 18px rgb(90 74 46 / 6%);
-}
-
-.version-history article p {
-  grid-column: 1 / -1;
-}
-
-.version-history form {
-  grid-column: 3;
-  grid-row: 1;
 }
 
 /* Idea wall polish: travel inspiration wall, not a task board. */
@@ -3218,7 +3184,6 @@ h2 {
 .button-reset,
 .empty-state button.primary-action,
 .confirm-plan button,
-.version-history button,
 .timeline-item button {
   border: 1.5px solid var(--ink);
   border-radius: 8px;
@@ -4072,16 +4037,14 @@ blockquote {
   color: #24409a;
 }
 
-.revision-drawer summary,
-.version-history summary {
+.revision-drawer summary{
   border: 1px solid var(--ink);
   border-radius: 8px;
   background: #e3e8f3;
   color: var(--ink);
 }
 
-.revision-drawer[open] summary,
-.version-history[open] summary {
+.revision-drawer[open] summary{
   background: linear-gradient(135deg, #6d95ff 0%, #4f7dff 100%);
   color: #ffffff;
 }
@@ -4097,13 +4060,6 @@ blockquote {
   border-color: var(--ink);
   border-radius: 8px;
   background: #eef2fa;
-}
-
-.version-history article {
-  border: 1.5px solid var(--ink);
-  border-radius: 8px;
-  background: var(--surface);
-  box-shadow: var(--shadow-soft);
 }
 
 /* Errors and compact layouts */

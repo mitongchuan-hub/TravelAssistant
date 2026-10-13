@@ -44,6 +44,7 @@
         <label><span>预算口径</span><select name="budget_scope"><option value="unspecified"{% if values.budget_scope == 'unspecified' %} selected{% endif %}>待确认</option><option value="per_person"{% if values.budget_scope == 'per_person' %} selected{% endif %}>每人预算</option><option value="total"{% if values.budget_scope == 'total' %} selected{% endif %}>全部人的总预算</option></select></label>
       </div>
       {% if not trip.requirements.budget_amount and trip.budget != '预算待定' %}<small>原预算记录：{{ trip.budget }}。未填写新金额时保留原记录。</small>{% endif %}
+      <label><span>预算包含的费用范围</span><input name="budget_coverage" value="{{ values.budget_coverage }}" maxlength="300" placeholder="例如：含住宿、餐饮和当地交通，不含往返车票" /></label>
       <label><span>旅行节奏</span><input name="pace" value="{{ values.pace }}" maxlength="300" placeholder="例如：少步行、不早起、每天留午休" /></label>
       <input type="hidden" name="style" value="{{ values.style }}" />
     </fieldset>

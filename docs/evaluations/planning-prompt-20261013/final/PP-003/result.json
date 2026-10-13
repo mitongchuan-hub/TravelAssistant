@@ -1,0 +1,449 @@
+{
+  "case_id": "PP-003",
+  "title": "22:30抵达与次日07:30离站",
+  "steps": [
+    {
+      "input": {
+        "action": "plan",
+        "expected_plan_changed": true,
+        "assertions": {
+          "requirements_preserved": [
+            "arrival_time",
+            "departure_time",
+            "start_date",
+            "end_date",
+            "budget_coverage"
+          ]
+        }
+      },
+      "before": {
+        "trip": {
+          "id": "trip-110",
+          "destination": "杭州",
+          "date_range": "2026年10月16日 - 2026年10月17日",
+          "budget": "总预算 1200 元",
+          "style": "轻松",
+          "note": "首晚只休息，不安排景点。深夜入住接待和次日早退房条件待确认，末日直接去杭州东站。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "旅行需求已更新",
+          "requirements": {
+            "start_date": "2026-10-16",
+            "end_date": "2026-10-17",
+            "arrival_time": "22:30",
+            "departure_time": "07:30",
+            "city": "杭州",
+            "arrival_location": "杭州东站",
+            "departure_location": "杭州东站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1200",
+            "budget_scope": "total",
+            "budget_coverage": "含一晚住宿、市内交通、餐饮，不含往返车票",
+            "must_visit": [],
+            "avoid": [
+              "购物店"
+            ],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [],
+        "ideas": []
+      },
+      "after": {
+        "trip": {
+          "id": "trip-110",
+          "destination": "杭州",
+          "date_range": "2026年10月16日 - 2026年10月17日",
+          "budget": "总预算 1200 元",
+          "style": "轻松",
+          "note": "首晚只休息，不安排景点。深夜入住接待和次日早退房条件待确认，末日直接去杭州东站。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "草案",
+          "last_activity": "Agent 已生成行程草案",
+          "requirements": {
+            "start_date": "2026-10-16",
+            "end_date": "2026-10-17",
+            "arrival_time": "22:30",
+            "departure_time": "07:30",
+            "city": "杭州",
+            "arrival_location": "杭州东站",
+            "departure_location": "杭州东站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1200",
+            "budget_scope": "total",
+            "budget_coverage": "含一晚住宿、市内交通、餐饮，不含往返车票",
+            "must_visit": [],
+            "avoid": [
+              "购物店"
+            ],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "plan-113",
+          "title": "杭州行程",
+          "status": "草案",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "# 杭州 2 天行程（条件草案）\n\n## 概览与关键条件\n- 日期：2026-10-16 至 2026-10-17（当地时），2 人\n- 抵达：10-16 22:30 杭州东站；离站：10-17 07:30 杭州东站\n- 住宿 1 晚（10-16 过夜）；按你的 note，首晚只休息、不安排景点，末日直接去杭州东站\n- 风格轻松；忌口不吃辣；不去购物店\n- 预算：总额 1200 元，含一晚住宿、市内交通、餐饮，不含往返车票\n- 天气查询当前不可用，具体温度与降雨待核实；户外安排均以\"若天气允许\"为条件\n- 通勤耗时未查询，下文用\"耗时待核实\"表述；不据此推算到站/最晚出发时刻\n\n## 第 1 天｜2026-10-16（抵达夜）\n- 22:30 抵杭州东站，出站后取行李\n- 前往酒店：建议东站周边或地铁 1 号线沿线（如城东、火车东站商圈一带），打车或公交均可；**耗时待核实**。若已提前订房，按酒店确认的入住时间接待\n- 入住接待条件未知：先在前台确认今晚能否接待、押金、房型，满足后入住；若不能接待，改为\"行李寄存 + 附近便利店/24 小时餐饮点简餐\"作为备选，并在附近可开门的连锁酒店再订\n- 简餐（可选）：清淡本帮或面点类，2 人，预算约 80–120 元/人餐上限；具体餐厅待确认，优先避开重辣、重油菜式\n- 之后回房休息，不安排景点\n\n## 第 2 天｜2026-10-17（早离站）\n- 05:30–06:00 起床（建议），洗漱\n- 06:00–06:30 早餐：建议酒店早餐或楼下早餐店，清淡为主（粥、面、包子、豆浆），2 人约 40–80 元；避开辣味小炒\n- 06:30–06:45 退房、清点行李；若酒店 07:00 后才退房接待，提前在前台确认并先办寄存\n- 前往杭州东站：从酒店出发，打车/地铁 1 号线/公交均可；**耗时待核实**。人为预留：出站安检、候车建议再额外预留 30–45 分钟（估算，非通勤时间）\n- 07:30 按你给定的离站时刻与地点（杭州东站）乘车离开\n\n## 预算分配（总额 1200 元，2 人，1 晚）\n- 住宿：一晚总额上限约 600 元（覆盖全部晚数；房间数、房型、含早与否待确认，不按每间每晚反推）\n- 市内交通（往返酒店—杭州东站共 2 段 + 可能 1 段简餐点移动）：上限约 120 元\n- 餐饮（1 次简餐 + 1 次早餐）：上限约 200 元\n- 机动预留：约 280 元（覆盖打车溢价、临时简餐、饮用水等）\n- 分项合计上限 1200 元；这是**分配上限**，不是报价；实际以到店/到店结算为准，不保证不超\n- 不含：往返车票、景区门票、购物\n\n## 准备建议\n- 提前确认：酒店能否 22:30 后入住、07:00 左右退房接待、是否含早\n- 提前下载/记录：酒店电话、杭州东站出站口位置\n- 天气未查到：出发前一晚关注杭州 10-16/17 预报，若降雨准备雨具；本行程以室内与候车为主，天气影响较小\n- 忌口：点餐时明确\"不辣\"，避免剁椒、泡椒、麻辣锅等\n- 行李：1 个可上地铁/打车的主箱即可，末日早走不宜再带多件\n\n## 核实清单（合并）\n- 天气：10-16、10-17 杭州具体温度与降雨\n- 酒店：今晚 22:30 后接待、07:00 前后退房接待、房型与房价、是否含早\n- 通勤耗时：杭州东站 ↔ 酒店（打车/地铁/公交三种方式）\n- 餐厅：东站周边可开门、清淡、2 人可坐的简餐店；次日早上早餐点\n- 杭州东站 07:30 车次/班次（不在此查询，建议你自行在 12306/车站确认）\n\n需要我把某一晚的酒店候选或具体餐厅进一步列出，或对某个时段做微调，告诉我即可。",
+          "evidence": [
+            {
+              "tool": "query_weather",
+              "arguments": {
+                "city": "杭州",
+                "date": "2026-10-16"
+              },
+              "result": {
+                "status": "unavailable",
+                "reason": "受控资料无此事实，待核实。",
+                "source": "合成天气资料",
+                "fetched_at": "2026-10-13T00:00:00+00:00"
+              },
+              "queried_at": "2026-10-13T13:28:02+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "query_weather",
+              "arguments": {
+                "city": "杭州",
+                "date": "2026-10-17"
+              },
+              "result": {
+                "status": "unavailable",
+                "reason": "受控资料无此事实，待核实。",
+                "source": "合成天气资料",
+                "fetched_at": "2026-10-13T00:00:00+00:00"
+              },
+              "queried_at": "2026-10-13T13:28:02+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "search_food",
+              "arguments": {
+                "city": "杭州",
+                "keywords": "东站附近 本帮菜 清淡",
+                "max_results": 3
+              },
+              "result": {
+                "status": "unavailable",
+                "reason": "受控资料无此事实，待核实。",
+                "source": "合成餐饮资料",
+                "fetched_at": "2026-10-13T00:00:00+00:00"
+              },
+              "queried_at": "2026-10-13T13:28:02+00:00",
+              "seconds": 0.0
+            }
+          ],
+          "requirements_revision": 1,
+          "display": null,
+          "display_source_hash": "f32a7f468bb611ba8dac3db064f9c85522943b0eb864851481f3ee7b063f2d75",
+          "display_status": "pending",
+          "requirements_snapshot": {
+            "start_date": "2026-10-16",
+            "end_date": "2026-10-17",
+            "arrival_time": "22:30",
+            "departure_time": "07:30",
+            "city": "杭州",
+            "arrival_location": "杭州东站",
+            "departure_location": "杭州东站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1200",
+            "budget_scope": "total",
+            "budget_coverage": "含一晚住宿、市内交通、餐饮，不含往返车票",
+            "must_visit": [],
+            "avoid": [
+              "购物店"
+            ],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          }
+        },
+        "messages": [
+          {
+            "id": "m-114",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "# 杭州 2 天行程（条件草案）\n\n## 概览与关键条件\n- 日期：2026-10-16 至 2026-10-17（当地时），2 人\n- 抵达：10-16 22:30 杭州东站；离站：10-17 07:30 杭州东站\n- 住宿 1 晚（10-16 过夜）；按你的 note，首晚只休息、不安排景点，末日直接去杭州东站\n- 风格轻松；忌口不吃辣；不去购物店\n- 预算：总额 1200 元，含一晚住宿、市内交通、餐饮，不含往返车票\n- 天气查询当前不可用，具体温度与降雨待核实；户外安排均以\"若天气允许\"为条件\n- 通勤耗时未查询，下文用\"耗时待核实\"表述；不据此推算到站/最晚出发时刻\n\n## 第 1 天｜2026-10-16（抵达夜）\n- 22:30 抵杭州东站，出站后取行李\n- 前往酒店：建议东站周边或地铁 1 号线沿线（如城东、火车东站商圈一带），打车或公交均可；**耗时待核实**。若已提前订房，按酒店确认的入住时间接待\n- 入住接待条件未知：先在前台确认今晚能否接待、押金、房型，满足后入住；若不能接待，改为\"行李寄存 + 附近便利店/24 小时餐饮点简餐\"作为备选，并在附近可开门的连锁酒店再订\n- 简餐（可选）：清淡本帮或面点类，2 人，预算约 80–120 元/人餐上限；具体餐厅待确认，优先避开重辣、重油菜式\n- 之后回房休息，不安排景点\n\n## 第 2 天｜2026-10-17（早离站）\n- 05:30–06:00 起床（建议），洗漱\n- 06:00–06:30 早餐：建议酒店早餐或楼下早餐店，清淡为主（粥、面、包子、豆浆），2 人约 40–80 元；避开辣味小炒\n- 06:30–06:45 退房、清点行李；若酒店 07:00 后才退房接待，提前在前台确认并先办寄存\n- 前往杭州东站：从酒店出发，打车/地铁 1 号线/公交均可；**耗时待核实**。人为预留：出站安检、候车建议再额外预留 30–45 分钟（估算，非通勤时间）\n- 07:30 按你给定的离站时刻与地点（杭州东站）乘车离开\n\n## 预算分配（总额 1200 元，2 人，1 晚）\n- 住宿：一晚总额上限约 600 元（覆盖全部晚数；房间数、房型、含早与否待确认，不按每间每晚反推）\n- 市内交通（往返酒店—杭州东站共 2 段 + 可能 1 段简餐点移动）：上限约 120 元\n- 餐饮（1 次简餐 + 1 次早餐）：上限约 200 元\n- 机动预留：约 280 元（覆盖打车溢价、临时简餐、饮用水等）\n- 分项合计上限 1200 元；这是**分配上限**，不是报价；实际以到店/到店结算为准，不保证不超\n- 不含：往返车票、景区门票、购物\n\n## 准备建议\n- 提前确认：酒店能否 22:30 后入住、07:00 左右退房接待、是否含早\n- 提前下载/记录：酒店电话、杭州东站出站口位置\n- 天气未查到：出发前一晚关注杭州 10-16/17 预报，若降雨准备雨具；本行程以室内与候车为主，天气影响较小\n- 忌口：点餐时明确\"不辣\"，避免剁椒、泡椒、麻辣锅等\n- 行李：1 个可上地铁/打车的主箱即可，末日早走不宜再带多件\n\n## 核实清单（合并）\n- 天气：10-16、10-17 杭州具体温度与降雨\n- 酒店：今晚 22:30 后接待、07:00 前后退房接待、房型与房价、是否含早\n- 通勤耗时：杭州东站 ↔ 酒店（打车/地铁/公交三种方式）\n- 餐厅：东站周边可开门、清淡、2 人可坐的简餐店；次日早上早餐点\n- 杭州东站 07:30 车次/班次（不在此查询，建议你自行在 12306/车站确认）\n\n需要我把某一晚的酒店候选或具体餐厅进一步列出，或对某个时段做微调，告诉我即可。",
+            "created_at": "21:28",
+            "status": "sent",
+            "agent_card": {
+              "kind": "itinerary-draft",
+              "title": "行程草案",
+              "summary": "# 杭州 2 天行程（条件草案）\n\n## 概览与关键条件\n- 日期：2026-10-16 至 2026-10-17（当地时），2 人\n- 抵达：10-16 22:30 杭州东站；离站：10-17 07:30 杭州东站\n- 住宿 1 晚（10",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "查看行程",
+                  "target": "itinerary"
+                }
+              ]
+            }
+          }
+        ],
+        "ideas": []
+      },
+      "seconds": 42.493116,
+      "machine_checks": {
+        "plan_change": true,
+        "requirements_preserved.arrival_time": true,
+        "requirements_preserved.departure_time": true,
+        "requirements_preserved.start_date": true,
+        "requirements_preserved.end_date": true,
+        "requirements_preserved.budget_coverage": true,
+        "task_succeeded": true
+      },
+      "machine_checks_pass": true,
+      "task": {
+        "id": "d412d6649d0340dfb2261481a3ce33dc",
+        "trip_id": "trip-110",
+        "kind": "plan",
+        "payload": {},
+        "request_id": "PP-003-1",
+        "retry_of": "",
+        "status": "succeeded",
+        "message": "已完成",
+        "created_at": "2026-10-13T13:27:43+00:00",
+        "updated_at": "2026-10-13T13:28:26+00:00",
+        "message_id": "",
+        "thinking_id": "m-112",
+        "result_url": "/workspace/trip-110?tab=itinerary",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "needs_input": false
+      },
+      "model_calls": [
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 3806,
+            "completion_tokens": 1227
+          },
+          "proposed_tools": [
+            "query_weather",
+            "query_weather",
+            "search_food"
+          ],
+          "seconds": 19.331346
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 4168,
+            "completion_tokens": 1525
+          },
+          "proposed_tools": [],
+          "seconds": 23.155735
+        }
+      ],
+      "queries": [
+        {
+          "name": "query_weather",
+          "arguments": {
+            "city": "杭州",
+            "date": "2026-10-16"
+          },
+          "result": {
+            "status": "unavailable",
+            "reason": "受控资料无此事实，待核实。",
+            "source": "合成天气资料",
+            "fetched_at": "2026-10-13T00:00:00+00:00"
+          }
+        },
+        {
+          "name": "query_weather",
+          "arguments": {
+            "city": "杭州",
+            "date": "2026-10-17"
+          },
+          "result": {
+            "status": "unavailable",
+            "reason": "受控资料无此事实，待核实。",
+            "source": "合成天气资料",
+            "fetched_at": "2026-10-13T00:00:00+00:00"
+          }
+        },
+        {
+          "name": "search_food",
+          "arguments": {
+            "city": "杭州",
+            "keywords": "东站附近 本帮菜 清淡",
+            "max_results": 3
+          },
+          "result": {
+            "status": "unavailable",
+            "reason": "受控资料无此事实，待核实。",
+            "source": "合成餐饮资料",
+            "fetched_at": "2026-10-13T00:00:00+00:00"
+          }
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-10-16"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "unavailable",
+          "reason": "受控资料无此事实，待核实。",
+          "source": "合成天气资料",
+          "fetched_at": "2026-10-13T00:00:00+00:00"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-10-17"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "unavailable",
+          "reason": "受控资料无此事实，待核实。",
+          "source": "合成天气资料",
+          "fetched_at": "2026-10-13T00:00:00+00:00"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_food",
+        "arguments": {
+          "city": "杭州",
+          "keywords": "东站附近 本帮菜 清淡",
+          "max_results": 3
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "unavailable",
+          "reason": "受控资料无此事实，待核实。",
+          "source": "合成餐饮资料",
+          "fetched_at": "2026-10-13T00:00:00+00:00"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "Agent Loop 状态",
+      "value": {
+        "mode": "planning",
+        "seconds": 42.488,
+        "status": "completed",
+        "steps": 2,
+        "tool_calls": 3,
+        "stop_reason": "Agent 已完成本次工作。",
+        "history": [
+          {
+            "step": 1,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 3,
+            "error": "",
+            "at": "2026-10-13T13:28:02+00:00"
+          },
+          {
+            "step": 2,
+            "phase": "working",
+            "action": "finish",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 0,
+            "error": "",
+            "at": "2026-10-13T13:28:26+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "title": "共享调用预算",
+      "value": {
+        "model_calls": 2,
+        "tool_calls": 3,
+        "external_calls": 3
+      }
+    }
+  ],
+  "manual_review_checklist": [
+    "首晚无抵达前活动且只休息",
+    "深夜接待与早退房不保证",
+    "次日07:30从杭州东站离开，提前到站和接驳分开",
+    "一晚住宿，预算单位与合计正确"
+  ],
+  "quality_grade": "pending_manual_review",
+  "display_conversion": "not_run"
+}

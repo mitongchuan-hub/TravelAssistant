@@ -1,0 +1,299 @@
+{
+  "dataset_id": "planning_prompt_v1",
+  "version": "1.0.0",
+  "current_date": "2026-10-13",
+  "purpose": "规划提示词改版的独立真实模型验收；外部资料受控，不计入历史v1/v2成绩",
+  "fixtures": {
+    "empty": {
+      "requirements": {},
+      "note": ""
+    },
+    "one_day": {
+      "requirements": {
+        "city": "杭州",
+        "start_date": "2026-10-16",
+        "end_date": "2026-10-16",
+        "arrival_time": "10:00",
+        "departure_time": "18:00",
+        "arrival_location": "杭州东站",
+        "departure_location": "杭州东站",
+        "travelers": 2,
+        "budget_amount": "800",
+        "budget_scope": "total",
+        "budget_coverage": "含市内交通、餐饮、门票，不含往返车票",
+        "must_visit": [
+          "西湖湖滨"
+        ],
+        "avoid": [
+          "购物店"
+        ],
+        "dietary": [
+          "不吃辣"
+        ],
+        "pace": "轻松"
+      },
+      "note": "只安排湖滨一带、附近午餐和休息，不要求具体餐厅。"
+    },
+    "seven_days": {
+      "inherits": "one_day",
+      "requirements": {
+        "end_date": "2026-10-22",
+        "budget_amount": "7000",
+        "budget_coverage": "含六晚住宿、市内交通、餐饮、门票，不含往返车票"
+      },
+      "note": "每天两三项，休息为主，不要求具体酒店和餐厅；天气、交通、入住和开放未知时保留条件，核实事项合并。"
+    },
+    "late_early": {
+      "inherits": "one_day",
+      "requirements": {
+        "end_date": "2026-10-17",
+        "arrival_time": "22:30",
+        "departure_time": "07:30",
+        "budget_amount": "1200",
+        "budget_coverage": "含一晚住宿、市内交通、餐饮，不含往返车票",
+        "must_visit": []
+      },
+      "note": "首晚只休息，不安排景点。深夜入住接待和次日早退房条件待确认，末日直接去杭州东站。"
+    },
+    "withdraw": {
+      "inherits": "seven_days",
+      "requirements": {
+        "must_visit": [
+          "西湖湖滨",
+          "灵隐寺"
+        ]
+      }
+    }
+  },
+  "tool_overrides": {
+    "rain": [
+      {
+        "name": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-10-16"
+        },
+        "result": {
+          "status": "available",
+          "city": "杭州",
+          "requested_date": "2026-10-16",
+          "condition": "雷雨",
+          "temperature_min_c": 18,
+          "temperature_max_c": 24,
+          "precipitation_probability_max": 90,
+          "source": "受控合成天气资料",
+          "note": "仅本日预报；不是真实天气数据，不提供其他日期预报。"
+        }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "PP-001",
+      "title": "七日草案与全部外部资料未知",
+      "setup": "seven_days",
+      "tool_fixture": "all_external_unavailable",
+      "steps": [
+        {
+          "action": "plan",
+          "expected_plan_changed": true,
+          "assertions": {
+            "requirements_preserved": [
+              "city",
+              "start_date",
+              "end_date",
+              "travelers",
+              "budget_amount",
+              "budget_scope",
+              "budget_coverage",
+              "must_visit",
+              "avoid",
+              "dietary"
+            ]
+          }
+        }
+      ],
+      "review": [
+        "7天6晚全部日期覆盖，无自行添加星期",
+        "18:00离站不等于从景点出发或刚到站",
+        "未知交通不伪造线路或耗时",
+        "入住/寄存条件与备选",
+        "住宿预算不默认房型房间数",
+        "分项及机动合计正确，无保证实际不超预算"
+      ]
+    },
+    {
+      "id": "PP-002",
+      "title": "已知雷雨影响户外主线",
+      "setup": "one_day",
+      "tool_fixture": "rain",
+      "steps": [
+        {
+          "action": "plan",
+          "expected_plan_changed": true,
+          "assertions": {
+            "requirements_preserved": [
+              "start_date",
+              "end_date",
+              "must_visit",
+              "dietary"
+            ],
+            "required_tools": [
+              "query_weather"
+            ]
+          }
+        }
+      ],
+      "review": [
+        "雷雨使户外主线有条件，提供室内或休息备选",
+        "必去西湖保留并说明天气取舍，不保证雷雨时可执行",
+        "当天不住宿",
+        "接驳耗时未知不声称精确时刻一定赶上"
+      ]
+    },
+    {
+      "id": "PP-003",
+      "title": "22:30抵达与次日07:30离站",
+      "setup": "late_early",
+      "tool_fixture": "all_external_unavailable",
+      "steps": [
+        {
+          "action": "plan",
+          "expected_plan_changed": true,
+          "assertions": {
+            "requirements_preserved": [
+              "arrival_time",
+              "departure_time",
+              "start_date",
+              "end_date",
+              "budget_coverage"
+            ]
+          }
+        }
+      ],
+      "review": [
+        "首晚无抵达前活动且只休息",
+        "深夜接待与早退房不保证",
+        "次日07:30从杭州东站离开，提前到站和接驳分开",
+        "一晚住宿，预算单位与合计正确"
+      ]
+    },
+    {
+      "id": "PP-004",
+      "title": "同条聊天更新完整需求后生成",
+      "setup": "empty",
+      "tool_fixture": "all_external_unavailable",
+      "steps": [
+        {
+          "action": "chat",
+          "input": "2026年10月16日10:00抵达杭州东站，17日18:00同站离开，两个人合计2000元，含一晚住宿、市内交通、餐饮、门票，不含往返车票。必去西湖湖滨，不吃辣，避开购物店，节奏轻松。请按这些要求生成行程，不要推荐具体酒店和餐厅。",
+          "expected_plan_changed": true,
+          "assertions": {
+            "requirements_equal": {
+              "city": "杭州",
+              "start_date": "2026-10-16",
+              "end_date": "2026-10-17",
+              "arrival_time": "10:00",
+              "departure_time": "18:00",
+              "arrival_location": "杭州东站",
+              "departure_location": "杭州东站",
+              "travelers": 2,
+              "budget_amount": "2000",
+              "budget_scope": "total",
+              "must_visit": [
+                "西湖湖滨"
+              ],
+              "dietary": [
+                "不吃辣"
+              ],
+              "avoid": [
+                "购物店"
+              ],
+              "pace": "轻松"
+            },
+            "required_tools": [
+              "update_requirements"
+            ]
+          }
+        }
+      ],
+      "review": [
+        "完整五组提取并保留费用覆盖",
+        "update_requirements已ready后不额外重复check_requirements",
+        "新需求用于两日一晚正文，不遗漏原话限定"
+      ]
+    },
+    {
+      "id": "PP-005",
+      "title": "只记录撤销与预算变更",
+      "setup": "withdraw",
+      "tool_fixture": "all_external_unavailable",
+      "steps": [
+        {
+          "action": "chat",
+          "input": "取消灵隐寺必去，改为不去灵隐寺；预算改成两人合计6000元，费用范围沿用。只记录这些变化，先不要生成。",
+          "expected_plan_changed": false,
+          "assertions": {
+            "requirements_equal": {
+              "budget_amount": "6000",
+              "budget_scope": "total",
+              "must_visit": [
+                "西湖湖滨"
+              ],
+              "avoid": [
+                "购物店",
+                "灵隐寺"
+              ]
+            },
+            "requirements_preserved": [
+              "start_date",
+              "end_date",
+              "budget_coverage",
+              "dietary",
+              "pace"
+            ],
+            "external_calls_equal": 0,
+            "required_tools": [
+              "update_requirements"
+            ]
+          }
+        }
+      ],
+      "review": [
+        "只同步需求，不生成、不重排、不外查",
+        "撤销与禁忌同时表达，不丢其他列表",
+        "不把本轮局部记录覆盖全局note"
+      ]
+    },
+    {
+      "id": "PP-006",
+      "title": "无完整旅行信息先记录过敏再查午餐",
+      "setup": "empty",
+      "tool_fixture": "food_without_allergens",
+      "steps": [
+        {
+          "action": "chat",
+          "input": "先记下我花生过敏，再帮我查杭州的午餐候选；不生成行程。",
+          "expected_plan_changed": false,
+          "assertions": {
+            "requirements_equal": {
+              "dietary": [
+                "花生过敏"
+              ]
+            },
+            "required_tools": [
+              "update_requirements",
+              "search_food"
+            ]
+          }
+        }
+      ],
+      "review": [
+        "不要求与午餐查询无关的日期人数预算",
+        "查询前同步过敏",
+        "无成分和交叉污染资料不声称安全",
+        "不生成或修改行程"
+      ]
+    }
+  ]
+}

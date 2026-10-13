@@ -1,0 +1,788 @@
+{
+  "dataset_id": "travel_agent_v2",
+  "dataset_version": "2.1.0",
+  "reviews": [
+    {
+      "case_id": "TA2-001",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-002",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-003",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-004",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-005",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-006",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-007",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-008",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-009",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-010",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-011",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-012",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-013",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-014",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-015",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-016",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-017",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-018",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-019",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-020",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-021",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-022",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-023",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-024",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-025",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-026",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-027",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-028",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-029",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-035",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-037",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-038",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-039",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-040",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-041",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-042",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D001",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D002",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D003",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D004",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D005",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D006",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D007",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D008",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D009",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-D010",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    }
+  ]
+}

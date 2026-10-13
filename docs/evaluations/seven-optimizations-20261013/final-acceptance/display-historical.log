@@ -1,0 +1,10 @@
+{"event": "start", "case": "LAT-012", "attempt": 1}
+{"event": "finished", "case": "LAT-012", "attempt": 1, "status": "ready", "seconds": 52.586}
+{"event": "start", "case": "LAT-013", "attempt": 1}
+{"event": "finished", "case": "LAT-013", "attempt": 1, "status": "ready", "seconds": 97.423}
+{"event": "start", "case": "LAT-014", "attempt": 1}
+{"event": "finished", "case": "LAT-014", "attempt": 1, "status": "ready", "seconds": 156.684}
+{"event": "start", "case": "LAT-015", "attempt": 1}
+{"event": "finished", "case": "LAT-015", "attempt": 1, "status": "ready", "seconds": 108.135}
+{"samples": 4, "report": "C:\\Users\\16156\\AppData\\Local\\Temp\\travel-seven-optimizations-20261013-103516\\final-acceptance\\display-historical\\comparison\\report.md"}
+{"status": "completed", "completed_samples": 4, "planned_samples": 4, "reason": null, "quality_grade": "pending_manual_review"}

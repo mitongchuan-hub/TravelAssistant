@@ -117,8 +117,8 @@
 使用项目 Python 环境执行，Node 环境需可加载 Playwright 和 Chrome：
 
 ```powershell
-python tests/render_itinerary.py .cache/itinerary-ui-check
-node tests/itinerary_browser.cjs .cache/itinerary-ui-check
+python tests/browser/render_itinerary.py .cache/itinerary-ui-check
+node tests/browser/itinerary_browser.cjs .cache/itinerary-ui-check
 ```
 
 测试使用临时端口提供模拟页面，覆盖成功跳转和失败返回；不连接运行中的 8000 服务、不调用模型、不写入业务数据库。
@@ -132,6 +132,6 @@ node tests/itinerary_browser.cjs .cache/itinerary-ui-check
 - 行程专用样式：[app/static/itinerary.css](../app/static/itinerary.css)
 - 日期导航与调整面板：[app/static/itinerary.js](../app/static/itinerary.js)
 - 日期和时间展示：[app/presentation.py](../app/presentation.py)
-- 浏览器交互回归：[tests/itinerary_browser.cjs](../tests/itinerary_browser.cjs)
+- 浏览器交互回归：[tests/browser/itinerary_browser.cjs](../tests/browser/itinerary_browser.cjs)
 - 数据模型：[app/models.py](../app/models.py)
 - 计划存储：[app/store.py](../app/store.py)

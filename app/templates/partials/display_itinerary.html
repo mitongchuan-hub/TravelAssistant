@@ -1,0 +1,96 @@
+{% set basis = plan.requirements_snapshot %}
+{% macro icon(name) -%}
+<svg class="display-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+{% if name == 'pin' %}<path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/>
+{% elif name == 'clock' %}<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>
+{% elif name == 'wallet' %}<path d="M3 7h16v13H3V5a2 2 0 0 1 2-2h12v4"/><path d="M15 11h6v5h-6z"/>
+{% elif name == 'shirt' %}<path d="m8 3-5 3 3 5 2-1v11h8V10l2 1 3-5-5-3a4 4 0 0 1-8 0Z"/>
+{% elif name == 'bed' %}<path d="M3 18v3m18-3v3M3 11V4m0 14h18v-7H3m3 0V7h5v4m0-4h8a2 2 0 0 1 2 2v2"/>
+{% elif name == 'cloud' %}<path d="M7 18h11a4 4 0 0 0 0-8 6 6 0 0 0-11-2 5 5 0 0 0 0 10Z"/>
+{% elif name == 'check' %}<path d="m7 12 3 3 7-7"/><rect x="3" y="3" width="18" height="18" rx="5"/>
+{% elif name == 'note' %}<circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/>
+{% elif name == 'edit' %}<path d="m15 4 5 5M4 20l5-1L21 7a2 2 0 0 0-4-4L5 15Z"/>
+{% endif %}
+</svg>
+{%- endmacro %}
+<section class="display-itinerary" data-display-itinerary aria-label="按天行程">
+  {% if display.preparation.clothing or display.preparation.accommodation or display.weather or display.weather_metadata %}
+  <section class="display-preflight" aria-label="行前信息">
+    <div class="display-section-heading"><h3>出发前</h3><span>天气 · 穿着 · 住宿</span></div>
+    {% if display.weather or display.weather_metadata %}
+    <section class="display-weather" data-display-weather aria-label="天气预报">
+      <div class="display-info-heading">{{ icon('cloud') }}<h4>天气</h4><span>原文预报参考</span></div>
+      <div class="display-weather-grid">
+        {% for item in display.weather %}
+        <article class="display-weather-day">
+          <div class="display-weather-top"><strong>{{ item.date_text or '天气参考' }}</strong>{% if item.summary %}<span>{{ item.summary }}</span>{% endif %}</div>
+          {% if item.temperature_text or item.precipitation_text %}<dl class="display-weather-values">
+            {% if item.temperature_text %}<div><dt>气温</dt><dd>{{ item.temperature_text }}</dd></div>{% endif %}
+            {% if item.precipitation_text %}<div><dt>降水</dt><dd>{{ item.precipitation_text }}</dd></div>{% endif %}
+          </dl>{% endif %}
+          {% if item.queried_at_text %}<p class="display-weather-query">查询于 {{ item.queried_at_text }}</p>{% endif %}
+          {% if item.notes %}<ul class="display-weather-notes">{% for note in item.notes %}<li>{{ note }}</li>{% endfor %}</ul>{% endif %}
+        </article>{% endfor %}
+      </div>
+      {% if display.weather_query or display.weather_notes or display.weather_metadata %}<div class="display-weather-shared">
+        {% if display.weather_query %}<p class="display-weather-query">查询于 {{ display.weather_query }}</p>{% endif %}
+        {% if display.weather_notes %}<ul class="display-weather-notes">{% for note in display.weather_notes %}<li>{{ note }}</li>{% endfor %}</ul>{% endif %}
+        {% for item in display.weather_metadata %}<div class="display-weather-meta">
+          {% if item.date_text %}<strong>{{ item.date_text }}</strong>{% endif %}
+          {% if item.queried_at_text %}<p class="display-weather-query">查询于 {{ item.queried_at_text }}</p>{% endif %}
+          {% if item.notes %}<ul class="display-weather-notes">{% for note in item.notes %}<li>{{ note }}</li>{% endfor %}</ul>{% endif %}
+        </div>{% endfor %}
+      </div>{% endif %}
+    </section>{% endif %}
+    <div class="display-preparation">
+      {% for key, label, glyph in [('clothing','衣物与装备','shirt'), ('accommodation','住宿','bed')] %}
+      {% if display.preparation[key] %}
+      <section class="display-prep-group" data-display-prep="{{ key }}" aria-label="{{ label }}">
+        <div class="display-info-heading">{{ icon(glyph) }}<h4>{{ label }}</h4><span class="display-info-count">{{ display.preparation[key] | length }}项</span></div>
+        <div class="display-prep-list display-prep-list--{{ key }}">
+          {% for item in display.preparation[key] %}<article class="display-prep-entry"><h5>{{ item.title }}</h5>{% if item.body %}<p>{{ item.body }}</p>{% endif %}</article>{% endfor %}
+        </div>
+      </section>{% endif %}
+      {% endfor %}
+    </div>
+  </section>{% endif %}
+
+  <nav class="display-day-nav" data-display-day-nav aria-label="按日期查看行程">
+    {% for day in display.days %}<a href="#display-day-{{ loop.index }}" data-display-day-link{% if loop.first %} aria-current="location"{% endif %}><span>第{{ loop.index }}天</span><strong>{{ day.date | day_date_label if day.date else '日期待明确' }}</strong></a>{% endfor %}
+  </nav>
+  {% set categories = {'activity':'游览','meal':'用餐','transport':'交通','accommodation':'住宿','rest':'休息','other':'安排'} %}
+  <div class="display-days">
+    {% for day in display.days %}
+    <section class="display-day" id="display-day-{{ loop.index }}" aria-labelledby="display-day-title-{{ loop.index }}">
+      <header class="display-day-heading">
+        <span class="display-day-number" aria-hidden="true">{{ '%02d' | format(loop.index) }}</span>
+        <div><h3 id="display-day-title-{{ loop.index }}">第{{ loop.index }}天{% if day.date %}<span>{{ day.date | day_date_label }}</span>{% endif %}</h3>{% if day.theme %}<p>{{ day.theme }}</p>{% endif %}</div>
+        <span class="display-info-count">{{ day['items'] | length }}项安排</span>
+      </header>
+      <div class="display-timeline">
+        {% for item in day['items'] %}
+        <article class="display-item display-item--{{ item.category }}">
+          <div class="display-item-time"><span class="display-time-dot" aria-hidden="true"></span>{{ item.time_text or '时间待明确' }}</div>
+          <div class="display-item-content">
+            <div class="display-item-heading"><span class="display-category">{{ categories.get(item.category, '安排') }}</span><h4>{{ item.title }}</h4></div>
+            {% if item.description %}<p class="display-description">{{ item.description }}</p>{% endif %}
+            {% if item.location or item.duration_text or item.cost_text %}
+            <dl class="display-item-facts">
+              {% if item.location %}<div class="display-location"><dt>{{ icon('pin') }}<span>地点</span></dt><dd>{{ item.location }}</dd></div>{% endif %}
+              {% if item.duration_text %}<div class="display-duration"><dt>{{ icon('clock') }}<span>时长</span></dt><dd>{{ item.duration_text }}</dd></div>{% endif %}
+              {% if item.cost_text %}<div class="display-cost"><dt>{{ icon('wallet') }}<span>费用</span></dt><dd>{{ item.cost_text }}</dd></div>{% endif %}
+            </dl>{% endif %}
+            {% if item.notes %}<div class="display-item-reminder"><p>{{ icon('note') }}留意</p><ul class="display-item-notes">{% for note in item.notes %}<li>{{ note }}</li>{% endfor %}</ul></div>{% endif %}
+            <div class="display-item-footer"><button class="display-edit" type="button" data-display-edit data-day="{{ day.label }}" data-title="{{ item.title }}" aria-label="调整{{ day.label }}的{{ item.title }}">{{ icon('edit') }}调整此项</button></div>
+          </div>
+        </article>
+        {% else %}<p class="display-empty-day">当天具体安排待明确，可查看完整原文。</p>{% endfor %}
+      </div>
+    </section>{% endfor %}
+  </div>
+  {% if display.pending_items or display.risks %}
+  <section class="display-checklists" aria-label="核实与提醒">
+    {% if display.pending_items %}<section class="display-section display-section--pending"><div class="display-section-heading"><h3>{{ icon('check') }}待确认事项</h3><span>{{ display.pending_items | length }}项</span></div><ul>{% for item in display.pending_items %}<li>{{ item }}</li>{% endfor %}</ul></section>{% endif %}
+    {% if display.risks %}<section class="display-section display-section--risks"><div class="display-section-heading"><h3>{{ icon('note') }}出行提醒</h3></div><ul>{% for item in display.risks %}<li>{{ item }}</li>{% endfor %}</ul></section>{% endif %}
+  </section>{% endif %}
+</section>

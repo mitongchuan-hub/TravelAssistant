@@ -1,0 +1,921 @@
+{
+  "case_id": "TA2-009",
+  "dataset_version": "2.1.0",
+  "current_date": "2026-10-10",
+  "acceptance": "current",
+  "execution_mode": "live_agent",
+  "workflow": "four_intents_latest_only_sync_display",
+  "fixture_spec": {
+    "requirements": {},
+    "plan_text": null,
+    "chat_history": []
+  },
+  "model": "qwen3.8:27b",
+  "wire_api": "chat_completions",
+  "tool_fixture": "baseline",
+  "external_tools": "controlled_synthetic",
+  "started_at": "2026-10-13T10:57:15.498271",
+  "status": "executed_pending_review",
+  "steps": [
+    {
+      "input": {
+        "action": "chat",
+        "input": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。",
+        "checks": [
+          "连续覆盖10月31日、11月1日、11月2日三个自然日",
+          "首末日窗口正确，住宿夜数与日期一致"
+        ],
+        "forbidden": [
+          "把三天写成两天",
+          "跳过跨月日期"
+        ],
+        "expected_plan_changed": true,
+        "assertions": {
+          "requirements_equal": {
+            "start_date": "2026-10-31",
+            "end_date": "2026-11-02",
+            "day_count": 3
+          }
+        }
+      },
+      "seconds": 17.931527,
+      "before": {
+        "trip": {
+          "id": "trip-100",
+          "destination": "未命名旅行",
+          "date_range": "时间待定",
+          "budget": "预算待定",
+          "style": "风格待定",
+          "note": "",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "旅行已创建，开始和 Agent 对话",
+          "requirements": {
+            "start_date": "",
+            "end_date": "",
+            "arrival_time": "",
+            "departure_time": "",
+            "city": "",
+            "arrival_location": "",
+            "departure_location": "",
+            "day_count": null,
+            "travelers": null,
+            "budget_amount": "",
+            "budget_scope": "unspecified",
+            "budget_coverage": "",
+            "must_visit": [],
+            "avoid": [],
+            "dietary": [],
+            "pace": "",
+            "revision": 0
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [],
+        "ideas": []
+      },
+      "after": {
+        "trip": {
+          "id": "trip-100",
+          "destination": "未命名旅行",
+          "date_range": "3天 · 日期待定",
+          "budget": "预算待定",
+          "style": "风格待定",
+          "note": "",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "Agent 已更新需求摘要",
+          "requirements": {
+            "start_date": "",
+            "end_date": "",
+            "arrival_time": "",
+            "departure_time": "",
+            "city": "杭州",
+            "arrival_location": "",
+            "departure_location": "",
+            "day_count": 3,
+            "travelers": 2,
+            "budget_amount": "",
+            "budget_scope": "unspecified",
+            "budget_coverage": "",
+            "must_visit": [
+              "西湖"
+            ],
+            "avoid": [],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "",
+            "revision": 1
+          },
+          "workflow_state": {
+            "awaiting_generation": true,
+            "question": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。"
+          }
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [
+          {
+            "id": "m-102",
+            "sender": {
+              "id": "u1",
+              "name": "林夏",
+              "initials": "林"
+            },
+            "sender_type": "user",
+            "body": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。",
+            "created_at": "10:57",
+            "status": "sent",
+            "agent_card": null
+          },
+          {
+            "id": "m-104",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。",
+            "created_at": "10:57",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            }
+          }
+        ],
+        "ideas": []
+      },
+      "plan_changed": false,
+      "plan_change_pass": false,
+      "machine_checks": {
+        "plan_change": false,
+        "requirements_equal.start_date": false,
+        "requirements_equal.end_date": false,
+        "requirements_equal.day_count": true,
+        "task_succeeded": true
+      },
+      "machine_checks_pass": false,
+      "display_checks": [],
+      "display_conversion": null,
+      "events": [
+        {
+          "trace": "d3bf0218e46c",
+          "title": "输入上下文",
+          "value": {
+            "planning_mode": false,
+            "model": "qwen3.8:27b",
+            "trip": {
+              "id": "trip-100",
+              "destination": "未命名旅行",
+              "date_range": "时间待定",
+              "budget": "预算待定",
+              "style": "风格待定",
+              "note": "",
+              "owner": "User(id='u1', name='林夏', initials='林')",
+              "status": "未生成",
+              "last_activity": "Agent 正在整理旅行信息",
+              "requirements": "TripRequirements(start_date='', end_date='', arrival_time='', departure_time='', city='', arrival_location='', departure_location='', day_count=None, travelers=None, budget_amount='', budget_scope='unspecified', budget_coverage='', must_visit=[], avoid=[], dietary=[], pace='', revision=0)",
+              "workflow_state": {}
+            },
+            "user_body": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。",
+            "messages": [
+              {
+                "id": "m-102",
+                "sender": "User(id='u1', name='林夏', initials='林')",
+                "sender_type": "user",
+                "body": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。",
+                "created_at": "10:57",
+                "status": "sent",
+                "agent_card": null
+              }
+            ],
+            "idea_cards": [],
+            "plan": {
+              "id": "empty",
+              "title": "还没有行程计划",
+              "status": "未生成",
+              "days": [],
+              "preparation": "TravelPreparation(clothing=[], accommodation=[])",
+              "overview": "",
+              "constraints_met": [],
+              "pending_items": [],
+              "risks": [],
+              "text": "",
+              "evidence": [],
+              "requirements_revision": null,
+              "display": null,
+              "display_source_hash": "",
+              "display_status": "not_requested",
+              "requirements_snapshot": {}
+            },
+            "metrics": {
+              "message_count": 2,
+              "idea_count": 0,
+              "constraint_count": 0,
+              "reminder_count": 0,
+              "plan_day_count": 0,
+              "plan_date_range": "时间待定",
+              "plan_item_count": 0,
+              "date_coverage_note": ""
+            }
+          },
+          "offset_seconds": 0.008186
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "模型请求",
+          "value": {
+            "agent_role": "main",
+            "has_response_format": true,
+            "reasoning": {
+              "requested": "low",
+              "sent": "low",
+              "status": "requested"
+            },
+            "tool_names": []
+          },
+          "offset_seconds": 0.871874
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "模型响应",
+          "value": {
+            "agent_role": "main",
+            "seconds": 7.63,
+            "reasoning_effort_sent": "low",
+            "reasoning_status": "parameter_accepted",
+            "usage": {
+              "prompt_tokens": 739,
+              "completion_tokens": 328,
+              "reasoning_tokens": null
+            },
+            "content": "{\"intent\":\"planning\",\"action\":\"generate\",\"scope\":\"\",\"user_quote\":\"直接规划\",\"question\":null}",
+            "tool_calls": []
+          },
+          "offset_seconds": 8.501493
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "Workflow 模型节点",
+          "value": {
+            "node": "main",
+            "seconds": 7.63
+          },
+          "offset_seconds": 8.501536
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "意图识别结果",
+          "value": {
+            "intent": "planning",
+            "action": "generate",
+            "scope": "",
+            "user_quote": "直接规划",
+            "question": null
+          },
+          "offset_seconds": 8.501713
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "模型请求",
+          "value": {
+            "agent_role": "planning",
+            "has_response_format": false,
+            "reasoning": {
+              "requested": "medium",
+              "sent": "medium",
+              "status": "requested"
+            },
+            "tool_names": [
+              "read_context",
+              "update_requirements",
+              "check_requirements",
+              "query_weather",
+              "search_food",
+              "search_places",
+              "query_route"
+            ]
+          },
+          "offset_seconds": 8.502171
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "模型响应",
+          "value": {
+            "agent_role": "planning",
+            "seconds": 9.434,
+            "reasoning_effort_sent": "medium",
+            "reasoning_status": "parameter_accepted",
+            "usage": {
+              "prompt_tokens": 2811,
+              "completion_tokens": 369,
+              "reasoning_tokens": null
+            },
+            "content": "",
+            "tool_calls": [
+              {
+                "id": "mbQxzDbgl8mOSBkHxUZkVoFoRLuVpOeg",
+                "name": "update_requirements",
+                "arguments": "{\"user_quote\":\"杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。\",\"changes\":{\"city\": \"杭州\", \"travelers\": 2, \"day_count\": 3, \"must_visit\": {\"add\": [\"西湖\"]}, \"dietary\": {\"add\": [\"不吃辣\"]}\n}}"
+              }
+            ]
+          },
+          "offset_seconds": 17.935909
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "工具执行",
+          "value": {
+            "role": "planning",
+            "name": "update_requirements",
+            "arguments": {
+              "user_quote": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。",
+              "changes": {
+                "city": "杭州",
+                "travelers": 2,
+                "day_count": 3,
+                "must_visit": {
+                  "add": [
+                    "西湖"
+                  ]
+                },
+                "dietary": {
+                  "add": [
+                    "不吃辣"
+                  ]
+                }
+              }
+            },
+            "seconds": 0.0,
+            "result": {
+              "status": "needs_input",
+              "question": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。"
+            },
+            "error_type": null
+          },
+          "offset_seconds": 17.936303
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "Agent Loop 状态",
+          "value": {
+            "mode": "planning",
+            "seconds": 9.435,
+            "status": "waiting_user",
+            "steps": 1,
+            "tool_calls": 1,
+            "stop_reason": "等待用户补充或确认。",
+            "history": [
+              {
+                "step": 1,
+                "phase": "working",
+                "action": "tools",
+                "reason": "",
+                "observation_status": "applied",
+                "next_phase": null,
+                "tool_calls": 1,
+                "error": "",
+                "at": "2026-10-13T02:57:33+00:00"
+              }
+            ]
+          },
+          "offset_seconds": 17.936407
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "Workflow 返回结果",
+          "value": {
+            "body": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。",
+            "card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "idea_cards": [],
+            "plan": null,
+            "next_action": "continue_chat",
+            "requirements_patch": {
+              "changes": {
+                "city": "杭州",
+                "travelers": 2,
+                "day_count": 3,
+                "must_visit": {
+                  "add": [
+                    "西湖"
+                  ],
+                  "remove": []
+                },
+                "dietary": {
+                  "add": [
+                    "不吃辣"
+                  ],
+                  "remove": []
+                }
+              },
+              "evidence": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。"
+            },
+            "requirements_revision": null,
+            "failed": false,
+            "expected_plan_id": null,
+            "verified_places": {},
+            "orchestrated": true,
+            "target_item_id": null,
+            "confirm_current": false,
+            "expected_plan_snapshot": null,
+            "needs_input": true,
+            "plan_text": "",
+            "evidence": null,
+            "display": null,
+            "display_source_hash": "",
+            "display_status": "not_requested",
+            "workflow_state": {
+              "awaiting_generation": true,
+              "question": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。"
+            }
+          },
+          "offset_seconds": 17.936593
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "共享调用预算",
+          "value": {
+            "model_calls": 2,
+            "tool_calls": 1,
+            "external_calls": 0
+          },
+          "offset_seconds": 17.936621
+        },
+        {
+          "trace": "d3bf0218e46c",
+          "title": "最终模型原始回复",
+          "value": "",
+          "offset_seconds": 17.936641
+        }
+      ],
+      "queries": [],
+      "model_calls": [
+        {
+          "role": "main",
+          "started_offset": 0.871682,
+          "usage": {
+            "prompt_tokens": 739,
+            "completion_tokens": 328,
+            "reasoning_tokens": null
+          },
+          "output_characters": 88,
+          "seconds": 7.629817
+        },
+        {
+          "role": "planning",
+          "started_offset": 8.501797,
+          "usage": {
+            "prompt_tokens": 2811,
+            "completion_tokens": 369,
+            "reasoning_tokens": null
+          },
+          "output_characters": 0,
+          "seconds": 9.434118
+        }
+      ],
+      "timing": {
+        "primary_seconds": 17.931165,
+        "model_seconds": 17.063935,
+        "model_seconds_by_role": {
+          "main": 7.629817,
+          "planning": 9.434118
+        },
+        "display_seconds": 0,
+        "external_seconds": 0,
+        "internal_tool_seconds": 0.0,
+        "other_seconds": 0.867592,
+        "text_ready_seconds": null
+      },
+      "tasks": [
+        {
+          "id": "d3c4f583e7d74285907e049c4ef1446a",
+          "trip_id": "trip-100",
+          "kind": "chat",
+          "payload": {
+            "body": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。"
+          },
+          "request_id": "TA2-009-0",
+          "retry_of": "",
+          "status": "succeeded",
+          "message": "已完成",
+          "created_at": "2026-10-13T02:57:15+00:00",
+          "updated_at": "2026-10-13T02:57:33+00:00",
+          "message_id": "m-102",
+          "thinking_id": "m-103",
+          "result_url": "/workspace/trip-100?tab=chat",
+          "plan_id": "empty",
+          "requirements_revision": 0
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "trace": "d3bf0218e46c",
+      "title": "输入上下文",
+      "value": {
+        "planning_mode": false,
+        "model": "qwen3.8:27b",
+        "trip": {
+          "id": "trip-100",
+          "destination": "未命名旅行",
+          "date_range": "时间待定",
+          "budget": "预算待定",
+          "style": "风格待定",
+          "note": "",
+          "owner": "User(id='u1', name='林夏', initials='林')",
+          "status": "未生成",
+          "last_activity": "Agent 正在整理旅行信息",
+          "requirements": "TripRequirements(start_date='', end_date='', arrival_time='', departure_time='', city='', arrival_location='', departure_location='', day_count=None, travelers=None, budget_amount='', budget_scope='unspecified', budget_coverage='', must_visit=[], avoid=[], dietary=[], pace='', revision=0)",
+          "workflow_state": {}
+        },
+        "user_body": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。",
+        "messages": [
+          {
+            "id": "m-102",
+            "sender": "User(id='u1', name='林夏', initials='林')",
+            "sender_type": "user",
+            "body": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。",
+            "created_at": "10:57",
+            "status": "sent",
+            "agent_card": null
+          }
+        ],
+        "idea_cards": [],
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": "TravelPreparation(clothing=[], accommodation=[])",
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "metrics": {
+          "message_count": 2,
+          "idea_count": 0,
+          "constraint_count": 0,
+          "reminder_count": 0,
+          "plan_day_count": 0,
+          "plan_date_range": "时间待定",
+          "plan_item_count": 0,
+          "date_coverage_note": ""
+        }
+      },
+      "offset_seconds": 0.008186
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "模型请求",
+      "value": {
+        "agent_role": "main",
+        "has_response_format": true,
+        "reasoning": {
+          "requested": "low",
+          "sent": "low",
+          "status": "requested"
+        },
+        "tool_names": []
+      },
+      "offset_seconds": 0.871874
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "模型响应",
+      "value": {
+        "agent_role": "main",
+        "seconds": 7.63,
+        "reasoning_effort_sent": "low",
+        "reasoning_status": "parameter_accepted",
+        "usage": {
+          "prompt_tokens": 739,
+          "completion_tokens": 328,
+          "reasoning_tokens": null
+        },
+        "content": "{\"intent\":\"planning\",\"action\":\"generate\",\"scope\":\"\",\"user_quote\":\"直接规划\",\"question\":null}",
+        "tool_calls": []
+      },
+      "offset_seconds": 8.501493
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "Workflow 模型节点",
+      "value": {
+        "node": "main",
+        "seconds": 7.63
+      },
+      "offset_seconds": 8.501536
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "意图识别结果",
+      "value": {
+        "intent": "planning",
+        "action": "generate",
+        "scope": "",
+        "user_quote": "直接规划",
+        "question": null
+      },
+      "offset_seconds": 8.501713
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "模型请求",
+      "value": {
+        "agent_role": "planning",
+        "has_response_format": false,
+        "reasoning": {
+          "requested": "medium",
+          "sent": "medium",
+          "status": "requested"
+        },
+        "tool_names": [
+          "read_context",
+          "update_requirements",
+          "check_requirements",
+          "query_weather",
+          "search_food",
+          "search_places",
+          "query_route"
+        ]
+      },
+      "offset_seconds": 8.502171
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "模型响应",
+      "value": {
+        "agent_role": "planning",
+        "seconds": 9.434,
+        "reasoning_effort_sent": "medium",
+        "reasoning_status": "parameter_accepted",
+        "usage": {
+          "prompt_tokens": 2811,
+          "completion_tokens": 369,
+          "reasoning_tokens": null
+        },
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "mbQxzDbgl8mOSBkHxUZkVoFoRLuVpOeg",
+            "name": "update_requirements",
+            "arguments": "{\"user_quote\":\"杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。\",\"changes\":{\"city\": \"杭州\", \"travelers\": 2, \"day_count\": 3, \"must_visit\": {\"add\": [\"西湖\"]}, \"dietary\": {\"add\": [\"不吃辣\"]}\n}}"
+          }
+        ]
+      },
+      "offset_seconds": 17.935909
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "update_requirements",
+        "arguments": {
+          "user_quote": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。",
+          "changes": {
+            "city": "杭州",
+            "travelers": 2,
+            "day_count": 3,
+            "must_visit": {
+              "add": [
+                "西湖"
+              ]
+            },
+            "dietary": {
+              "add": [
+                "不吃辣"
+              ]
+            }
+          }
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "needs_input",
+          "question": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。"
+        },
+        "error_type": null
+      },
+      "offset_seconds": 17.936303
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "Agent Loop 状态",
+      "value": {
+        "mode": "planning",
+        "seconds": 9.435,
+        "status": "waiting_user",
+        "steps": 1,
+        "tool_calls": 1,
+        "stop_reason": "等待用户补充或确认。",
+        "history": [
+          {
+            "step": 1,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 1,
+            "error": "",
+            "at": "2026-10-13T02:57:33+00:00"
+          }
+        ]
+      },
+      "offset_seconds": 17.936407
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "Workflow 返回结果",
+      "value": {
+        "body": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。",
+        "card": {
+          "kind": "requirement-summary",
+          "title": "旅行助手",
+          "summary": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。",
+          "bullets": [],
+          "actions": [
+            {
+              "label": "继续聊天",
+              "target": "chat"
+            }
+          ]
+        },
+        "idea_cards": [],
+        "plan": null,
+        "next_action": "continue_chat",
+        "requirements_patch": {
+          "changes": {
+            "city": "杭州",
+            "travelers": 2,
+            "day_count": 3,
+            "must_visit": {
+              "add": [
+                "西湖"
+              ],
+              "remove": []
+            },
+            "dietary": {
+              "add": [
+                "不吃辣"
+              ],
+              "remove": []
+            }
+          },
+          "evidence": "杭州轻松三日，2成人，2026年10月31日10:00杭州东站到，11月2日18:00杭州东站走，总预算3000元含住吃玩和市内交通、不含往返票，西湖必去，不吃辣，直接规划。"
+        },
+        "requirements_revision": null,
+        "failed": false,
+        "expected_plan_id": null,
+        "verified_places": {},
+        "orchestrated": true,
+        "target_item_id": null,
+        "confirm_current": false,
+        "expected_plan_snapshot": null,
+        "needs_input": true,
+        "plan_text": "",
+        "evidence": null,
+        "display": null,
+        "display_source_hash": "",
+        "display_status": "not_requested",
+        "workflow_state": {
+          "awaiting_generation": true,
+          "question": "需要补充：计划哪天抵达、哪天离开？请给出具体日期。"
+        }
+      },
+      "offset_seconds": 17.936593
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "共享调用预算",
+      "value": {
+        "model_calls": 2,
+        "tool_calls": 1,
+        "external_calls": 0
+      },
+      "offset_seconds": 17.936621
+    },
+    {
+      "trace": "d3bf0218e46c",
+      "title": "最终模型原始回复",
+      "value": "",
+      "offset_seconds": 17.936641
+    }
+  ],
+  "queries": [],
+  "model_calls": [
+    {
+      "role": "main",
+      "started_offset": 0.871682,
+      "usage": {
+        "prompt_tokens": 739,
+        "completion_tokens": 328,
+        "reasoning_tokens": null
+      },
+      "output_characters": 88,
+      "seconds": 7.629817
+    },
+    {
+      "role": "planning",
+      "started_offset": 8.501797,
+      "usage": {
+        "prompt_tokens": 2811,
+        "completion_tokens": 369,
+        "reasoning_tokens": null
+      },
+      "output_characters": 0,
+      "seconds": 9.434118
+    }
+  ],
+  "injection": {
+    "after_requirements": false
+  },
+  "seconds": 17.939505,
+  "business_db_before": "301866b1b408c89b1eb2150721099304747c42138722fea6c128c4972e174765",
+  "business_db_after": "301866b1b408c89b1eb2150721099304747c42138722fea6c128c4972e174765",
+  "business_db_unchanged": true,
+  "machine_checks_pass": false,
+  "isolation": {
+    "persistence_enabled": false,
+    "business_http_used": false
+  }
+}

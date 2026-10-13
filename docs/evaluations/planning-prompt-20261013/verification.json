@@ -1,0 +1,10 @@
+{
+  "file_count": 95,
+  "final_source_matches_workspace": true,
+  "final_source_matches_archive": true,
+  "secret_matched_files": 0,
+  "completed_cases": 6,
+  "machine_checks_passed_cases": 5,
+  "business_db_unchanged": true,
+  "semantic_grade": "not_fully_passed"
+}

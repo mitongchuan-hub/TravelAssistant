@@ -98,4 +98,4 @@ $env:PYTHONDONTWRITEBYTECODE = '1'
 & E:\anaconda\envs\TravelAssistant\python.exe tests/run_travel_dataset.py --case TA-013 --output "$env:TEMP\travel-agent-TA013"
 ```
 
-批量入口为`tests/run_travel_dataset_batch.py`（`--output`指定C盘目录，`--workers 2`）；受控入口为`test_travel_dataset_system.py`。输出目录使用新的路径保留本次证据。本轮未修复业务问题，下一步优先处理“新需求先落档”和“未知事实保持未知”，然后复测首末日与住宿夜数。
+批量入口为`tests/run_travel_dataset_batch.py`（`--output`指定C盘目录，`--workers 2`）；受控入口现已归档至`tests/automated/test_travel_dataset_system.py`（历史执行时位于根目录）。输出目录使用新的路径保留本次证据。本轮未修复业务问题，下一步优先处理“新需求先落档”和“未知事实保持未知”，然后复测首末日与住宿夜数。

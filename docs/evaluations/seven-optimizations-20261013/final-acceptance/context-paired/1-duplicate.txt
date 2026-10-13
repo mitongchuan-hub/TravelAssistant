@@ -1,0 +1,113 @@
+
+==================== 模型请求 ====================
+{
+  "model": "qwen3.8:27b",
+  "agent_role": "main",
+  "params": {
+    "model": "qwen3.8:27b",
+    "messages": [
+      {
+        "role": "system",
+        "content": "你是旅行工作流的意图识别节点，没有工具，只按提供的JSON Schema返回路由结果。\n第一层只有chat（闲聊）、query（资料查询）、planning（规划，包含补充需求）、revision（解释、修改或确认当前行程）。\nchat只选reply。query只选reply。planning选update_requirements、update_and_query、generate或cancel。revision选modify、explain或confirm。\n只理解user_message中的最新完整原话、conversation中的相关历史与已保存规划等待状态，不能规划、提取需求字段或回答旅行事实。user_quote引用user_message中的原话，不能引用整个上下文JSON或改写。\n用户仅提供、修改、撤销旅行信息，且没有awaiting_generation等待目标时：planning/update_requirements，不自动生成或重排。\n用户明确要求先记录/更新需求再查询资料或推荐，但不生成/修改行程时：planning/update_and_query，在一个工具循环内完成需求同步和所请求的查询；只说记录时不能选择此动作。\n优先判断workflow_state.awaiting_generation：如果为true，且最新消息回答workflow_state.question所缺信息，必须选planning/generate，承接此前已授权的请求；用户不需要重复说“生成”。只有用户明确说“只记录”“先不要生成”或暂停时才选update_requirements/cancel。\n用户明确要求新方案时：planning/generate。拒绝、查询、假设和转述不构成生成授权。\n“先不生成”“算了”且没有需求变更时可选planning/cancel，保留需求。若同时补充或修改信息并说先不生成，选planning/update_requirements，只保存需求。普通感谢、闲聊选chat/reply。\n已有方案的局部修改选revision/modify scope=item；明确整体重排选scope=all；询问方案理由选revision/explain scope=explain。确认当前行程选revision/confirm，程序依据当前快照直接确认。应用只保留当前行程；用户要求查看或恢复旧版本时question说明没有历史版本可恢复，本轮不修改行程。\n“预算改为2000并重新安排”同时有需求与修改，选revision/modify，让修改Agent使用需求工具。\n含糊授权或目标不清楚时question给出一个具体澄清问题，本轮不执行业务；明确时question=null。query/planning/chat的scope为空字符串。不要增加第五种意图或委派其他Agent。"
+      },
+      {
+        "role": "user",
+        "content": "{\"user_message\": \"预算改成两人合计2500元，费用范围不变，先记录，不要生成行程。\", \"conversation\": [{\"role\": \"user\", \"body\": \"旅行节奏轻松，保留不吃辣，不安排购物店。\"}, {\"role\": \"agent\", \"body\": \"已记录偏好，未核实的价格、开放、预约和交通耗时保持待核实。\"}], \"current_date\": \"2026-10-13\", \"has_plan\": false, \"workflow_state\": {}, \"missing_requirements\": [\"旅行城市\", \"具体起止日期\", \"抵达和离开时间\", \"抵达和离开地点\", \"旅行人数\", \"预算包含的费用范围\"]}"
+      },
+      {
+        "role": "user",
+        "content": "预算改成两人合计2500元，费用范围不变，先记录，不要生成行程。"
+      }
+    ],
+    "reasoning_effort": "low",
+    "response_format": {
+      "type": "json_schema",
+      "json_schema": {
+        "name": "travel_intent",
+        "strict": true,
+        "schema": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "intent": {
+              "type": "string",
+              "enum": [
+                "chat",
+                "query",
+                "planning",
+                "revision"
+              ]
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "reply",
+                "update_requirements",
+                "update_and_query",
+                "generate",
+                "modify",
+                "explain",
+                "confirm",
+                "cancel"
+              ]
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "",
+                "item",
+                "all",
+                "explain"
+              ]
+            },
+            "user_quote": {
+              "type": "string"
+            },
+            "question": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "intent",
+            "action",
+            "scope",
+            "user_quote",
+            "question"
+          ]
+        }
+      }
+    },
+    "timeout": 179.88315420000072
+  },
+  "wire_api": "chat_completions",
+  "store": false,
+  "reasoning": {
+    "requested": "low",
+    "sent": "low",
+    "status": "requested"
+  }
+}
+
+==================== 模型响应 ====================
+{
+  "agent_role": "main",
+  "seconds": 5.467,
+  "reasoning_effort_sent": "low",
+  "reasoning_status": "parameter_accepted",
+  "usage": {
+    "prompt_tokens": 717,
+    "completion_tokens": 289,
+    "reasoning_tokens": null
+  },
+  "content": "{\"intent\":\"planning\",\"action\":\"update_requirements\",\"scope\":\"\",\"user_quote\":\"预算改成两人合计2500元，费用范围不变，先记录，不要生成行程。\",\"question\":null}",
+  "tool_calls": []
+}
+
+==================== Workflow 模型节点 ====================
+{
+  "node": "main",
+  "seconds": 5.468
+}

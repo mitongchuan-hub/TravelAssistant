@@ -1,0 +1,8 @@
+{"event": "case_start", "case": "MEAL-001"}
+{"case": "MEAL-001", "machine_checks_pass": true, "model_calls": 2, "transport_failed": false}
+{"event": "case_start", "case": "MEAL-002"}
+{"case": "MEAL-002", "machine_checks_pass": true, "model_calls": 2, "transport_failed": false}
+{"event": "case_start", "case": "MEAL-003"}
+{"case": "MEAL-003", "machine_checks_pass": true, "model_calls": 3, "transport_failed": false}
+{"event": "case_start", "case": "MEAL-004"}
+{"case": "MEAL-004", "machine_checks_pass": true, "model_calls": 2, "transport_failed": false}

@@ -1,0 +1,7 @@
+{
+  "status": "completed",
+  "completed_samples": 3,
+  "planned_samples": 3,
+  "reason": null,
+  "quality_grade": "pending_manual_review"
+}

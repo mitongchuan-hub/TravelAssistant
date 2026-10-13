@@ -1,0 +1,69 @@
+{
+  "started_at": "2026-10-13T21:25:40.464131",
+  "dataset": "planning_prompt_v1",
+  "model": "qwen3.8:27b",
+  "wire_api": "chat_completions",
+  "reasoning": {},
+  "scope": "live_model_controlled_facts_isolated_memory_store_planning_text_only",
+  "display_conversion": "not_run",
+  "business_http_used": false,
+  "source_hashes": {
+    "app/prompts/agents/planning.txt": "eaa5b39b3e909877f7a9ac3509abbd04e5adf8bf1c70c4d5c71c96d9950f1002",
+    "app/prompts/agents/travel_rules.txt": "5d08e648bfb334eb454973ec313ffeccea1c55f6ae3564c4da45c59d4f0a5c61",
+    "app/agent_roles.py": "f776465433b15f30aa9e6033af444ab5f9625c787a06ad4fc892620d2a87d949",
+    "app/agent_runtime.py": "5849d48790aae4823b2560f97f1fa38479cdf74697e222c73d1ce53d3bcc1b38",
+    "app/planning.py": "41484fce62372db3362ad8b3391111ca022fed5d8bff79c38b3b32304d6ecc0b",
+    "tests/performance/check_planning_prompt.py": "477641f7ee7b89856c31f24e2650dd2fc622835be09e45bc8e765509347a4776"
+  },
+  "cases": [
+    "PP-001",
+    "PP-002",
+    "PP-003",
+    "PP-004",
+    "PP-005",
+    "PP-006"
+  ],
+  "results": [
+    {
+      "case": "PP-001",
+      "machine_checks_pass": true,
+      "model_calls": 2,
+      "transport_failed": false
+    },
+    {
+      "case": "PP-002",
+      "machine_checks_pass": true,
+      "model_calls": 3,
+      "transport_failed": false
+    },
+    {
+      "case": "PP-003",
+      "machine_checks_pass": true,
+      "model_calls": 2,
+      "transport_failed": false
+    },
+    {
+      "case": "PP-004",
+      "machine_checks_pass": false,
+      "model_calls": 10,
+      "transport_failed": false
+    },
+    {
+      "case": "PP-005",
+      "machine_checks_pass": true,
+      "model_calls": 3,
+      "transport_failed": false
+    },
+    {
+      "case": "PP-006",
+      "machine_checks_pass": true,
+      "model_calls": 3,
+      "transport_failed": false
+    }
+  ],
+  "quality_grade": "pending_manual_review",
+  "business_db_before": "27410b8fea937856f427d23307ae125492fe4fc6d4953902ad92da4cb2b7d92d",
+  "finished_at": "2026-10-13T21:30:29.235419",
+  "business_db_after": "27410b8fea937856f427d23307ae125492fe4fc6d4953902ad92da4cb2b7d92d",
+  "business_db_unchanged": true
+}

@@ -1,0 +1,99 @@
+
+==================== 输入上下文 ====================
+{
+  "planning_mode": true,
+  "model": "qwen3.8:27b",
+  "trip": {
+    "id": "trip-100",
+    "destination": "杭州",
+    "date_range": "2026年11月14日 - 2026年11月14日",
+    "budget": "预算待定",
+    "style": "轻松",
+    "note": "",
+    "owner": "User(id='u1', name='林夏', initials='林')",
+    "status": "未生成",
+    "last_activity": "Agent 正在整理旅行信息",
+    "requirements": "TripRequirements(start_date='2026-11-14', end_date='2026-11-14', arrival_time='10:00', departure_time='18:00', city='杭州', arrival_location='杭州东站', departure_location='杭州东站', day_count=1, travelers=None, budget_amount='', budget_scope='total', budget_coverage='含市内交通餐饮门票，不含往返车票', must_visit=['西湖'], avoid=['购物店'], dietary=['不吃辣'], pace='轻松', revision=1)",
+    "workflow_state": {}
+  },
+  "user_body": "请根据当前有效需求、对话和想法墙，生成一版完整的文字旅行行程。",
+  "messages": [],
+  "idea_cards": [],
+  "plan": {
+    "id": "empty",
+    "title": "还没有行程计划",
+    "status": "未生成",
+    "days": [],
+    "preparation": "TravelPreparation(clothing=[], accommodation=[])",
+    "overview": "",
+    "constraints_met": [],
+    "pending_items": [],
+    "risks": [],
+    "text": "",
+    "evidence": [],
+    "requirements_revision": null,
+    "display": null,
+    "display_source_hash": "",
+    "display_status": "not_requested",
+    "requirements_snapshot": {}
+  },
+  "metrics": {
+    "message_count": 1,
+    "idea_count": 0,
+    "constraint_count": 0,
+    "reminder_count": 0,
+    "plan_day_count": 0,
+    "plan_date_range": "2026年11月14日 - 2026年11月14日",
+    "plan_item_count": 0,
+    "date_coverage_note": ""
+  }
+}
+
+==================== Workflow 返回结果 ====================
+{
+  "body": "需要补充：请补齐旅行人数、预算金额及总额/人均口径。已有需求已保留。",
+  "card": {
+    "kind": "requirement-summary",
+    "title": "旅行助手",
+    "summary": "需要补充：请补齐旅行人数、预算金额及总额/人均口径。已有需求已保留。",
+    "bullets": [],
+    "actions": [
+      {
+        "label": "继续聊天",
+        "target": "chat"
+      }
+    ]
+  },
+  "idea_cards": [],
+  "plan": null,
+  "next_action": "continue_chat",
+  "requirements_patch": {},
+  "requirements_revision": null,
+  "failed": false,
+  "expected_plan_id": null,
+  "verified_places": {},
+  "orchestrated": true,
+  "target_item_id": null,
+  "confirm_current": false,
+  "expected_plan_snapshot": null,
+  "needs_input": true,
+  "plan_text": "",
+  "evidence": null,
+  "display": null,
+  "display_source_hash": "",
+  "display_status": "not_requested",
+  "workflow_state": {
+    "awaiting_generation": true,
+    "question": "需要补充：请补齐旅行人数、预算金额及总额/人均口径。已有需求已保留。"
+  }
+}
+
+==================== 共享调用预算 ====================
+{
+  "model_calls": 0,
+  "tool_calls": 0,
+  "external_calls": 0
+}
+
+==================== 最终模型原始回复 ====================
+

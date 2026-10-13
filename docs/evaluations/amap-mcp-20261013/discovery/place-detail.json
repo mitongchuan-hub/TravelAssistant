@@ -1,0 +1,13 @@
+{
+  "meta": null,
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"id\":\"B023B08WDR\",\"name\":\"杭州东站\",\"location\":\"120.212605,30.290846\",\"address\":\"天城路1号\",\"business_area\":\"天城路沿线\",\"city\":\"杭州市\",\"type\":\"交通设施服务;火车站;火车站\",\"alias\":\"\",\"photo\":\"https://store.is.autonavi.com/showpic/015cf0fe18324efc0000000738808269\",\"cost\":\"\",\"opentime2\":\"周一至周日 05:00-23:00\",\"rating\":\"\",\"open_time\":\"05:00-23:00\"}",
+      "annotations": null,
+      "meta": null
+    }
+  ],
+  "structuredContent": null,
+  "isError": false
+}

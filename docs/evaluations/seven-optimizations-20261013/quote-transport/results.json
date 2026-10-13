@@ -1,0 +1,26 @@
+[
+  {
+    "mode": "plain",
+    "source": "请点餐时明确“不要辣、微辣也不要”，具体做法待确认。",
+    "status": "returned",
+    "output": "请点餐时明确\"不要辣、微辣也不要\"，具体做法待确认。",
+    "exact": false,
+    "seconds": 1.9654821000003722
+  },
+  {
+    "mode": "object",
+    "source": "请点餐时明确“不要辣、微辣也不要”，具体做法待确认。",
+    "status": "returned",
+    "output": "{\"text\":\"请点餐时明确\" }",
+    "exact": false,
+    "seconds": 4.884281799999371
+  },
+  {
+    "mode": "schema",
+    "source": "请点餐时明确“不要辣、微辣也不要”，具体做法待确认。",
+    "status": "returned",
+    "output": "{\"text\":\"请点餐时明确\" }",
+    "exact": false,
+    "seconds": 20.33782170000086
+  }
+]

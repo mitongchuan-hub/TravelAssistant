@@ -1,0 +1,1322 @@
+{
+  "traceEvents": [
+    {
+      "name": "thread_name",
+      "ph": "M",
+      "pid": 1,
+      "tid": 1,
+      "args": {
+        "name": "observer"
+      }
+    },
+    {
+      "name": "thread_name",
+      "ph": "M",
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "name": "foreground"
+      }
+    },
+    {
+      "name": "thread_name",
+      "ph": "M",
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "name": "display"
+      }
+    },
+    {
+      "name": "thread_name",
+      "ph": "M",
+      "pid": 1,
+      "tid": 4,
+      "args": {
+        "name": "http_after_display"
+      }
+    },
+    {
+      "name": "后台计时hook安装",
+      "cat": "observer_wait",
+      "ph": "X",
+      "ts": 0.0,
+      "dur": 357.7999996196013,
+      "pid": 1,
+      "tid": 1,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.0003577999996196013
+      }
+    },
+    {
+      "name": "场景处理与服务器首次响应就绪",
+      "cat": "orchestration",
+      "ph": "X",
+      "ts": 376.0999989026459,
+      "dur": 34531476.30000058,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "case_id": "LAT-015",
+        "step": 1,
+        "status": "completed",
+        "self_seconds": 0.00010909999764407985
+      }
+    },
+    {
+      "name": "请求接受与入队",
+      "cat": "submission",
+      "ph": "X",
+      "ts": 387.8999996231869,
+      "dur": 10585.899999568937,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.00014139999802864622
+      }
+    },
+    {
+      "name": "SQLite全量快照保存",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 464.1999985324219,
+      "dur": 10444.500001540291,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "effective_write": true,
+        "status": "completed",
+        "self_seconds": 8.120000165945385e-05
+      }
+    },
+    {
+      "name": "Store快照序列化",
+      "cat": "serialization",
+      "ph": "X",
+      "ts": 474.49999874515925,
+      "dur": 204.50000010896474,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.00020450000010896474
+      }
+    },
+    {
+      "name": "SQLite事务写入",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 686.1000001663342,
+      "dur": 10158.799999771873,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.010158799999771873
+      }
+    },
+    {
+      "name": "执行任务直到终态",
+      "cat": "orchestration",
+      "ph": "X",
+      "ts": 11000.999998941552,
+      "dur": 34415502.90000123,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.011578500001633074
+      }
+    },
+    {
+      "name": "SQLite全量快照保存",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 11106.699999800185,
+      "dur": 9661.00000005099,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "effective_write": true,
+        "status": "completed",
+        "self_seconds": 6.300000131886918e-05
+      }
+    },
+    {
+      "name": "Store快照序列化",
+      "cat": "serialization",
+      "ph": "X",
+      "ts": 11117.000000012922,
+      "dur": 198.59999883919954,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.00019859999883919954
+      }
+    },
+    {
+      "name": "SQLite事务写入",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 11322.799999106792,
+      "dur": 9399.399999892921,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.009399399999892921
+      }
+    },
+    {
+      "name": "SQLite全量快照保存",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 20942.69999906828,
+      "dur": 9924.80000059004,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "effective_write": true,
+        "status": "completed",
+        "self_seconds": 5.650000093737617e-05
+      }
+    },
+    {
+      "name": "Store快照序列化",
+      "cat": "serialization",
+      "ph": "X",
+      "ts": 20951.200000126846,
+      "dur": 196.29999951575883,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.00019629999951575883
+      }
+    },
+    {
+      "name": "SQLite事务写入",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 21154.099998966558,
+      "dur": 9672.000000136904,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.009672000000136904
+      }
+    },
+    {
+      "name": "任务处理：finish_agent_task",
+      "cat": "orchestration",
+      "ph": "X",
+      "ts": 30885.699999998906,
+      "dur": 34373980.99999882,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.0002206999979534885
+      }
+    },
+    {
+      "name": "读取Store快照并校验模型交付",
+      "cat": "context",
+      "ph": "X",
+      "ts": 30939.499998567044,
+      "dur": 34362362.40000107,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.0007231000017782208
+      }
+    },
+    {
+      "name": "准备模型客户端、快照与清理",
+      "cat": "context",
+      "ph": "X",
+      "ts": 31587.800000124844,
+      "dur": 34361639.2999993,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.11892359999910695
+      }
+    },
+    {
+      "name": "组织日志：输入上下文",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 31627.20000000263,
+      "dur": 63.39999890769832,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 6.339999890769832e-05
+      }
+    },
+    {
+      "name": "聊天上下文序列化",
+      "cat": "context",
+      "ph": "X",
+      "ts": 149887.59999869217,
+      "dur": 38.100000892882235,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 3.8100000892882235e-05
+      }
+    },
+    {
+      "name": "构建工作流快照与角色",
+      "cat": "context",
+      "ph": "X",
+      "ts": 150081.30000023812,
+      "dur": 1489.4999985699542,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.0014894999985699542
+      }
+    },
+    {
+      "name": "需求完整性与日期窗口",
+      "cat": "validation",
+      "ph": "X",
+      "ts": 151591.19999952964,
+      "dur": 37.39999920071568,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 3.7399999200715683e-05
+      }
+    },
+    {
+      "name": "业务Agent Loop",
+      "cat": "orchestration",
+      "ph": "X",
+      "ts": 151637.39999843528,
+      "dur": 34239829.10000086,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "role": "planning",
+        "status": "completed",
+        "self_seconds": 0.0005338999981177039
+      }
+    },
+    {
+      "name": "准备业务角色输入",
+      "cat": "context",
+      "ph": "X",
+      "ts": 151651.29999877536,
+      "dur": 106.20000102790073,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 6.159999975352548e-05
+      }
+    },
+    {
+      "name": "需求完整性与日期窗口",
+      "cat": "validation",
+      "ph": "X",
+      "ts": 151662.1999999188,
+      "dur": 16.69999983278103,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 1.6699999832781032e-05
+      }
+    },
+    {
+      "name": "读取上下文",
+      "cat": "context",
+      "ph": "X",
+      "ts": 151688.29999856825,
+      "dur": 27.900001441594213,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 2.7900001441594213e-05
+      }
+    },
+    {
+      "name": "模型逻辑调用：planning",
+      "cat": "model_overhead",
+      "ph": "X",
+      "ts": 151801.29999862402,
+      "dur": 9677138.000000924,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "role": "planning",
+        "model": "qwen3.8:27b",
+        "message_count": 2,
+        "input_characters": 3160,
+        "tools": [
+          "read_context",
+          "check_requirements",
+          "query_weather",
+          "search_food",
+          "search_places",
+          "query_route"
+        ],
+        "reasoning_requested": "medium",
+        "budget_before": 239.99845259999893,
+        "budget_after": 230.32130919999872,
+        "status": "completed",
+        "self_seconds": 0.0001094999988708878
+      }
+    },
+    {
+      "name": "组织日志：模型请求",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 151850.59999930672,
+      "dur": 89.40000043367036,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 8.940000043367036e-05
+      }
+    },
+    {
+      "name": "SDK请求：planning",
+      "cat": "model_planning",
+      "ph": "X",
+      "ts": 151961.09999851615,
+      "dur": 9676902.100000007,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "role": "planning",
+        "wire_api": "chat_completions",
+        "timeout_seconds": 180.0,
+        "reasoning_sent": "medium",
+        "response_format_type": null,
+        "input_characters": 3160,
+        "schema_characters": 2,
+        "source": "live_model",
+        "output_characters": 0,
+        "prompt_tokens": 2552,
+        "completion_tokens": 513,
+        "reasoning_tokens": null,
+        "finish_reason": "tool_calls",
+        "proposed_tools": [
+          {
+            "name": "read_context",
+            "arguments": "{\"section\":\"ideas\"}"
+          },
+          {
+            "name": "read_context",
+            "arguments": "{\"section\":\"evidence\"}"
+          },
+          {
+            "name": "query_weather",
+            "arguments": "{\"city\":\"杭州\",\"date\":\"2026-10-16\"}"
+          }
+        ],
+        "provider_timings": {
+          "cache_n": 0,
+          "prompt_n": 2552,
+          "prompt_ms": 982.839,
+          "prompt_per_token_ms": 0.385125,
+          "prompt_per_second": 2596.5595585848746,
+          "predicted_n": 513,
+          "predicted_ms": 7814.347,
+          "predicted_per_token_ms": 15.262396484375,
+          "predicted_per_second": 65.52050990313074
+        },
+        "status": "completed",
+        "self_seconds": 9.676902100000007
+      }
+    },
+    {
+      "name": "组织日志：模型响应",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 9828895.699998612,
+      "dur": 37.000001611886546,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 3.7000001611886546e-05
+      }
+    },
+    {
+      "name": "工具：read_context",
+      "cat": "internal_tool",
+      "ph": "X",
+      "ts": 9829000.699999597,
+      "dur": 183.19999981031287,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "role": "planning",
+        "tool": "read_context",
+        "arguments": {
+          "section": "ideas"
+        },
+        "result_status": null,
+        "result_characters": 118,
+        "status": "completed",
+        "self_seconds": 0.00015389999862236436
+      }
+    },
+    {
+      "name": "读取上下文",
+      "cat": "context",
+      "ph": "X",
+      "ts": 9829130.09999902,
+      "dur": 12.200000128359534,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 1.2200000128359534e-05
+      }
+    },
+    {
+      "name": "组织日志：工具执行",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 9829155.19999915,
+      "dur": 17.100001059588976,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 1.7100001059588976e-05
+      }
+    },
+    {
+      "name": "工具：read_context",
+      "cat": "internal_tool",
+      "ph": "X",
+      "ts": 9829207.299999325,
+      "dur": 114.89999997138511,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "role": "planning",
+        "tool": "read_context",
+        "arguments": {
+          "section": "evidence"
+        },
+        "result_status": null,
+        "result_characters": 143,
+        "status": "completed",
+        "self_seconds": 8.279999929072801e-05
+      }
+    },
+    {
+      "name": "读取上下文",
+      "cat": "context",
+      "ph": "X",
+      "ts": 9829270.299998825,
+      "dur": 15.999999959603883,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 1.5999999959603883e-05
+      }
+    },
+    {
+      "name": "组织日志：工具执行",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 9829295.19999925,
+      "dur": 16.10000072105322,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 1.610000072105322e-05
+      }
+    },
+    {
+      "name": "工具：query_weather",
+      "cat": "external_tool_overhead",
+      "ph": "X",
+      "ts": 9829345.999998622,
+      "dur": 5098070.300000472,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "role": "planning",
+        "tool": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-10-16"
+        },
+        "result_status": "available",
+        "result_characters": 275,
+        "status": "completed",
+        "self_seconds": 0.00031570000101055484
+      }
+    },
+    {
+      "name": "需求完整性与日期窗口",
+      "cat": "validation",
+      "ph": "X",
+      "ts": 9829409.199999645,
+      "dur": 30.100000003585592,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 3.0100000003585592e-05
+      }
+    },
+    {
+      "name": "外部工具分发：query_weather",
+      "cat": "external_tool_overhead",
+      "ph": "X",
+      "ts": 9829482.299999654,
+      "dur": 5097670.699999071,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "tool": "query_weather",
+        "backend_mode": "live",
+        "result_status": "available",
+        "result_reason": null,
+        "backend_calls": 2,
+        "cache_hit": false,
+        "no_backend_call": false,
+        "injected": false,
+        "status": "completed",
+        "self_seconds": 0.00019179999799234793
+      }
+    },
+    {
+      "name": "服务获取与解析：weather",
+      "cat": "external_io",
+      "ph": "X",
+      "ts": 9829517.599999236,
+      "dur": 2722551.400000157,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "service": "weather",
+        "endpoint": "geocoding-api.open-meteo.com/v1/search",
+        "source": "live",
+        "payload_characters": 356,
+        "status": "completed",
+        "self_seconds": 2.7225514000001567
+      }
+    },
+    {
+      "name": "服务获取与解析：weather",
+      "cat": "external_io",
+      "ph": "X",
+      "ts": 12552156.799998557,
+      "dur": 2374927.500000922,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "service": "weather",
+        "endpoint": "api.open-meteo.com/v1/forecast",
+        "source": "live",
+        "payload_characters": 1012,
+        "status": "completed",
+        "self_seconds": 2.374927500000922
+      }
+    },
+    {
+      "name": "组织日志：工具执行",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 14927316.499999506,
+      "dur": 53.80000038712751,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 5.380000038712751e-05
+      }
+    },
+    {
+      "name": "模型逻辑调用：planning",
+      "cat": "model_overhead",
+      "ph": "X",
+      "ts": 14927523.799999109,
+      "dur": 19463590.100000147,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "role": "planning",
+        "model": "qwen3.8:27b",
+        "message_count": 6,
+        "input_characters": 3696,
+        "tools": [
+          "read_context",
+          "check_requirements",
+          "query_weather",
+          "search_food",
+          "search_places",
+          "query_route"
+        ],
+        "reasoning_requested": "medium",
+        "budget_before": 225.22273159999895,
+        "budget_after": 205.75913469999978,
+        "status": "completed",
+        "self_seconds": 0.00010460000157763716
+      }
+    },
+    {
+      "name": "组织日志：模型请求",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 14927577.599999495,
+      "dur": 97.59999920788687,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 9.759999920788687e-05
+      }
+    },
+    {
+      "name": "SDK请求：planning",
+      "cat": "model_planning",
+      "ph": "X",
+      "ts": 14927695.599999424,
+      "dur": 19463350.3999994,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "role": "planning",
+        "wire_api": "chat_completions",
+        "timeout_seconds": 180.0,
+        "reasoning_sent": "medium",
+        "response_format_type": null,
+        "input_characters": 3696,
+        "schema_characters": 2,
+        "source": "live_model",
+        "output_characters": 1564,
+        "prompt_tokens": 2860,
+        "completion_tokens": 1247,
+        "reasoning_tokens": null,
+        "finish_reason": "stop",
+        "proposed_tools": [],
+        "provider_timings": {
+          "cache_n": 2548,
+          "prompt_n": 312,
+          "prompt_ms": 247.826,
+          "prompt_per_token_ms": 0.7943141025641025,
+          "prompt_per_second": 1258.9478101571265,
+          "predicted_n": 1247,
+          "predicted_ms": 19069.566,
+          "predicted_per_token_ms": 15.304627608346708,
+          "predicted_per_second": 65.33971460074132
+        },
+        "status": "completed",
+        "self_seconds": 19.4633503999994
+      }
+    },
+    {
+      "name": "组织日志：模型响应",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 34391069.99999967,
+      "dur": 37.49999996216502,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 3.749999996216502e-05
+      }
+    },
+    {
+      "name": "需求完整性与日期窗口",
+      "cat": "validation",
+      "ph": "X",
+      "ts": 34391150.69999934,
+      "dur": 28.000000384054147,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 2.8000000384054147e-05
+      }
+    },
+    {
+      "name": "组织日志：文字行程",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 34391190.59999939,
+      "dur": 22.09999911428895,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 2.209999911428895e-05
+      }
+    },
+    {
+      "name": "组织日志：Agent Loop 状态",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 34391373.49999873,
+      "dur": 42.40000089339446,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 4.240000089339446e-05
+      }
+    },
+    {
+      "name": "组织日志：Workflow 返回结果",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 34391597.899999395,
+      "dur": 108.19999988598283,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 0.00010819999988598283
+      }
+    },
+    {
+      "name": "组织日志：共享调用预算",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 34391810.69999904,
+      "dur": 22.300000637187622,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 2.2300000637187622e-05
+      }
+    },
+    {
+      "name": "组织日志：最终模型原始回复",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 34391875.69999922,
+      "dur": 5.600000804406591,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 5.600000804406591e-06
+      }
+    },
+    {
+      "name": "诊断日志写入隔离目录",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 34392063.6999992,
+      "dur": 1122.100000429782,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.001122100000429782
+      }
+    },
+    {
+      "name": "原子保存边界与快照冲突检查",
+      "cat": "commit",
+      "ph": "X",
+      "ts": 34393340.20000024,
+      "dur": 272.4999994825339,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 4.439999975147657e-05
+      }
+    },
+    {
+      "name": "替换当前原文、展示与依据",
+      "cat": "commit",
+      "ph": "X",
+      "ts": 34393372.59999957,
+      "dur": 228.09999973105732,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.00022809999973105732
+      }
+    },
+    {
+      "name": "SQLite全量快照保存",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 34393688.19999982,
+      "dur": 11125.400000310037,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "effective_write": true,
+        "status": "completed",
+        "self_seconds": 6.020000182616059e-05
+      }
+    },
+    {
+      "name": "Store快照序列化",
+      "cat": "serialization",
+      "ph": "X",
+      "ts": 34393696.79999982,
+      "dur": 250.69999901461415,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.00025069999901461415
+      }
+    },
+    {
+      "name": "SQLite事务写入",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 34393953.59999981,
+      "dur": 10814.499999469263,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.010814499999469263
+      }
+    },
+    {
+      "name": "SQLite全量快照保存",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 34404907.49999844,
+      "dur": 10357.60000013397,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "effective_write": true,
+        "status": "completed",
+        "self_seconds": 6.0399999711080454e-05
+      }
+    },
+    {
+      "name": "Store快照序列化",
+      "cat": "serialization",
+      "ph": "X",
+      "ts": 34404916.99999984,
+      "dur": 259.8999999463558,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.0002598999999463558
+      }
+    },
+    {
+      "name": "SQLite事务写入",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 34405183.0999997,
+      "dur": 10037.300000476534,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.010037300000476534
+      }
+    },
+    {
+      "name": "SQLite全量快照保存",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 34415378.09999863,
+      "dur": 10534.099999858881,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "effective_write": true,
+        "status": "completed",
+        "self_seconds": 7.080000068526715e-05
+      }
+    },
+    {
+      "name": "Store快照序列化",
+      "cat": "serialization",
+      "ph": "X",
+      "ts": 34415390.099999055,
+      "dur": 251.9999998185085,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.0002519999998185085
+      }
+    },
+    {
+      "name": "SQLite事务写入",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 34415649.09999943,
+      "dur": 10211.299999355106,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.010211299999355106
+      }
+    },
+    {
+      "name": "后台展示任务",
+      "cat": "orchestration",
+      "ph": "X",
+      "ts": 34425945.99999938,
+      "dur": 69862569.79999962,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.002307800001290161
+      }
+    },
+    {
+      "name": "任务状态JSON响应",
+      "cat": "server_response",
+      "ph": "X",
+      "ts": 34426537.49999954,
+      "dur": 2085.0000000791624,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "http_status": 200,
+        "bytes": 426,
+        "status": "completed",
+        "self_seconds": 0.0020850000000791624
+      }
+    },
+    {
+      "name": "构建工作流快照与角色",
+      "cat": "context",
+      "ph": "X",
+      "ts": 34427983.899999164,
+      "dur": 13767.399999778718,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.013767399999778718
+      }
+    },
+    {
+      "name": "消息JSON响应",
+      "cat": "server_response",
+      "ph": "X",
+      "ts": 34428630.99999886,
+      "dur": 1629.8999998980435,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "http_status": 200,
+        "bytes": 4736,
+        "status": "completed",
+        "self_seconds": 0.0016298999998980435
+      }
+    },
+    {
+      "name": "聊天片段HTML渲染",
+      "cat": "render",
+      "ph": "X",
+      "ts": 34430270.8999985,
+      "dur": 10909.30000100343,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "http_status": 200,
+        "bytes": 5377,
+        "status": "completed",
+        "self_seconds": 0.01090930000100343
+      }
+    },
+    {
+      "name": "行程页HTML渲染",
+      "cat": "render",
+      "ph": "X",
+      "ts": 34441191.09999883,
+      "dur": 90654.2000011541,
+      "pid": 1,
+      "tid": 2,
+      "args": {
+        "http_status": 200,
+        "bytes": 10237,
+        "current_plan_id": "plan-103",
+        "status": "completed",
+        "self_seconds": 0.0906542000011541
+      }
+    },
+    {
+      "name": "展示转换与校验",
+      "cat": "display_overhead",
+      "ph": "X",
+      "ts": 34441774.59999992,
+      "dur": 69827041.2999991,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.06137699999817414
+      }
+    },
+    {
+      "name": "模型逻辑调用：display",
+      "cat": "model_overhead",
+      "ph": "X",
+      "ts": 34442362.699999645,
+      "dur": 69759264.50000043,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "role": "display",
+        "model": "qwen3.8:27b",
+        "message_count": 2,
+        "input_characters": 8538,
+        "tools": [],
+        "reasoning_requested": "low",
+        "budget_before": 179.98560700000053,
+        "budget_after": 110.22633700000006,
+        "status": "completed",
+        "self_seconds": 0.00025069999901461415
+      }
+    },
+    {
+      "name": "组织日志：模型请求",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 34442551.09999903,
+      "dur": 71.10000115062576,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 7.110000115062576e-05
+      }
+    },
+    {
+      "name": "SDK请求：display",
+      "cat": "model_display",
+      "ph": "X",
+      "ts": 34442640.199999005,
+      "dur": 69758865.49999996,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "role": "display",
+        "wire_api": "chat_completions",
+        "timeout_seconds": 179.98542540000017,
+        "reasoning_sent": "low",
+        "response_format_type": null,
+        "input_characters": 8538,
+        "schema_characters": 2,
+        "source": "live_model",
+        "output_characters": 6515,
+        "prompt_tokens": 4167,
+        "completion_tokens": 4394,
+        "reasoning_tokens": null,
+        "finish_reason": "stop",
+        "proposed_tools": [],
+        "provider_timings": {
+          "cache_n": 0,
+          "prompt_n": 4167,
+          "prompt_ms": 1568.324,
+          "prompt_per_token_ms": 0.37636765058795296,
+          "prompt_per_second": 2656.976492102397,
+          "predicted_n": 4394,
+          "predicted_ms": 67591.988,
+          "predicted_per_token_ms": 15.386293648987024,
+          "predicted_per_second": 64.99291010644635
+        },
+        "status": "completed",
+        "self_seconds": 69.75886549999996
+      }
+    },
+    {
+      "name": "观测后台任务完成（非用户等待）",
+      "cat": "observer_wait",
+      "ph": "X",
+      "ts": 34531859.59999973,
+      "dur": 69756746.29999958,
+      "pid": 1,
+      "tid": 1,
+      "args": {
+        "status": "completed",
+        "self_seconds": 69.75674629999958
+      }
+    },
+    {
+      "name": "组织日志：模型响应",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 104201541.89999993,
+      "dur": 77.20000030531082,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 7.720000030531082e-05
+      }
+    },
+    {
+      "name": "组织日志：Workflow 模型节点",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 104201706.19999954,
+      "dur": 12.000000424450263,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 1.2000000424450263e-05
+      }
+    },
+    {
+      "name": "展示Schema与日期校验",
+      "cat": "validation",
+      "ph": "X",
+      "ts": 104262369.89999962,
+      "dur": 6362.099999023485,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.006362099999023485
+      }
+    },
+    {
+      "name": "组织日志：展示转换",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 104268748.99999893,
+      "dur": 25.70000106061343,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "cache_hit": false,
+        "status": "completed",
+        "self_seconds": 2.570000106061343e-05
+      }
+    },
+    {
+      "name": "诊断日志写入隔离目录",
+      "cat": "logging",
+      "ph": "X",
+      "ts": 104268947.7999993,
+      "dur": 833.6999999301042,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.0008336999999301042
+      }
+    },
+    {
+      "name": "发布当前原文的卡片",
+      "cat": "commit",
+      "ph": "X",
+      "ts": 104269852.80000009,
+      "dur": 6614.199999603443,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.006614199999603443
+      }
+    },
+    {
+      "name": "SQLite全量快照保存",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 104276476.49999925,
+      "dur": 12005.39999990724,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "effective_write": true,
+        "status": "completed",
+        "self_seconds": 8.95000011951197e-05
+      }
+    },
+    {
+      "name": "Store快照序列化",
+      "cat": "serialization",
+      "ph": "X",
+      "ts": 104276485.39999972,
+      "dur": 381.89999941096175,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.00038189999941096175
+      }
+    },
+    {
+      "name": "SQLite事务写入",
+      "cat": "persistence",
+      "ph": "X",
+      "ts": 104276873.59999982,
+      "dur": 11533.999999301159,
+      "pid": 1,
+      "tid": 3,
+      "args": {
+        "status": "completed",
+        "self_seconds": 0.011533999999301159
+      }
+    },
+    {
+      "name": "卡片完成后的HTML响应",
+      "cat": "render",
+      "ph": "X",
+      "ts": 104288622.00000003,
+      "dur": 38117.599999168306,
+      "pid": 1,
+      "tid": 4,
+      "args": {
+        "http_status": 200,
+        "bytes": 53019,
+        "status": "completed",
+        "self_seconds": 0.038117599999168306
+      }
+    }
+  ],
+  "displayTimeUnit": "ms"
+}

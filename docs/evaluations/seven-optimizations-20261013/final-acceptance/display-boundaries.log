@@ -1,0 +1,8 @@
+{"event": "start", "case": "BOUNDARY-001", "attempt": 1}
+{"event": "finished", "case": "BOUNDARY-001", "attempt": 1, "status": "ready", "seconds": 27.022}
+{"event": "start", "case": "BOUNDARY-002", "attempt": 1}
+{"event": "finished", "case": "BOUNDARY-002", "attempt": 1, "status": "ready", "seconds": 39.923}
+{"event": "start", "case": "BOUNDARY-003", "attempt": 1}
+{"event": "finished", "case": "BOUNDARY-003", "attempt": 1, "status": "ready", "seconds": 25.813}
+{"samples": 3, "report": "C:\\Users\\16156\\AppData\\Local\\Temp\\travel-seven-optimizations-20261013-103516\\final-acceptance\\display-boundaries\\comparison\\report.md"}
+{"status": "completed", "completed_samples": 3, "planned_samples": 3, "reason": null, "quality_grade": "pending_manual_review"}

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import json
-import os
+import math
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from . import amap_mcp
 
 
 FOOD_TOOL_SPEC = {
@@ -12,9 +11,9 @@ FOOD_TOOL_SPEC = {
     "function": {
         "name": "search_food",
         "description": (
-            "查询国内城市的美食推荐：按菜系或关键词搜索真实门店，"
-            "返回评分最高、人均消费、地址、营业时间和联系电话。"
-            "只适用于中国境内城市；无结果或无可用门店评分时返回待确认原因。"
+            "通过高德MCP查询国内城市的真实餐饮候选及详情，"
+            "对本次最多5家已获取详情且有评分的候选按评分排序，返回已提供的人均、地址和营业时间。"
+            "缺失评分、电话、营业或人均保留未知；不保证全城最高评分、实时营业或忌口安全。"
         ),
         "parameters": {
             "type": "object",
@@ -23,11 +22,11 @@ FOOD_TOOL_SPEC = {
                 "city": {"type": "string", "description": "国内城市，例如杭州、成都"},
                 "keywords": {
                     "type": "string",
-                    "description": "菜系、菜品或餐厅特征，例如火锅、烤鸭、本地小吃；不确定时可以省略，省略后返回该城市评分靠前的综合餐厅",
+                    "description": "菜系、菜品或餐厅特征，例如火锅、烤鸭、本地小吃；省略时搜索餐厅候选，只在本次有评分的详情中排序",
                 },
                 "max_results": {
                     "type": "integer",
-                    "description": "返回门店数量，1 到 10，默认 5",
+                    "description": "返回门店数量，1 到 5，默认 5",
                 },
             },
             "required": ["city"],
@@ -35,9 +34,7 @@ FOOD_TOOL_SPEC = {
     },
 }
 
-_AMAP_PLACE_TEXT_URL = "https://restapi.amap.com/v3/place/text"
-_FETCH_PAGE_SIZE = 20
-_MAX_RESULTS = 10
+_MAX_RESULTS = 5
 
 
 def search_food(arguments: dict) -> dict:
@@ -48,29 +45,18 @@ def search_food(arguments: dict) -> dict:
     if not city:
         return {"status": "unavailable", "reason": "缺少目的地城市，美食推荐待确认。"}
 
-    amap_key = os.getenv("AMAP_MAP_KEY", "").strip()
-    if not amap_key:
+    if not amap_mcp.configured():
         return {
             "status": "unavailable",
             "city": city,
-            "reason": "未配置高德地图 key（AMAP_MAP_KEY），美食推荐待确认。",
+            "reason": "未配置高德MCP key（AMAP_MAPS_API_KEY 或 AMAP_MAP_KEY），美食推荐待确认。",
         }
 
-    params = {
-        "key": amap_key,
-        "city": city,
-        "citylimit": "true",
-        "extensions": "all",
-        "page_size": _FETCH_PAGE_SIZE,
-    }
-    if keywords:
-        params["keywords"] = keywords
-    else:
-        params["types"] = "050000"
+    params = {'city': city, 'keywords': keywords or '餐厅', 'max_results': max_results}
 
     try:
         payload = _fetch_json(params)
-    except (ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError, OSError):
+    except (amap_mcp.AmapMCPError, ValueError, HTTPError, URLError, TimeoutError, json.JSONDecodeError, OSError):
         return {
             "status": "unavailable",
             "city": city,
@@ -78,7 +64,7 @@ def search_food(arguments: dict) -> dict:
             "reason": "美食服务暂时不可用，门店推荐需要出发前再次确认。",
         }
 
-    if str(payload.get("status")) != "1" or payload.get("infocode") != "10000":
+    if str(payload.get("status", "1")) != "1" or payload.get("infocode", "10000") != "10000":
         return {
             "status": "unavailable",
             "city": city,
@@ -92,9 +78,9 @@ def search_food(arguments: dict) -> dict:
     ]
     rated = [
         poi for poi in candidates
-        if _to_float((poi.get("biz_ext") or {}).get("rating")) is not None
+        if _to_float(poi.get('rating') or (poi.get("biz_ext") or {}).get("rating")) is not None
     ]
-    rated.sort(key=lambda poi: _to_float((poi.get("biz_ext") or {}).get("rating")) or 0.0, reverse=True)
+    rated.sort(key=lambda poi: _to_float(poi.get('rating') or (poi.get("biz_ext") or {}).get("rating")) or 0.0, reverse=True)
     top_pois = rated[:max_results]
 
     if not top_pois:
@@ -110,25 +96,25 @@ def search_food(arguments: dict) -> dict:
         "status": "available",
         "city": city,
         "keywords": keywords or None,
-        "total_matched": len(candidates),
+        "total_matched": payload.get('total_matched', len(candidates)),
         "recommendations": [_summarize_poi(poi) for poi in top_pois],
-        "source": "高德地图 POI",
-        "note": "评分来自高德用户评价，人均单位为元/人；热门门店建议提前电话或在线确认排队情况。",
+        "source": "高德地图 POI", "transport": "amap_mcp",
+        "note": "评分排序仅针对本次已获取详情的候选，非全城排名。人均为元/人参考，缺失信息待核实；营业、电话、忌口和排队仍需确认。",
     }
 
 
 def _summarize_poi(poi: dict) -> dict:
     biz_ext = poi.get("biz_ext") or {}
-    cost = _to_float(biz_ext.get("cost"))
+    cost = _to_float(poi.get('cost') or biz_ext.get("cost"))
     return {
         "name": str(poi.get("name") or "").strip(),
-        "rating": biz_ext.get("rating") or None,
+        "rating": poi.get('rating') or biz_ext.get("rating") or None,
         "cost_per_person_cny": cost,
         "address": str(poi.get("address") or "").strip() or None,
         "district": str(poi.get("adname") or "").strip() or None,
         "business_area": str(poi.get("business_area") or "").strip() or None,
         "cuisine_tags": str(poi.get("atag") or poi.get("keytag") or "").strip() or None,
-        "open_time": str(biz_ext.get("opentime2") or biz_ext.get("open_time") or "").strip() or None,
+        "open_time": str(poi.get('opentime2') or poi.get('open_time') or biz_ext.get("opentime2") or biz_ext.get("open_time") or "").strip() or None,
         "tel": str(poi.get("tel") or "").strip() or None,
     }
 
@@ -145,19 +131,11 @@ def _to_float(value: object):
     try:
         if value in (None, ""):
             return None
-        return float(value)
+        number = float(value)
+        return number if math.isfinite(number) and number >= 0 else None
     except (TypeError, ValueError):
         return None
 
 
 def _fetch_json(params: dict) -> dict:
-    request = Request(
-        f"{_AMAP_PLACE_TEXT_URL}?{urlencode(params)}",
-        headers={"User-Agent": "TravelAssistant/1.0"},
-        method="GET",
-    )
-    with urlopen(request, timeout=8) as response:
-        payload = json.loads(response.read().decode("utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError("amap response is not an object")
-    return payload
+    return amap_mcp.search_pois(params['city'], params['keywords'], params.get('max_results', 5))

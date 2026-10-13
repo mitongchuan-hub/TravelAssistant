@@ -30,10 +30,10 @@ document.addEventListener('submit', (event) => {
 });
 
 async function submitComposerMessage(form) {
-  const input = form.querySelector('input[name="body"]');
+  const input = form.querySelector('[name="body"]');
   const button = form.querySelector('button[type="submit"]');
   const chatList = document.querySelector('[data-chat-list]');
-  if (!(input instanceof HTMLInputElement) || !(chatList instanceof HTMLElement)) {
+  if (!isChatInput(input) || !(chatList instanceof HTMLElement)) {
     form.submit();
     return;
   }
@@ -41,6 +41,16 @@ async function submitComposerMessage(form) {
   const body = input.value.trim();
   if (!body) {
     form.dataset.submitting = 'false';
+    updateChatComposer();
+    return;
+  }
+  const taskStorageKey = `travelassistant:task-submit:${(form.dataset.apiUrl || '').replace(/\/messages$/, '/tasks')}`;
+  let uncertain = false;
+  try { uncertain = Boolean(sessionStorage.getItem(taskStorageKey)); } catch { /* Recovery remains available through task polling. */ }
+  if (uncertain) {
+    form.dataset.submitting = 'false';
+    setChatSendFeedback('上一条消息正在确认是否送达，请稍候。');
+    updateChatComposer();
     return;
   }
 
@@ -50,7 +60,8 @@ async function submitComposerMessage(form) {
   const pendingMessage = appendUserMessage(body, user);
   pendingMessage.dataset.requestId = requestId;
   input.value = '';
-  input.disabled = true;
+  updateChatComposer();
+  saveChatDraft();
   form.setAttribute('aria-busy', 'true');
   if (button) {
     button.disabled = true;
@@ -59,7 +70,8 @@ async function submitComposerMessage(form) {
   const thinkingMessage = appendAgentThinkingMessage();
   scrollChatToLatest();
 
-  const taskStorageKey = `travelassistant:task-submit:${(form.dataset.apiUrl || '').replace(/\/messages$/, '/tasks')}`;
+  pendingMessage.dataset.optimistic = 'true';
+  if (thinkingMessage) thinkingMessage.dataset.requestId = requestId;
   try { sessionStorage.setItem(taskStorageKey, JSON.stringify({kind: 'chat', payload: {body}, request_id: requestId})); } catch { /* Keep same ID on the message for retry. */ }
   try {
     const response = await fetch(form.dataset.apiUrl || form.action, {
@@ -70,6 +82,7 @@ async function submitComposerMessage(form) {
     });
     if (!response.ok) {
       try { sessionStorage.removeItem(taskStorageKey); } catch { /* Storage unavailable. */ }
+      pendingMessage.dataset.rejected = 'true';
       throw new Error('send failed');
     }
     const payload = await response.json();
@@ -80,22 +93,28 @@ async function submitComposerMessage(form) {
     if (existing) pendingMessage.remove();
     else pendingMessage.dataset.messageId = accepted.id;
     pendingMessage.dataset.status = 'sent';
+    delete pendingMessage.dataset.optimistic;
+    pendingMessage.querySelector('[data-message-state]')?.replaceChildren();
     pendingMessage.classList.remove('pending-message');
+    setChatSendFeedback('');
+    if (payload.task) document.dispatchEvent(new CustomEvent('travel-chat-accepted', {detail: payload.task}));
     if (thinkingMessage && payload.messages[1]) {
       thinkingMessage.dataset.messageId = payload.messages[1].id;
     } else thinkingMessage?.remove();
     await refreshChatMessages(chatList, { force: true });
   } catch (error) {
-    markMessageFailed(pendingMessage, body);
-    thinkingMessage?.remove();
+    if (pendingMessage.dataset.rejected === 'true' || !document.querySelector('[data-travel-tasks-url]')) {
+      markMessageFailed(pendingMessage, body);
+      thinkingMessage?.remove();
+    } else if (pendingMessage.dataset.optimistic === 'true') {
+      pendingMessage.querySelector('[data-message-state]')?.replaceChildren('正在确认是否送达…');
+      setChatSendFeedback('连接中断，正在确认是否送达。消息会保留。');
+    } else setChatSendFeedback('');
   } finally {
     form.dataset.submitting = 'false';
     form.removeAttribute('aria-busy');
-    input.disabled = false;
-    if (button) {
-      button.disabled = false;
-    }
-    input.focus();
+    updateChatComposer();
+    if (document.activeElement === input) input.focus({preventScroll: true});
   }
 }
 
@@ -206,13 +225,9 @@ function appendAgentThinkingMessage() {
   article.dataset.agentThinkingMessage = 'true';
   article.setAttribute('aria-live', 'polite');
   article.innerHTML = `
-    <span class="avatar">AI</span>
+    <span class="avatar" aria-hidden="true">✦</span>
     <div class="message-body">
-      <div class="message-meta">
-        <strong>旅行规划 Agent</strong>
-        <time>刚刚</time>
-      </div>
-      <p>思考中 <span class="typing-dots"><i></i><i></i><i></i></span></p>
+      <div class="chat-bubble chat-thinking" role="status">正在整理回复 <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
     </div>
   `;
   chatList.append(article);
@@ -228,28 +243,18 @@ function appendUserMessage(body, user = { initials: '我', name: '我' }) {
   const article = document.createElement('article');
   article.className = 'message user pending-message';
   article.dataset.status = 'sending';
+  article.setAttribute('aria-label', '你的消息');
   article.innerHTML = `
-    <span class="avatar"></span>
     <div class="message-body">
-      <div class="message-meta">
-        <strong></strong>
-        <time>刚刚</time>
-      </div>
-      <p></p>
+      <div class="chat-bubble chat-user-text"></div>
+      <span class="chat-message-state" data-message-state>发送中…</span>
     </div>
   `;
-  const avatar = article.querySelector('.avatar');
-  const name = article.querySelector('.message-meta strong');
-  if (avatar) {
-    avatar.textContent = user.initials || '我';
-  }
-  if (name) {
-    name.textContent = user.name || '我';
-  }
-  const bubble = article.querySelector('.message-body > p');
+  const bubble = article.querySelector('.chat-user-text');
   if (bubble) {
     bubble.textContent = body;
   }
+  chatList.querySelector('[data-chat-empty]')?.remove();
   chatList.append(article);
   return article;
 }
@@ -262,6 +267,7 @@ function markMessageFailed(messageElement, body) {
   messageElement.classList.add('failed-message');
   messageElement.dataset.status = 'failed';
   messageElement.dataset.failedBody = body;
+  messageElement.querySelector('[data-message-state]')?.replaceChildren();
   const bodyElement = messageElement.querySelector('.message-body');
   if (!bodyElement || bodyElement.querySelector('[data-retry-message]')) {
     return;
@@ -277,17 +283,22 @@ function markMessageFailed(messageElement, body) {
 function retryFailedMessage(button) {
   const messageElement = button.closest('.failed-message');
   const form = document.querySelector('.composer');
-  const input = form?.querySelector('input[name="body"]');
-  if (!(messageElement instanceof HTMLElement) || !(form instanceof HTMLFormElement) || !(input instanceof HTMLInputElement)) {
+  const input = form?.querySelector('[name="body"]');
+  if (!(messageElement instanceof HTMLElement) || !(form instanceof HTMLFormElement) || !isChatInput(input)) {
     return;
   }
   if (form.dataset.submitting === 'true') {
     return;
   }
   form.dataset.retryRequestId = messageElement.dataset.requestId || createTravelRequestId();
+  const draft = input.value;
   input.value = messageElement.dataset.failedBody || '';
+  updateChatComposer();
   messageElement.remove();
   form.requestSubmit();
+  input.value = draft;
+  updateChatComposer();
+  saveChatDraft();
 }
 
 function currentUser(form) {
@@ -391,10 +402,15 @@ window.addEventListener('resize', () => window.requestAnimationFrame(drawIdeaRou
 function scrollChatToLatest() {
   const chatList = document.querySelector('.chat-list');
   if (chatList) {
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
+    if (isChatScrollContainer(chatList)) chatList.scrollTop = chatList.scrollHeight;
+    else window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
+    const notice = document.querySelector('[data-chat-new]');
+    if (notice) notice.hidden = true;
   }
 }
 
+const CHAT_POLL_ACTIVE_MS = 1000;
+const CHAT_POLL_IDLE_MS = 3000;
 let chatPollingTimer = null;
 let chatPollingInFlight = false;
 
@@ -404,11 +420,15 @@ function startChatPolling() {
     return;
   }
 
-  chatPollingTimer = window.setInterval(() => refreshChatMessages(chatList), 3000);
+  const poll = async () => {
+    await refreshChatMessages(chatList);
+    if (!document.hidden) chatPollingTimer = window.setTimeout(poll,
+      chatList.querySelector('[data-agent-thinking-message]') ? CHAT_POLL_ACTIVE_MS : CHAT_POLL_IDLE_MS);
+  };
+  chatPollingTimer = window.setTimeout(poll, CHAT_POLL_IDLE_MS);
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) {
-      refreshChatMessages(chatList);
-    }
+    clearTimeout(chatPollingTimer);
+    if (!document.hidden) poll();
   });
 }
 
@@ -437,7 +457,8 @@ async function refreshChatMessages(chatList, options = {}) {
       return;
     }
     if (html.trim()) {
-      const wasNearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 140;
+      const view = captureChatView(chatList);
+      const wasNearBottom = view.nearBottom;
       const fragment = document.createElement('template');
       fragment.innerHTML = html;
       const incoming = Array.from(fragment.content.querySelectorAll('[data-message-id]'));
@@ -452,12 +473,18 @@ async function refreshChatMessages(chatList, options = {}) {
       });
       // Unsent messages must remain available for the existing retry action.
       const local = Array.from(chatList.querySelectorAll('.failed-message, .pending-message'));
+      const extras = local.length || messages.length ? [] : Array.from(fragment.content.querySelectorAll('[data-chat-empty]'));
       if (messages.some((node, index) => chatList.children[index] !== node)
-          || chatList.children.length !== messages.length + local.length) {
-        chatList.replaceChildren(...messages, ...local);
-        if (wasNearBottom) {
-          scrollChatToLatest();
+          || chatList.children.length !== messages.length + local.length + extras.length) {
+        chatList.replaceChildren(...messages, ...local, ...extras);
+        if (wasNearBottom) scrollChatToLatest();
+        else {
+          restoreChatView(chatList, view);
+          const notice = document.querySelector('[data-chat-new]');
+          if (notice) notice.hidden = false;
         }
+        document.querySelector('[data-chat-announcement]')?.replaceChildren('收到新回复');
+        updateChatComposer();
       }
     }
   } catch (error) {

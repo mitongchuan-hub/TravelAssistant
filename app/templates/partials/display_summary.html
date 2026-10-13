@@ -1,0 +1,25 @@
+{% set basis = plan.requirements_snapshot %}
+<section class="itinerary-summary-card itinerary-summary-card--text" aria-label="行程摘要">
+  <div class="itinerary-summary-heading">
+    <div class="itinerary-summary-copy">
+      <p class="itinerary-summary-kicker">行程概览</p>
+      <p class="itinerary-summary-date">{% if basis.start_date and basis.end_date %}{{ basis.start_date }}{% if basis.start_date != basis.end_date %} — {{ basis.end_date }}{% endif %}{% elif trip is defined %}{{ trip.date_range }}{% else %}日期待明确{% endif %}</p>
+    </div>
+    <span class="itinerary-status">{{ plan.status }}</span>
+  </div>
+  <div class="itinerary-summary-stats" aria-label="行程统计">
+    <div><strong>{{ display.days | length if display else (basis.day_count or '—') }}<small> 天</small></strong><span>旅行天数</span></div>
+    <div><strong>{{ basis.travelers or '—' }}<small>{% if basis.travelers %} 人{% endif %}</small></strong><span>同行人数</span></div>
+    <div><strong>{{ basis.budget_amount or '—' }}<small>{% if basis.budget_amount %} 元{% endif %}</small></strong><span>{{ {'total':'总预算','per_person':'人均预算'}.get(basis.budget_scope, '预算待明确') }}</span></div>
+  </div>
+  {% if display and (display.overview or display.budget_note) or basis.budget_coverage %}
+  <details class="display-budget" data-display-budget>
+    <summary><span>整体安排与预算</span><span class="display-disclosure-label" aria-hidden="true"></span><span class="display-chevron" aria-hidden="true"></span></summary>
+    <div class="display-disclosure-body">
+      {% if display and display.overview %}<p class="display-overview-copy">{{ display.overview }}</p>{% endif %}
+      {% if display and display.budget_note %}<p>{{ display.budget_note }}</p>{% endif %}
+      {% set coverage = (display.budget_note if display else none) | coverage_detail(basis.budget_coverage) %}
+      {% if coverage %}<details class="display-basis-detail"><summary>计划费用范围</summary><p>{{ coverage }}</p></details>{% endif %}
+    </div>
+  </details>{% endif %}
+</section>

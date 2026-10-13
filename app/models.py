@@ -21,6 +21,7 @@ class TripRequirements:
     travelers: int | None = None
     budget_amount: str = ""
     budget_scope: str = "unspecified"
+    budget_coverage: str = ""
     must_visit: list[str] = field(default_factory=list)
     avoid: list[str] = field(default_factory=list)
     dietary: list[str] = field(default_factory=list)
@@ -40,6 +41,7 @@ class Trip:
     status: str
     last_activity: str
     requirements: TripRequirements = field(default_factory=TripRequirements)
+    workflow_state: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -161,29 +163,14 @@ class TripPlan:
     text: str = ""
     evidence: list[dict] = field(default_factory=list)
     requirements_revision: int | None = None
+    display: dict | None = None
+    display_source_hash: str = ""
+    display_status: str = "not_requested"
+    requirements_snapshot: dict = field(default_factory=dict)
 
     @property
     def has_content(self) -> bool:
         return bool(self.text.strip() or self.days)
-
-
-@dataclass(frozen=True)
-class PlanVersion:
-    id: str
-    label: str
-    title: str
-    status: str
-    created_at: str
-    change_summary: str
-    days: list[TripDay] = field(default_factory=list)
-    preparation: TravelPreparation = field(default_factory=TravelPreparation)
-    overview: str = ""
-    constraints_met: list[str] = field(default_factory=list)
-    pending_items: list[str] = field(default_factory=list)
-    risks: list[str] = field(default_factory=list)
-    text: str = ""
-    evidence: list[dict] = field(default_factory=list)
-    requirements_revision: int | None = None
 
 
 @dataclass(frozen=True)

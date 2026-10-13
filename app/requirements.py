@@ -11,7 +11,7 @@ BASIC_FIELDS = {"destination", "date_range", "style", "note"}
 PROFILE_FIELDS = {
     "start_date", "end_date", "arrival_time", "departure_time", "day_count", "travelers", "budget_amount",
     "city", "arrival_location", "departure_location",
-    "budget_scope", "pace", *LIST_FIELDS,
+    "budget_scope", "budget_coverage", "pace", *LIST_FIELDS,
 }
 
 
@@ -105,7 +105,7 @@ def update_requirements(trip: Trip, changes: dict) -> Trip:
         try:
             amount = Decimal(profile.budget_amount)
         except InvalidOperation as exc:
-            raise ValueError("预算请填写有效金额") from exc
+            raise ValueError("预算金额请用纯数字文本，例如2600，不含元或其他单位") from exc
         if not amount.is_finite() or amount <= 0 or amount > 100000000 or amount.as_tuple().exponent < -2:
             raise ValueError("预算应为正数，最多保留两位小数")
         profile.budget_amount = format(amount, "f")

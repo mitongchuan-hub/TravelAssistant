@@ -1,0 +1,16 @@
+{
+  "file_count": 28,
+  "source_matches_workspace": true,
+  "source_matches_archive": true,
+  "secret_matched_files": 0,
+  "completed_cases": 4,
+  "machine_passed_cases": 4,
+  "business_db_unchanged": true,
+  "health_status": "ok",
+  "trip_count": 15,
+  "message_count": 88,
+  "planning_rule_loaded": true,
+  "shared_scope_rule_loaded": true,
+  "meal_core_checks": "4/4",
+  "whole_itinerary_grade": "not_fully_passed"
+}

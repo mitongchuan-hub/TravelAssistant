@@ -1,0 +1,646 @@
+{
+  "case_id": "PP-002",
+  "title": "已知雷雨影响户外主线",
+  "steps": [
+    {
+      "input": {
+        "action": "plan",
+        "expected_plan_changed": true,
+        "assertions": {
+          "requirements_preserved": [
+            "start_date",
+            "end_date",
+            "must_visit",
+            "dietary"
+          ],
+          "required_tools": [
+            "query_weather"
+          ]
+        }
+      },
+      "before": {
+        "trip": {
+          "id": "trip-105",
+          "destination": "杭州",
+          "date_range": "2026年10月16日 - 2026年10月16日",
+          "budget": "总预算 800 元",
+          "style": "轻松",
+          "note": "只安排湖滨一带、附近午餐和休息，不要求具体餐厅。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "旅行需求已更新",
+          "requirements": {
+            "start_date": "2026-10-16",
+            "end_date": "2026-10-16",
+            "arrival_time": "10:00",
+            "departure_time": "18:00",
+            "city": "杭州",
+            "arrival_location": "杭州东站",
+            "departure_location": "杭州东站",
+            "day_count": 1,
+            "travelers": 2,
+            "budget_amount": "800",
+            "budget_scope": "total",
+            "budget_coverage": "含市内交通、餐饮、门票，不含往返车票",
+            "must_visit": [
+              "西湖湖滨"
+            ],
+            "avoid": [
+              "购物店"
+            ],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [],
+        "ideas": []
+      },
+      "after": {
+        "trip": {
+          "id": "trip-105",
+          "destination": "杭州",
+          "date_range": "2026年10月16日 - 2026年10月16日",
+          "budget": "总预算 800 元",
+          "style": "轻松",
+          "note": "只安排湖滨一带、附近午餐和休息，不要求具体餐厅。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "草案",
+          "last_activity": "Agent 已生成行程草案",
+          "requirements": {
+            "start_date": "2026-10-16",
+            "end_date": "2026-10-16",
+            "arrival_time": "10:00",
+            "departure_time": "18:00",
+            "city": "杭州",
+            "arrival_location": "杭州东站",
+            "departure_location": "杭州东站",
+            "day_count": 1,
+            "travelers": 2,
+            "budget_amount": "800",
+            "budget_scope": "total",
+            "budget_coverage": "含市内交通、餐饮、门票，不含往返车票",
+            "must_visit": [
+              "西湖湖滨"
+            ],
+            "avoid": [
+              "购物店"
+            ],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "plan-108",
+          "title": "杭州行程",
+          "status": "草案",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "# 杭州一日游 · 2026年10月16日\n\n## 概览\n\n两位同行，轻松节奏，当天往返不住宿。10:00 抵杭州东站，18:00 从杭州东站离站。核心围绕**西湖湖滨一带**：午餐、散步（视天气）、休息，不安排购物店，午餐避开辣味。\n\n> ⚠️ **当日天气提示**：杭州 10 月 16 日预报为**雷雨**，气温 18–24 °C，降水概率最高约 90 %。户外安排以\"雨停或转小\"为前提，主线保留室内/有遮挡备选。\n\n---\n\n## 逐时安排\n\n### 10:00 – 11:00 ｜ 抵达 → 西湖湖滨\n\n- **10:00** 抵达杭州东站（2 人）。\n- 出站后乘公共交通前往西湖湖滨方向；查询到**公交/地铁约 38 分钟**（仅供参考，实际班次与候车时间以现场为准）。\n- 建议**预留 15 分钟候车与换乘余量**，合计约 **50 分钟**到站。\n- 预计 **11:00 前后**到达湖滨一带。\n\n> 若当天雷雨较大、公交不便，可改为打车；打车耗时与费用以实际路况为准，不额外预估。\n\n### 11:00 – 12:45 ｜ 午餐 + 短休\n\n- 在湖滨周边找一家**不辣**的餐馆或简餐（您未指定具体餐厅，建议选有室内座位、靠湖或商场内的店，雨天可避雨）。\n- 2 人午餐，建议预算上限 **200 元**（人均 100 元，含茶/小食）。\n- 餐后在湖边廊亭、商场中庭或咖啡馆**休息 20–30 分钟**，不必赶路。\n\n### 12:45 – 15:30 ｜ 湖滨一带 · 轻松漫步（视天气）\n\n**天气好（雨停 / 小雨转晴）时：**\n- 沿湖滨步道（一公园至四公园一带）慢走，看湖景、柳浪闻莺外景，节奏随意，走走停停。\n- 可进入**湖畔的室内空间**（如附近的茶室、书店、展览厅）换换场景，不赶景点。\n- 全程不安排购物店，不打卡必拍点，以舒适为准。\n\n**天气差（持续中到大雨 / 雷电）时：**\n- 改在湖滨商圈内的**室内场所**停留：咖啡馆坐坐、看一场小展览（如有）、或在商场公共休息区歇脚。\n- 雷电期间**避免在湖边、树下或空旷广场停留**，等雷雨过后再考虑短距离湖边走走。\n- 不必强求\"走到某个点\"，坐着看雨也是一种轻松。\n\n> 西湖及湖滨步道本身**免费开放**，无需门票；若临时想进某处小景点或展馆，入场费以现场公示为准。\n\n### 15:30 – 16:15 ｜ 收整 + 前往杭州东站\n\n- 简单收拾，沿原路或附近站点乘公共交通返回杭州东站。\n- 公交/地铁同样约 **38 分钟**（方向相反，耗时相近），预留 **15 分钟候车余量**，合计约 **50–55 分钟**。\n- 建议 **16:15 前出发**，**17:10 前到达杭州东站**。\n\n### 17:10 – 18:00 ｜ 杭州东站 · 候车/缓冲\n\n- 到达后预留 **50 分钟**候车、安检与进站缓冲（具体车次要求以 12306 / 车站公告为准）。\n- **18:00 从杭州东站出发**，行程结束。\n\n---\n\n## 预算分配（2 人合计，上限 800 元）\n\n| 项目 | 说明 | 上限 |\n|------|------|------|\n| 市内交通 | 杭州东站 ↔ 西湖湖滨，公交/地铁 2 人往返（或打车 1 程） | **100 元** |\n| 午餐 | 湖滨一带 2 人餐，不辣 | **200 元** |\n| 门票 / 展馆 | 湖滨步道免费；如临时进小展馆另计 | **100 元**（预留） |\n| 机动 / 饮品 / 雨天打车 | 咖啡、水、临时打车、小食等 | **400 元** |\n| **合计** | | **800 元** |\n\n> 以上为**分配上限**，非报价。实际花费以当日选择为准；不含往返杭州的车票（您已注明排除）。若全部走公交 + 免费湖滨，实际花费大概率低于上限。\n\n---\n\n## 准备建议\n\n1. **雨具必带**：当日雷雨概率高（~90 %），建议每人一把折叠伞 + 一件轻便防风雨外套；鞋子选防滑、不怕水的。\n2. **充电宝**：一天在外，手机导航/支付/拍照耗电快，2 人各备一个或共用大容量。\n3. **轻装**：当天往返不住宿，背包即可；若从外地出发，大件行李可问杭州东站是否有**临时寄存**服务（具体以车站当日公告为准）。\n4. **不辣饮食**：点餐时主动说明\"两位都不吃辣\"，杭州本地菜系偏清淡，选择面较宽。\n\n---\n\n## 需核实事项（合并清单）\n\n- [ ] **16 日当日实时天气**：出发前 1–2 小时再看一次预报，确认雷雨时段，决定户外/室内主线比例。\n- [ ] **杭州东站 → 西湖湖滨 公共交通具体线路与班次**：查询结果为公交/地铁约 38 分钟，但具体换乘、首末班时间以高德/杭州地铁 App 当日信息为准。\n- [ ] **18:00 车次信息**：确认是高铁/动车/普速，决定候车与安检预留时间是否足够。\n- [ ] **行李临时寄存**（如适用）：杭州东站是否提供付费寄存，价格以现场为准。\n- [ ] **湖滨一带午餐**：已按\"不辣、有室内座位\"筛选方向，具体门店以当日营业与口味为准。\n\n祝您在杭州淋一场好雨、看一湖好水，轻松一天 🌧️🌿",
+          "evidence": [
+            {
+              "tool": "query_weather",
+              "arguments": {
+                "city": "杭州",
+                "date": "2026-10-16"
+              },
+              "result": {
+                "status": "available",
+                "city": "杭州",
+                "requested_date": "2026-10-16",
+                "condition": "雷雨",
+                "temperature_min_c": 18,
+                "temperature_max_c": 24,
+                "precipitation_probability_max": 90,
+                "source": "受控合成天气资料",
+                "note": "仅本日预报；不是真实天气数据，不提供其他日期预报。"
+              },
+              "queried_at": "2026-10-13T13:26:54+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "search_places",
+              "arguments": {
+                "city": "杭州",
+                "keywords": "杭州东站"
+              },
+              "result": {
+                "status": "available",
+                "city": "杭州",
+                "keywords": "杭州东站",
+                "candidates": [
+                  {
+                    "poi_id": "test-station",
+                    "name": "杭州东站",
+                    "address": "合成样例地址",
+                    "longitude": 120.212,
+                    "latitude": 30.291,
+                    "city": "杭州",
+                    "district": "测试甲区",
+                    "source": "高德地图 POI",
+                    "fetched_at": "2026-10-13T00:00:00+00:00"
+                  }
+                ],
+                "source": "合成地点资料",
+                "fetched_at": "2026-10-13T00:00:00+00:00",
+                "note": "合成样例：候选source仅沿用应用的高德识别协议，不是实际查询；只证明地点候选，开放、预约、门票未知。"
+              },
+              "queried_at": "2026-10-13T13:26:54+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "search_places",
+              "arguments": {
+                "city": "杭州",
+                "keywords": "西湖湖滨"
+              },
+              "result": {
+                "status": "available",
+                "city": "杭州",
+                "keywords": "西湖湖滨",
+                "candidates": [
+                  {
+                    "poi_id": "test-lake",
+                    "name": "西湖湖滨",
+                    "address": "合成样例地址",
+                    "longitude": 120.153,
+                    "latitude": 30.249,
+                    "city": "杭州",
+                    "district": "测试甲区",
+                    "source": "高德地图 POI",
+                    "fetched_at": "2026-10-13T00:00:00+00:00"
+                  }
+                ],
+                "source": "合成地点资料",
+                "fetched_at": "2026-10-13T00:00:00+00:00",
+                "note": "合成样例：候选source仅沿用应用的高德识别协议，不是实际查询；只证明地点候选，开放、预约、门票未知。"
+              },
+              "queried_at": "2026-10-13T13:26:54+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "query_route",
+              "arguments": {
+                "origin_poi_id": "test-station",
+                "destination_poi_id": "test-lake",
+                "mode": "transit"
+              },
+              "result": {
+                "status": "available",
+                "origin_poi_id": "test-station",
+                "destination_poi_id": "test-lake",
+                "mode": "transit",
+                "duration_minutes": 38,
+                "distance_meters": 12000,
+                "source": "合成路线资料",
+                "fetched_at": "2026-10-13T00:00:00+00:00",
+                "note": "transit仅证明公共交通估计，不证明地铁线路、班次或无障碍。"
+              },
+              "queried_at": "2026-10-13T13:26:59+00:00",
+              "seconds": 0.0
+            }
+          ],
+          "requirements_revision": 1,
+          "display": null,
+          "display_source_hash": "584e4e7b3ecfb9c3cd9fd078beb3768f1200903751dce89cb6228d1d47cb64e0",
+          "display_status": "pending",
+          "requirements_snapshot": {
+            "start_date": "2026-10-16",
+            "end_date": "2026-10-16",
+            "arrival_time": "10:00",
+            "departure_time": "18:00",
+            "city": "杭州",
+            "arrival_location": "杭州东站",
+            "departure_location": "杭州东站",
+            "day_count": 1,
+            "travelers": 2,
+            "budget_amount": "800",
+            "budget_scope": "total",
+            "budget_coverage": "含市内交通、餐饮、门票，不含往返车票",
+            "must_visit": [
+              "西湖湖滨"
+            ],
+            "avoid": [
+              "购物店"
+            ],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          }
+        },
+        "messages": [
+          {
+            "id": "m-109",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "# 杭州一日游 · 2026年10月16日\n\n## 概览\n\n两位同行，轻松节奏，当天往返不住宿。10:00 抵杭州东站，18:00 从杭州东站离站。核心围绕**西湖湖滨一带**：午餐、散步（视天气）、休息，不安排购物店，午餐避开辣味。\n\n> ⚠️ **当日天气提示**：杭州 10 月 16 日预报为**雷雨**，气温 18–24 °C，降水概率最高约 90 %。户外安排以\"雨停或转小\"为前提，主线保留室内/有遮挡备选。\n\n---\n\n## 逐时安排\n\n### 10:00 – 11:00 ｜ 抵达 → 西湖湖滨\n\n- **10:00** 抵达杭州东站（2 人）。\n- 出站后乘公共交通前往西湖湖滨方向；查询到**公交/地铁约 38 分钟**（仅供参考，实际班次与候车时间以现场为准）。\n- 建议**预留 15 分钟候车与换乘余量**，合计约 **50 分钟**到站。\n- 预计 **11:00 前后**到达湖滨一带。\n\n> 若当天雷雨较大、公交不便，可改为打车；打车耗时与费用以实际路况为准，不额外预估。\n\n### 11:00 – 12:45 ｜ 午餐 + 短休\n\n- 在湖滨周边找一家**不辣**的餐馆或简餐（您未指定具体餐厅，建议选有室内座位、靠湖或商场内的店，雨天可避雨）。\n- 2 人午餐，建议预算上限 **200 元**（人均 100 元，含茶/小食）。\n- 餐后在湖边廊亭、商场中庭或咖啡馆**休息 20–30 分钟**，不必赶路。\n\n### 12:45 – 15:30 ｜ 湖滨一带 · 轻松漫步（视天气）\n\n**天气好（雨停 / 小雨转晴）时：**\n- 沿湖滨步道（一公园至四公园一带）慢走，看湖景、柳浪闻莺外景，节奏随意，走走停停。\n- 可进入**湖畔的室内空间**（如附近的茶室、书店、展览厅）换换场景，不赶景点。\n- 全程不安排购物店，不打卡必拍点，以舒适为准。\n\n**天气差（持续中到大雨 / 雷电）时：**\n- 改在湖滨商圈内的**室内场所**停留：咖啡馆坐坐、看一场小展览（如有）、或在商场公共休息区歇脚。\n- 雷电期间**避免在湖边、树下或空旷广场停留**，等雷雨过后再考虑短距离湖边走走。\n- 不必强求\"走到某个点\"，坐着看雨也是一种轻松。\n\n> 西湖及湖滨步道本身**免费开放**，无需门票；若临时想进某处小景点或展馆，入场费以现场公示为准。\n\n### 15:30 – 16:15 ｜ 收整 + 前往杭州东站\n\n- 简单收拾，沿原路或附近站点乘公共交通返回杭州东站。\n- 公交/地铁同样约 **38 分钟**（方向相反，耗时相近），预留 **15 分钟候车余量**，合计约 **50–55 分钟**。\n- 建议 **16:15 前出发**，**17:10 前到达杭州东站**。\n\n### 17:10 – 18:00 ｜ 杭州东站 · 候车/缓冲\n\n- 到达后预留 **50 分钟**候车、安检与进站缓冲（具体车次要求以 12306 / 车站公告为准）。\n- **18:00 从杭州东站出发**，行程结束。\n\n---\n\n## 预算分配（2 人合计，上限 800 元）\n\n| 项目 | 说明 | 上限 |\n|------|------|------|\n| 市内交通 | 杭州东站 ↔ 西湖湖滨，公交/地铁 2 人往返（或打车 1 程） | **100 元** |\n| 午餐 | 湖滨一带 2 人餐，不辣 | **200 元** |\n| 门票 / 展馆 | 湖滨步道免费；如临时进小展馆另计 | **100 元**（预留） |\n| 机动 / 饮品 / 雨天打车 | 咖啡、水、临时打车、小食等 | **400 元** |\n| **合计** | | **800 元** |\n\n> 以上为**分配上限**，非报价。实际花费以当日选择为准；不含往返杭州的车票（您已注明排除）。若全部走公交 + 免费湖滨，实际花费大概率低于上限。\n\n---\n\n## 准备建议\n\n1. **雨具必带**：当日雷雨概率高（~90 %），建议每人一把折叠伞 + 一件轻便防风雨外套；鞋子选防滑、不怕水的。\n2. **充电宝**：一天在外，手机导航/支付/拍照耗电快，2 人各备一个或共用大容量。\n3. **轻装**：当天往返不住宿，背包即可；若从外地出发，大件行李可问杭州东站是否有**临时寄存**服务（具体以车站当日公告为准）。\n4. **不辣饮食**：点餐时主动说明\"两位都不吃辣\"，杭州本地菜系偏清淡，选择面较宽。\n\n---\n\n## 需核实事项（合并清单）\n\n- [ ] **16 日当日实时天气**：出发前 1–2 小时再看一次预报，确认雷雨时段，决定户外/室内主线比例。\n- [ ] **杭州东站 → 西湖湖滨 公共交通具体线路与班次**：查询结果为公交/地铁约 38 分钟，但具体换乘、首末班时间以高德/杭州地铁 App 当日信息为准。\n- [ ] **18:00 车次信息**：确认是高铁/动车/普速，决定候车与安检预留时间是否足够。\n- [ ] **行李临时寄存**（如适用）：杭州东站是否提供付费寄存，价格以现场为准。\n- [ ] **湖滨一带午餐**：已按\"不辣、有室内座位\"筛选方向，具体门店以当日营业与口味为准。\n\n祝您在杭州淋一场好雨、看一湖好水，轻松一天 🌧️🌿",
+            "created_at": "21:27",
+            "status": "sent",
+            "agent_card": {
+              "kind": "itinerary-draft",
+              "title": "行程草案",
+              "summary": "# 杭州一日游 · 2026年10月16日\n\n## 概览\n\n两位同行，轻松节奏，当天往返不住宿。10:00 抵杭州东站，18:00 从杭州东站离站。核心围绕**西湖湖滨一带**：午餐、散步（视天气）、休息，不安排购物店，午餐避开辣味。\n\n>",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "查看行程",
+                  "target": "itinerary"
+                }
+              ]
+            }
+          }
+        ],
+        "ideas": []
+      },
+      "seconds": 58.059744,
+      "machine_checks": {
+        "plan_change": true,
+        "requirements_preserved.start_date": true,
+        "requirements_preserved.end_date": true,
+        "requirements_preserved.must_visit": true,
+        "requirements_preserved.dietary": true,
+        "tool_called.query_weather": true,
+        "task_succeeded": true
+      },
+      "machine_checks_pass": true,
+      "task": {
+        "id": "f0cfa736ec0d492d8fe883b3f5af6dff",
+        "trip_id": "trip-105",
+        "kind": "plan",
+        "payload": {},
+        "request_id": "PP-002-1",
+        "retry_of": "",
+        "status": "succeeded",
+        "message": "已完成",
+        "created_at": "2026-10-13T13:26:45+00:00",
+        "updated_at": "2026-10-13T13:27:43+00:00",
+        "message_id": "",
+        "thinking_id": "m-107",
+        "result_url": "/workspace/trip-105?tab=itinerary",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "needs_input": false
+      },
+      "model_calls": [
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 3783,
+            "completion_tokens": 518
+          },
+          "proposed_tools": [
+            "query_weather",
+            "search_places",
+            "search_places"
+          ],
+          "seconds": 8.647037
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 4424,
+            "completion_tokens": 351
+          },
+          "proposed_tools": [
+            "query_route"
+          ],
+          "seconds": 5.64449
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 4618,
+            "completion_tokens": 2841
+          },
+          "proposed_tools": [],
+          "seconds": 43.761232
+        }
+      ],
+      "queries": [
+        {
+          "name": "query_weather",
+          "arguments": {
+            "city": "杭州",
+            "date": "2026-10-16"
+          },
+          "result": {
+            "status": "available",
+            "city": "杭州",
+            "requested_date": "2026-10-16",
+            "condition": "雷雨",
+            "temperature_min_c": 18,
+            "temperature_max_c": 24,
+            "precipitation_probability_max": 90,
+            "source": "受控合成天气资料",
+            "note": "仅本日预报；不是真实天气数据，不提供其他日期预报。"
+          }
+        },
+        {
+          "name": "search_places",
+          "arguments": {
+            "city": "杭州",
+            "keywords": "杭州东站"
+          },
+          "result": {
+            "status": "available",
+            "city": "杭州",
+            "keywords": "杭州东站",
+            "candidates": [
+              {
+                "poi_id": "test-station",
+                "name": "杭州东站",
+                "address": "合成样例地址",
+                "longitude": 120.212,
+                "latitude": 30.291,
+                "city": "杭州",
+                "district": "测试甲区",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-13T00:00:00+00:00"
+              }
+            ],
+            "source": "合成地点资料",
+            "fetched_at": "2026-10-13T00:00:00+00:00",
+            "note": "合成样例：候选source仅沿用应用的高德识别协议，不是实际查询；只证明地点候选，开放、预约、门票未知。"
+          }
+        },
+        {
+          "name": "search_places",
+          "arguments": {
+            "city": "杭州",
+            "keywords": "西湖湖滨"
+          },
+          "result": {
+            "status": "available",
+            "city": "杭州",
+            "keywords": "西湖湖滨",
+            "candidates": [
+              {
+                "poi_id": "test-lake",
+                "name": "西湖湖滨",
+                "address": "合成样例地址",
+                "longitude": 120.153,
+                "latitude": 30.249,
+                "city": "杭州",
+                "district": "测试甲区",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-13T00:00:00+00:00"
+              }
+            ],
+            "source": "合成地点资料",
+            "fetched_at": "2026-10-13T00:00:00+00:00",
+            "note": "合成样例：候选source仅沿用应用的高德识别协议，不是实际查询；只证明地点候选，开放、预约、门票未知。"
+          }
+        },
+        {
+          "name": "query_route",
+          "arguments": {
+            "origin_poi_id": "test-station",
+            "destination_poi_id": "test-lake",
+            "mode": "transit"
+          },
+          "result": {
+            "status": "available",
+            "origin_poi_id": "test-station",
+            "destination_poi_id": "test-lake",
+            "mode": "transit",
+            "duration_minutes": 38,
+            "distance_meters": 12000,
+            "source": "合成路线资料",
+            "fetched_at": "2026-10-13T00:00:00+00:00",
+            "note": "transit仅证明公共交通估计，不证明地铁线路、班次或无障碍。"
+          }
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-10-16"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "city": "杭州",
+          "requested_date": "2026-10-16",
+          "condition": "雷雨",
+          "temperature_min_c": 18,
+          "temperature_max_c": 24,
+          "precipitation_probability_max": 90,
+          "source": "受控合成天气资料",
+          "note": "仅本日预报；不是真实天气数据，不提供其他日期预报。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_places",
+        "arguments": {
+          "city": "杭州",
+          "keywords": "杭州东站"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "city": "杭州",
+          "keywords": "杭州东站",
+          "candidates": [
+            {
+              "poi_id": "test-station",
+              "name": "杭州东站",
+              "address": "合成样例地址",
+              "longitude": 120.212,
+              "latitude": 30.291,
+              "city": "杭州",
+              "district": "测试甲区",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-13T00:00:00+00:00"
+            }
+          ],
+          "source": "合成地点资料",
+          "fetched_at": "2026-10-13T00:00:00+00:00",
+          "note": "合成样例：候选source仅沿用应用的高德识别协议，不是实际查询；只证明地点候选，开放、预约、门票未知。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_places",
+        "arguments": {
+          "city": "杭州",
+          "keywords": "西湖湖滨"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "city": "杭州",
+          "keywords": "西湖湖滨",
+          "candidates": [
+            {
+              "poi_id": "test-lake",
+              "name": "西湖湖滨",
+              "address": "合成样例地址",
+              "longitude": 120.153,
+              "latitude": 30.249,
+              "city": "杭州",
+              "district": "测试甲区",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-13T00:00:00+00:00"
+            }
+          ],
+          "source": "合成地点资料",
+          "fetched_at": "2026-10-13T00:00:00+00:00",
+          "note": "合成样例：候选source仅沿用应用的高德识别协议，不是实际查询；只证明地点候选，开放、预约、门票未知。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "test-station",
+          "destination_poi_id": "test-lake",
+          "mode": "transit"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "origin_poi_id": "test-station",
+          "destination_poi_id": "test-lake",
+          "mode": "transit",
+          "duration_minutes": 38,
+          "distance_meters": 12000,
+          "source": "合成路线资料",
+          "fetched_at": "2026-10-13T00:00:00+00:00",
+          "note": "transit仅证明公共交通估计，不证明地铁线路、班次或无障碍。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "Agent Loop 状态",
+      "value": {
+        "mode": "planning",
+        "seconds": 58.054,
+        "status": "completed",
+        "steps": 3,
+        "tool_calls": 4,
+        "stop_reason": "Agent 已完成本次工作。",
+        "history": [
+          {
+            "step": 1,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 3,
+            "error": "",
+            "at": "2026-10-13T13:26:54+00:00"
+          },
+          {
+            "step": 2,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 1,
+            "error": "",
+            "at": "2026-10-13T13:26:59+00:00"
+          },
+          {
+            "step": 3,
+            "phase": "working",
+            "action": "finish",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 0,
+            "error": "",
+            "at": "2026-10-13T13:27:43+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "title": "共享调用预算",
+      "value": {
+        "model_calls": 3,
+        "tool_calls": 4,
+        "external_calls": 3
+      }
+    }
+  ],
+  "manual_review_checklist": [
+    "雷雨使户外主线有条件，提供室内或休息备选",
+    "必去西湖保留并说明天气取舍，不保证雷雨时可执行",
+    "当天不住宿",
+    "接驳耗时未知不声称精确时刻一定赶上"
+  ],
+  "quality_grade": "pending_manual_review",
+  "display_conversion": "not_run"
+}

@@ -4,9 +4,18 @@
   if (!workspace) return;
   const endpoint = workspace.dataset.travelTasksUrl;
   const storageKey = `travelassistant:task-submit:${endpoint}`;
-  let active = null, polling = false;
+  const TASK_POLL_ACTIVE_MS = 1000;
+  const TASK_POLL_IDLE_MS = 2500;
+  let active = null, polling = false, pollTimer = null;
+  function schedulePoll() {
+    clearTimeout(pollTimer);
+    if (!document.hidden) pollTimer = window.setTimeout(poll,
+      active && ['queued', 'running'].includes(active.status) ? TASK_POLL_ACTIVE_MS : TASK_POLL_IDLE_MS);
+  }
   function show(task) {
     active = task;
+    schedulePoll();
+    document.dispatchEvent(new CustomEvent('travel-task-update', {detail: task}));
     const busy = ['queued', 'running'].includes(task.status);
     workspace.querySelectorAll('form').forEach(form => {
       if (!/\/(plan|revision)$/.test(form.action)) return;
@@ -18,6 +27,9 @@
       feedback.textContent = task.status === 'failed' ? task.message + ' 修改意见已保留。' : '';
     }
   }
+  document.addEventListener('travel-chat-accepted', event => {
+    if (event.detail?.kind === 'chat') show(event.detail);
+  });
   function pending() {
     try { return JSON.parse(sessionStorage.getItem(storageKey) || 'null'); } catch { return null; }
   }
@@ -85,14 +97,17 @@
         const response = await fetch(endpoint, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(uncertain), signal: AbortSignal.timeout(15000)});
         const restored = await response.json();
         if (response.ok) { remember(null); show(restored.task); }
-        else remember(null);
+        else {
+          remember(null);
+          if (uncertain.kind === 'chat') document.dispatchEvent(new CustomEvent('travel-chat-rejected', {detail: uncertain}));
+        }
         return;
       }
       const wanted = new URL(location.href).searchParams.get('task');
-      const task = tasks.find(task => ['queued', 'running'].includes(task.status))
+      const task = recovered || tasks.find(task => ['queued', 'running'].includes(task.status))
         || tasks.find(task => task.id === wanted) || tasks[tasks.length - 1];
       if (!task) return;
-      if (!wanted && !active && task.status === 'succeeded') return;
+      if (!wanted && !active && !recovered && task.status === 'succeeded') return;
       const finishedNow = active?.id === task.id && ['queued', 'running'].includes(active.status) && task.status === 'succeeded';
       show(task);
       if (finishedNow && task.kind !== 'chat') {
@@ -109,9 +124,11 @@
         location.assign(url.href);
       }
     } catch { /* Next poll can recover. */ }
-    finally { polling = false; }
+    finally { polling = false; schedulePoll(); }
   }
   poll();
-  window.setInterval(poll, 2500);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); });
+  document.addEventListener('visibilitychange', () => {
+    clearTimeout(pollTimer);
+    if (!document.hidden) poll();
+  });
 })();

@@ -17,23 +17,32 @@
     <a class="icon-action" href="/trips/new" aria-label="创建旅行">+</a>
   </header>
 
+  {% if error %}<p class="trip-notice trip-notice-error" role="alert">{{ error }}</p>{% endif %}
+  {% if notice %}<p class="trip-notice" role="status">{{ notice }}</p>{% endif %}
+
   {% if trips %}
     <div class="trip-list">
       {% for trip in trips %}
-        <a class="trip-card" href="/workspace/{{ trip.id }}">
-          <div class="trip-card-main">
-            <strong>{{ trip.destination }}</strong>
-            <div class="trip-meta-row" aria-label="旅行概况">
-              <span>{{ trip.date_range }}</span>
-              <span>{{ trip.budget }}</span>
-              <span>{{ trip.style }}</span>
+        <div class="trip-card">
+          <a class="trip-card-link" href="/workspace/{{ trip.id }}">
+            <div class="trip-card-main">
+              <strong>{{ trip.destination }}</strong>
+              <div class="trip-meta-row" aria-label="旅行概况">
+                <span>{{ trip.date_range }}</span>
+                <span>{{ trip.budget }}</span>
+                <span>{{ trip.style }}</span>
+              </div>
+              <small>{{ trip.last_activity }}</small>
             </div>
-            <small>{{ trip.last_activity }}</small>
-          </div>
+          </a>
           <div class="trip-card-side">
             <em>{{ trip.status }}</em>
+            <form action="/trips/{{ trip.id }}/delete" method="post"
+                  onsubmit="return confirm('确定删除「{{ trip.destination }}」吗？聊天记录、想法和行程都会一并删除，无法恢复。');">
+              <button type="submit" class="delete-trip-button" aria-label="删除这趟旅行">删除</button>
+            </form>
           </div>
-        </a>
+        </div>
       {% endfor %}
     </div>
   {% else %}

@@ -1,0 +1,671 @@
+{
+  "rows": [
+    {
+      "tool": "search_places",
+      "arguments": {
+        "city": "杭州",
+        "keywords": "杭州东站"
+      },
+      "seconds": 3.316856100000223,
+      "result": {
+        "status": "available",
+        "city": "杭州",
+        "keywords": "杭州东站",
+        "candidates": [
+          {
+            "poi_id": "B023B08WDR",
+            "name": "杭州东站",
+            "address": "天城路1号",
+            "longitude": 120.212605,
+            "latitude": 30.290846,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T03:52:14+00:00"
+          },
+          {
+            "poi_id": "B023B1EQ98",
+            "name": "杭州东站(东进站口)",
+            "address": "天城路1号杭州东站",
+            "longitude": 120.214623,
+            "latitude": 30.292279,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T03:52:14+00:00"
+          },
+          {
+            "poi_id": "B0FFHGISS4",
+            "name": "杭州东站(西进站口)",
+            "address": "火车东站地铁站C2口西南50米",
+            "longitude": 120.211468,
+            "latitude": 30.290144,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T03:52:14+00:00"
+          }
+        ],
+        "source": "高德地图 POI",
+        "transport": "amap_mcp",
+        "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；营业、开放和预约情况仍需另行核实。"
+      }
+    },
+    {
+      "tool": "search_places",
+      "arguments": {
+        "city": "杭州",
+        "keywords": "西湖湖滨公园"
+      },
+      "seconds": 1.0196380999987014,
+      "result": {
+        "status": "available",
+        "city": "杭州",
+        "keywords": "西湖湖滨公园",
+        "candidates": [
+          {
+            "poi_id": "B023B05MLT",
+            "name": "杭州西湖风景名胜区-湖滨公园",
+            "address": "龙井路1号杭州西湖风景名胜区内(东北角)",
+            "longitude": 120.158818,
+            "latitude": 30.256583,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T03:52:15+00:00"
+          },
+          {
+            "poi_id": "B0HUY5RU2L",
+            "name": "杭州西湖风景名胜区-湖滨公园停车点",
+            "address": "西湖隧道西湖风景区",
+            "longitude": 120.158342,
+            "latitude": 30.25805,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T03:52:15+00:00"
+          },
+          {
+            "poi_id": "B0L0HPPDV8",
+            "name": "西湖自划船",
+            "address": "西湖边六公园",
+            "longitude": 120.156927,
+            "latitude": 30.258832,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T03:52:15+00:00"
+          }
+        ],
+        "source": "高德地图 POI",
+        "transport": "amap_mcp",
+        "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；营业、开放和预约情况仍需另行核实。"
+      }
+    },
+    {
+      "tool": "search_food",
+      "arguments": {
+        "city": "杭州",
+        "keywords": "杭帮菜",
+        "max_results": 3
+      },
+      "seconds": 0.9099700999995548,
+      "result": {
+        "status": "available",
+        "city": "杭州",
+        "keywords": "杭帮菜",
+        "total_matched": 20,
+        "recommendations": [
+          {
+            "name": "乔村二十八道(钱江世纪城店)",
+            "rating": "4.9",
+            "cost_per_person_cny": 166.0,
+            "address": "盈丰街道左右商务中心2幢",
+            "district": null,
+            "business_area": "亚奥万象天地",
+            "cuisine_tags": null,
+            "open_time": "周一至周五 11:00-14:00,17:00-21:00；周六至周日 11:00-14:00,16:40-21:00",
+            "tel": null
+          },
+          {
+            "name": "四灶儿·地道杭帮菜(湖墅南路店)",
+            "rating": "4.7",
+            "cost_per_person_cny": 102.0,
+            "address": "湖墅南路258号",
+            "district": null,
+            "business_area": null,
+            "cuisine_tags": null,
+            "open_time": "周一至周日 10:30-21:30",
+            "tel": null
+          },
+          {
+            "name": "新周记·巷子里的江南味(鼓楼店)",
+            "rating": "4.7",
+            "cost_per_person_cny": 81.0,
+            "address": "十五奎巷2-3号(近鼓楼城门)",
+            "district": null,
+            "business_area": "吴山",
+            "cuisine_tags": null,
+            "open_time": "周一至周日 10:30-23:30",
+            "tel": null
+          }
+        ],
+        "source": "高德地图 POI",
+        "transport": "amap_mcp",
+        "note": "评分排序仅针对本次已获取详情的候选，非全城排名。人均为元/人参考，缺失信息待核实；营业、电话、忌口和排队仍需确认。"
+      }
+    },
+    {
+      "tool": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B08WDR",
+        "destination_poi_id": "B023B05MLT",
+        "mode": "walking"
+      },
+      "seconds": 1.2116642000000866,
+      "result": {
+        "origin_poi_id": "B023B08WDR",
+        "origin_name": "杭州东站",
+        "destination_poi_id": "B023B05MLT",
+        "destination_name": "杭州西湖风景名胜区-湖滨公园",
+        "mode": "walking",
+        "status": "available",
+        "duration_minutes": 111,
+        "distance_meters": 8317,
+        "source": "高德路线规划",
+        "fetched_at": "2026-10-13T03:52:16+00:00",
+        "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    },
+    {
+      "tool": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B08WDR",
+        "destination_poi_id": "B023B05MLT",
+        "mode": "transit"
+      },
+      "seconds": 0.8624156000005314,
+      "result": {
+        "origin_poi_id": "B023B08WDR",
+        "origin_name": "杭州东站",
+        "destination_poi_id": "B023B05MLT",
+        "destination_name": "杭州西湖风景名胜区-湖滨公园",
+        "mode": "transit",
+        "status": "available",
+        "duration_minutes": 32,
+        "distance_meters": 8975,
+        "source": "高德路线规划",
+        "fetched_at": "2026-10-13T03:52:17+00:00",
+        "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    },
+    {
+      "tool": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B08WDR",
+        "destination_poi_id": "B023B05MLT",
+        "mode": "driving"
+      },
+      "seconds": 0.494455600000947,
+      "result": {
+        "origin_poi_id": "B023B08WDR",
+        "origin_name": "杭州东站",
+        "destination_poi_id": "B023B05MLT",
+        "destination_name": "杭州西湖风景名胜区-湖滨公园",
+        "mode": "driving",
+        "status": "available",
+        "duration_minutes": 26,
+        "distance_meters": 8683,
+        "source": "高德路线规划",
+        "fetched_at": "2026-10-13T03:52:18+00:00",
+        "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    },
+    {
+      "tool": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B08WDR",
+        "destination_poi_id": "B023B05MLT",
+        "mode": "transit"
+      },
+      "seconds": 1.9299999621580355e-05,
+      "result": {
+        "origin_poi_id": "B023B08WDR",
+        "origin_name": "杭州东站",
+        "destination_poi_id": "B023B05MLT",
+        "destination_name": "杭州西湖风景名胜区-湖滨公园",
+        "mode": "transit",
+        "status": "available",
+        "duration_minutes": 32,
+        "distance_meters": 8975,
+        "source": "高德路线规划",
+        "fetched_at": "2026-10-13T03:52:17+00:00",
+        "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    }
+  ],
+  "mcp_tools_calls": [
+    {
+      "tool": "maps_text_search",
+      "status": "returned",
+      "seconds": 0.7349544000007882
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "returned",
+      "seconds": 0.3395970000001398
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "returned",
+      "seconds": 0.20326329999988957
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "returned",
+      "seconds": 0.2237659000002168
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "failed",
+      "error_type": "AmapMCPError",
+      "stage": "tool",
+      "provider_error_type": null,
+      "seconds": 0.21632960000169987
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "failed",
+      "error_type": "AmapMCPError",
+      "stage": "tool",
+      "provider_error_type": null,
+      "seconds": 0.2484113000009529
+    },
+    {
+      "tool": "maps_text_search",
+      "status": "returned",
+      "seconds": 0.19516459999977087
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "returned",
+      "seconds": 0.10317299999951501
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "returned",
+      "seconds": 0.08365039999989676
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "returned",
+      "seconds": 0.09318189999976312
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "failed",
+      "error_type": "AmapMCPError",
+      "stage": "tool",
+      "provider_error_type": null,
+      "seconds": 0.07086119999985385
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "failed",
+      "error_type": "AmapMCPError",
+      "stage": "tool",
+      "provider_error_type": null,
+      "seconds": 0.07203909999952884
+    },
+    {
+      "tool": "maps_text_search",
+      "status": "returned",
+      "seconds": 0.3017292999993515
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "returned",
+      "seconds": 0.1057717000003322
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "returned",
+      "seconds": 0.13866409999900497
+    },
+    {
+      "tool": "maps_search_detail",
+      "status": "returned",
+      "seconds": 0.14443820000087726
+    },
+    {
+      "tool": "maps_direction_walking",
+      "status": "returned",
+      "seconds": 0.3070380000008299
+    },
+    {
+      "tool": "maps_direction_transit_integrated",
+      "status": "returned",
+      "seconds": 0.30037780000020575
+    },
+    {
+      "tool": "maps_direction_driving",
+      "status": "returned",
+      "seconds": 0.1438140000009298
+    }
+  ],
+  "discovered_tools": [
+    {
+      "name": "maps_direction_driving",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "出发点经纬度，坐标格式为：经度，纬度"
+          },
+          "destination": {
+            "type": "string",
+            "description": "目的地经纬度，坐标格式为：经度，纬度"
+          }
+        },
+        "required": [
+          "origin",
+          "destination"
+        ]
+      }
+    },
+    {
+      "name": "maps_direction_transit_integrated",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "出发点经纬度，坐标格式为：经度，纬度"
+          },
+          "destination": {
+            "type": "string",
+            "description": "目的地经纬度，坐标格式为：经度，纬度"
+          },
+          "city": {
+            "type": "string",
+            "description": "公共交通规划起点城市"
+          },
+          "cityd": {
+            "type": "string",
+            "description": "公共交通规划终点城市"
+          }
+        },
+        "required": [
+          "origin",
+          "destination",
+          "city",
+          "cityd"
+        ]
+      }
+    },
+    {
+      "name": "maps_direction_walking",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "origin": {
+            "type": "string",
+            "description": "出发点经度，纬度，坐标格式为：经度，纬度"
+          },
+          "destination": {
+            "type": "string",
+            "description": "目的地经度，纬度，坐标格式为：经度，纬度"
+          }
+        },
+        "required": [
+          "origin",
+          "destination"
+        ]
+      }
+    },
+    {
+      "name": "maps_search_detail",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "关键词搜或者周边搜获取到的POI ID"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      }
+    },
+    {
+      "name": "maps_text_search",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "keywords": {
+            "type": "string",
+            "description": "查询关键字"
+          },
+          "city": {
+            "type": "string",
+            "description": "查询城市"
+          },
+          "citylimit": {
+            "type": "boolean",
+            "default": false,
+            "description": "是否限制城市范围内搜索，默认不限制"
+          }
+        },
+        "required": [
+          "keywords"
+        ]
+      }
+    }
+  ],
+  "mcp_phases": [
+    {
+      "stage": "initialize",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.20749849999992875
+    },
+    {
+      "stage": "discovery",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.5180460999999923
+    },
+    {
+      "stage": "initialize",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.2926079999997455
+    },
+    {
+      "stage": "discovery",
+      "tool": null,
+      "status": "completed",
+      "seconds": 1.0429782000010164
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_text_search",
+      "status": "completed",
+      "seconds": 0.7330397999994602
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "completed",
+      "seconds": 0.33860939999976836
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "completed",
+      "seconds": 0.20181889999912528
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "completed",
+      "seconds": 0.22230039999885776
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "failed",
+      "error_type": "AmapMCPError",
+      "seconds": 0.2149186999995436
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "failed",
+      "error_type": "AmapMCPError",
+      "seconds": 0.24676439999893773
+    },
+    {
+      "stage": "initialize",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.25347060000058264
+    },
+    {
+      "stage": "discovery",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.13296730000001844
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_text_search",
+      "status": "completed",
+      "seconds": 0.19293889999971725
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "completed",
+      "seconds": 0.10196460000042862
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "completed",
+      "seconds": 0.08270839999931923
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "completed",
+      "seconds": 0.09164090000012948
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "failed",
+      "error_type": "AmapMCPError",
+      "seconds": 0.06905469999946945
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "failed",
+      "error_type": "AmapMCPError",
+      "seconds": 0.07068000000072061
+    },
+    {
+      "stage": "initialize",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.07690589999947406
+    },
+    {
+      "stage": "discovery",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.1264682000000903
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_text_search",
+      "status": "completed",
+      "seconds": 0.2997886000011931
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "completed",
+      "seconds": 0.10466679999990447
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "completed",
+      "seconds": 0.13727250000010827
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_search_detail",
+      "status": "completed",
+      "seconds": 0.14323530000001483
+    },
+    {
+      "stage": "initialize",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.1845409000015934
+    },
+    {
+      "stage": "discovery",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.7042817000001378
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_direction_walking",
+      "status": "completed",
+      "seconds": 0.30517169999984617
+    },
+    {
+      "stage": "initialize",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.265872699999818
+    },
+    {
+      "stage": "discovery",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.2815122000010888
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_direction_transit_integrated",
+      "status": "completed",
+      "seconds": 0.2980454999997164
+    },
+    {
+      "stage": "initialize",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.07980899999893154
+    },
+    {
+      "stage": "discovery",
+      "tool": null,
+      "status": "completed",
+      "seconds": 0.25565670000105456
+    },
+    {
+      "stage": "tool",
+      "tool": "maps_direction_driving",
+      "status": "completed",
+      "seconds": 0.14191240000036487
+    }
+  ]
+}

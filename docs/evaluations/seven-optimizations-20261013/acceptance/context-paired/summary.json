@@ -1,0 +1,18 @@
+{
+  "scope": "classifier_only_same_prompt_schema_snapshot_sdk; no business/tools/browser latency",
+  "quality_scope": "intent/action and schema, not full business semantics",
+  "strategies": {
+    "duplicate": {
+      "samples": 3,
+      "successes": 3,
+      "median_seconds_including_failures": 7.789990300000682,
+      "input_characters": 1459
+    },
+    "compact": {
+      "samples": 3,
+      "successes": 3,
+      "median_seconds_including_failures": 7.099201899999571,
+      "input_characters": 1427
+    }
+  }
+}

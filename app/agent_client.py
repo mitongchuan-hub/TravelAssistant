@@ -14,7 +14,7 @@ from copy import deepcopy
 from dotenv import load_dotenv
 
 from .routes import seed_places
-from .models import AgentAction, AgentCard, IdeaCard, Message, PlanVersion, Trip, TripPlan
+from .models import AgentAction, AgentCard, IdeaCard, Message, Trip, TripPlan
 from .tools import run_tool
 from .model_transport import create_completion, response_storage_enabled, visible_params, wire_api
 
@@ -38,11 +38,15 @@ class AgentReply:
     verified_places: dict = field(default_factory=dict)
     orchestrated: bool = False
     target_item_id: str | None = None
-    version_action: dict = field(default_factory=dict)
+    confirm_current: bool = False
     expected_plan_snapshot: dict | None = None
     needs_input: bool = False
     plan_text: str = ""
     evidence: list[dict] | None = None
+    display: dict | None = None
+    display_source_hash: str = ""
+    display_status: str = "not_requested"
+    workflow_state: dict | None = None
 
 
 VALID_CARD_KINDS = {"requirement-summary", "missing-info", "conflict", "itinerary-draft", "revision"}
@@ -50,7 +54,6 @@ VALID_IDEA_KINDS = {"地点", "预算", "节奏", "禁忌", "待归类"}
 
 
 MAX_CONTEXT_MESSAGES = 12
-MAX_CONTEXT_VERSIONS = 3
 
 
 @dataclass
@@ -99,7 +102,6 @@ def generate_agent_reply(
     user_body: str,
     idea_cards: list[IdeaCard] | None = None,
     plan: TripPlan | None = None,
-    plan_versions: list[PlanVersion] | None = None,
     metrics: dict[str, int | str] | None = None,
     planning_mode: bool = False,
     target_item_id: str | None = None,
@@ -120,7 +122,6 @@ def generate_agent_reply(
         "messages": [message.__dict__ for message in messages],
         "idea_cards": [card.__dict__ for card in (idea_cards or [])],
         "plan": plan.__dict__ if plan else None,
-        "plan_versions": [version.__dict__ for version in (plan_versions or [])],
         "metrics": metrics or {},
     })
     if not is_llm_enabled():
@@ -144,11 +145,11 @@ def generate_agent_reply(
         snapshot = deepcopy({
             'trip': trip, 'messages': messages, 'user_body': user_body,
             'idea_cards': idea_cards or [], 'plan': plan,
-            'plan_versions': plan_versions or [], 'metrics': metrics or {},
+            'metrics': metrics or {},
             'recent_chat': [{'id': m.id, 'role': m.sender_type, 'body': m.body}
                             for m in messages if m.status == 'sent'][-8:],
             'current_date': datetime.now().date().isoformat(),
-            'cancelled': cancelled,
+            'cancelled': cancelled, 'workflow_state': trip.workflow_state,
         })
         place_catalog = seed_places(plan)
         route_cache = {}
@@ -228,6 +229,43 @@ def generate_agent_reply(
             trace.write()
 
 
+def generate_plan_display(source_text: str, source_dates, trip_id: str, *, cancelled=None, retry_allowed=None) -> dict:
+    """Convert only saved prose with an independent budget; never run a business loop."""
+    from .agent_runtime import TravelAgentRuntime, TurnBudget
+    from .plan_display import text_hash
+    trace = ConversationTrace(uuid.uuid4().hex[:12], datetime.now().isoformat(timespec='seconds'), trip_id, source_text)
+    client = None
+    source_hash = text_hash(source_text)
+    try:
+        if not is_llm_enabled():
+            raise RuntimeError('模型服务当前不可用，完整文字已保留')
+        from openai import OpenAI
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'), base_url=os.getenv('OPENAI_BASE_URL') or None,
+            timeout=float(os.getenv('OPENAI_TIMEOUT_SECONDS', '180')), max_retries=0)
+        budget = TurnBudget(max_models=2, max_tools=0, max_external=0,
+            seconds=float(os.getenv('TRAVEL_DISPLAY_TIMEOUT_SECONDS', '180')), cancelled=cancelled)
+        runtime = TravelAgentRuntime(client, os.getenv('OPENAI_MODEL') or os.getenv('MODEL_ID') or 'qwen-plus',
+            {'source_dates': deepcopy(source_dates), 'cancelled': cancelled,
+             'display_retry_allowed': retry_allowed or (lambda: True)}, trace=trace,
+            cache={'_budget': budget}, request=_create_chat_completion)
+        reply = runtime.convert_display(AgentReply(source_text, None, [], plan_text=source_text))
+        return {'display': reply.display, 'display_source_hash': source_hash,
+                'display_status': reply.display_status, **runtime.cache.get('display_error', {})}
+    except Exception as exc:
+        detail = str(exc)
+        for key, value in os.environ.items():
+            if value and len(value) > 8 and any(word in key for word in ('KEY', 'TOKEN', 'PASSWORD')):
+                detail = detail.replace(value, '[redacted]')
+        trace.add('展示转换', {'status': 'fallback', 'error_type': type(exc).__name__, 'reason': detail[:300],
+                                'source_hash': source_hash})
+        return {'display': None, 'display_source_hash': source_hash, 'display_status': 'fallback',
+                'error_type': type(exc).__name__, 'reason': detail[:300]}
+    finally:
+        if client is not None and callable(getattr(client, 'close', None)):
+            client.close()
+        trace.write()
+
+
 def _request_model(client, model: str, context: str, planning_mode: bool, *, trace: ConversationTrace | None = None, trip: Trip | None = None, place_catalog: dict | None = None, route_cache: dict | None = None, existing_plan: TripPlan | None = None, target_item_id: str | None = None, snapshot: dict | None = None, agent_role: str | None = None) -> object:
     from .agent_runtime import TravelAgentRuntime
     snapshot = snapshot or {'trip': trip, 'plan': existing_plan, 'user_body': context,
@@ -235,7 +273,7 @@ def _request_model(client, model: str, context: str, planning_mode: bool, *, tra
     runtime = TravelAgentRuntime(client, model, snapshot, trace=trace,
                                  catalog=place_catalog, cache=route_cache, request=_create_chat_completion)
     role = (agent_role or ('revision' if target_item_id else 'planning')) if planning_mode else 'main'
-    scope = 'item' if target_item_id else ('all' if role == 'revision' else '')
+    scope = 'item' if target_item_id else ''
     return runtime.run(role, snapshot['user_body'], scope=scope, target_item_id=target_item_id)
 
 
@@ -376,13 +414,12 @@ def _rejects_reasoning_effort(exc: Exception) -> bool:
 
 
 def _looks_like_unsupported_response_format(text: str) -> bool:
-    return (
-        "response_format" in text
-        or "text.format" in text
-        or "json_schema" in text
-        or "structured output" in text
-        or ("json" in text and ("not supported" in text or "unsupported" in text))
-    )
+    if 'invalid_json_schema' in text:
+        return False
+    mentions = any(term in text for term in ('response_format', 'text.format', 'json_schema', 'structured output'))
+    rejects = any(term in text for term in ('not supported', 'unsupported', 'not support', 'unknown parameter',
+        'unrecognized', 'unrecognised', 'invalid parameter', 'supported values', 'not available'))
+    return mentions and rejects
 
 
 def _build_context(
@@ -391,7 +428,6 @@ def _build_context(
     user_body: str,
     idea_cards: list[IdeaCard] | None = None,
     plan: TripPlan | None = None,
-    plan_versions: list[PlanVersion] | None = None,
     metrics: dict[str, int | str] | None = None,
 ) -> str:
     recent_messages = [message for message in messages if message.status == "sent"][-MAX_CONTEXT_MESSAGES:]
@@ -404,10 +440,6 @@ def _build_context(
         for card in (idea_cards or [])
     ]
     plan_lines = _plan_context_lines(plan)
-    version_lines = [
-        f"- {version.label}｜{version.status}｜{version.change_summary}"
-        for version in (plan_versions or [])[-MAX_CONTEXT_VERSIONS:]
-    ]
     metric_lines = [f"- {key}: {value}" for key, value in (metrics or {}).items()]
 
     return "\n".join(
@@ -440,9 +472,6 @@ def _build_context(
             "",
             "行程页 / 当前计划：",
             *(plan_lines or ["- 暂无行程"]),
-            "",
-            "行程页 / 版本历史：",
-            *(version_lines or ["- 暂无版本历史"]),
             "",
             f"用户最新消息：{user_body.strip()}",
         ]

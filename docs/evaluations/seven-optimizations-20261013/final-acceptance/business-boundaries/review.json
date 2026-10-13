@@ -1,0 +1,91 @@
+{
+  "dataset_id": "travel_agent_v2",
+  "dataset_version": "2.1.0",
+  "reviews": [
+    {
+      "case_id": "TA2-006",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-008",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-009",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-018",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    },
+    {
+      "case_id": "TA2-039",
+      "attempt": 1,
+      "grade": "pending_review",
+      "reviewer": null,
+      "evidence_paths": [],
+      "failed_checks": [],
+      "scores": {
+        "constraints": null,
+        "executability": null,
+        "evidence": null,
+        "revision_fidelity": null,
+        "display_fidelity": null,
+        "completeness": null
+      },
+      "notes": ""
+    }
+  ]
+}

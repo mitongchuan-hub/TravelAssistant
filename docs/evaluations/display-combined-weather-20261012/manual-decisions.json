@@ -1,0 +1,22 @@
+{
+  "LAT-012": {
+    "1": {"fail": {}, "ambiguous": {"F08": "餐厅信息和meal分类保留，但候选措辞未明确保留；没有明确宣称已锁定，记歧义"}, "weather_fail": {}, "additional": [{"field": "days[0].items[4].duration_text", "severity": "major", "finding": "将时间区间13:00–15:30重复放入时长字段，原文没有独立时长", "output_quote": "13:00–15:30"}]},
+    "2": {"fail": {}, "ambiguous": {"F08": "候选措辞未明确保留，未明示锁定，记歧义"}, "weather_fail": {}, "additional": [{"field": "days[0].items[4].duration_text", "severity": "critical", "finding": "由13:00–15:30补算约2.5小时；原文未明示，不满足只摘录时长规则", "output_quote": "约2.5小时"}]},
+    "3": {"fail": {}, "ambiguous": {"F08": "候选措辞未明确保留，未明示锁定，记歧义"}, "weather_fail": {}, "additional": []}
+  },
+  "LAT-013": {
+    "1": {"fail": {}, "ambiguous": {}, "weather_fail": {}, "additional": []},
+    "2": {"fail": {}, "ambiguous": {}, "weather_fail": {}, "additional": [{"field": "overview", "severity": "major", "finding": "概览称两家备选，原文和每日卡片实际列出三家，数量矛盾", "output_quote": "两家备选门店"}]},
+    "3": {"fail": {}, "ambiguous": {}, "weather_fail": {}, "additional": [{"field": "preparation.clothing[0].body", "severity": "minor", "finding": "衣物说明重复了完整天气预报，天气字段已有相同信息，栏目分工仍可收敛", "output_quote": "天气按当天预报"}]}
+  },
+  "LAT-014": {
+    "1": {"fail": {}, "ambiguous": {}, "weather_fail": {}, "additional": [{"field": "weather[*].notes", "severity": "minor", "finding": "天气备注重复外套和雨伞建议；衣物栏本身完整，未导致信息丢失", "output_quote": "备一把折叠伞"}]},
+    "2": {"fail": {}, "ambiguous": {}, "weather_fail": {}, "additional": [{"field": "weather[3]", "severity": "minor", "finding": "额外全程条目仅承载预报复核提醒，没有新增天气数值，但建议区分全局备注和日期预报", "output_quote": "全程"}, {"field": "days[0].items[3].duration_text", "severity": "minor", "finding": "将原文距离约2–3公里与明示时长一起放入时长字段，信息保留但分类可改善", "output_quote": "轻松步行1–1.5小时，全程约2–3公里"}]},
+    "3": {"fail": {}, "ambiguous": {}, "weather_fail": {}, "additional": [{"field": "preparation.clothing", "severity": "minor", "finding": "雨伞建议按原文多处重复输出，建议保留日期语境后去重", "output_quote": "建议带伞；建议携带雨伞"}, {"field": "days[0].items[3].duration_text", "severity": "minor", "finding": "距离与时长混放，数字来自原文，没有推算", "output_quote": "全程约2–3公里，轻松步行1–1.5小时"}]}
+  },
+  "LAT-015": {
+    "1": {"fail": {"F18": "把出发前1–3天确认的时限挪到了餐厅排队，原文该时限属于门票/入园/场馆开放预约"}, "ambiguous": {}, "weather_fail": {}, "additional": [{"field": "days[0].items[1].time_text", "severity": "critical", "finding": "用10:00抵达与40分钟出站缓冲推导10:40左右入住，原文没有入住时刻且通勤耗时未知", "output_quote": "10:40左右"}, {"field": "pending_items[-1]", "severity": "major", "finding": "餐厅排队原文只有提前电话确认，新增了1–3天的具体建议时限", "output_quote": "热门时段餐厅排队情况（建议出发前1–3天电话确认）"}, {"field": "weather[2]", "severity": "minor", "finding": "全旅行日期范围仅作为实际天气待核实备注；没有编造七天预报，但应与实际预报条目区分", "output_quote": "每日实际天气、降雨与气温待出发前核实"}]},
+    "2": {"fail": {}, "ambiguous": {}, "weather_fail": {}, "additional": [{"field": "preparation.clothing", "severity": "minor", "finding": "外套和雨具重复出现在两个准备条目中，原文信息仍保留", "output_quote": "备一件方便增减的外套和轻便雨具"}]},
+    "3": {"fail": {"F16": "返程时刻只保留最晚/前，原文的建议限定没有在相应字段保留"}, "ambiguous": {}, "weather_fail": {}, "additional": []}
+  }
+}

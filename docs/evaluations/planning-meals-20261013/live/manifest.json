@@ -1,0 +1,55 @@
+{
+  "started_at": "2026-10-13T21:42:40.988590",
+  "dataset": "planning_meals_v1",
+  "model": "qwen3.8:27b",
+  "wire_api": "chat_completions",
+  "reasoning": {},
+  "scope": "live_model_controlled_facts_isolated_memory_store_planning_text_only",
+  "display_conversion": "not_run",
+  "business_http_used": false,
+  "source_hashes": {
+    "app/prompts/agents/planning.txt": "f326586d011c6bfa5f7b0200953b2ee78f06eb9d6ea062b6e196db86b52939ef",
+    "app/prompts/agents/travel_rules.txt": "5297ef021c61d6b2e02de740d17686e4644b2bc7f74fb958909234aee129c8ac",
+    "app/agent_roles.py": "f776465433b15f30aa9e6033af444ab5f9625c787a06ad4fc892620d2a87d949",
+    "app/agent_runtime.py": "5849d48790aae4823b2560f97f1fa38479cdf74697e222c73d1ce53d3bcc1b38",
+    "app/planning.py": "41484fce62372db3362ad8b3391111ca022fed5d8bff79c38b3b32304d6ecc0b",
+    "tests/performance/check_planning_prompt.py": "477641f7ee7b89856c31f24e2650dd2fc622835be09e45bc8e765509347a4776"
+  },
+  "cases": [
+    "MEAL-001",
+    "MEAL-002",
+    "MEAL-003",
+    "MEAL-004"
+  ],
+  "results": [
+    {
+      "case": "MEAL-001",
+      "machine_checks_pass": true,
+      "model_calls": 2,
+      "transport_failed": false
+    },
+    {
+      "case": "MEAL-002",
+      "machine_checks_pass": true,
+      "model_calls": 2,
+      "transport_failed": false
+    },
+    {
+      "case": "MEAL-003",
+      "machine_checks_pass": true,
+      "model_calls": 3,
+      "transport_failed": false
+    },
+    {
+      "case": "MEAL-004",
+      "machine_checks_pass": true,
+      "model_calls": 2,
+      "transport_failed": false
+    }
+  ],
+  "quality_grade": "pending_manual_review",
+  "business_db_before": "27410b8fea937856f427d23307ae125492fe4fc6d4953902ad92da4cb2b7d92d",
+  "finished_at": "2026-10-13T21:47:02.844945",
+  "business_db_after": "27410b8fea937856f427d23307ae125492fe4fc6d4953902ad92da4cb2b7d92d",
+  "business_db_unchanged": true
+}

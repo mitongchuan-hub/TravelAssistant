@@ -1,0 +1,12 @@
+{"event": "case_start", "case": "PP-001"}
+{"case": "PP-001", "machine_checks_pass": true, "model_calls": 2, "transport_failed": false}
+{"event": "case_start", "case": "PP-002"}
+{"case": "PP-002", "machine_checks_pass": true, "model_calls": 3, "transport_failed": false}
+{"event": "case_start", "case": "PP-003"}
+{"case": "PP-003", "machine_checks_pass": true, "model_calls": 2, "transport_failed": false}
+{"event": "case_start", "case": "PP-004"}
+{"case": "PP-004", "machine_checks_pass": false, "model_calls": 10, "transport_failed": false}
+{"event": "case_start", "case": "PP-005"}
+{"case": "PP-005", "machine_checks_pass": true, "model_calls": 3, "transport_failed": false}
+{"event": "case_start", "case": "PP-006"}
+{"case": "PP-006", "machine_checks_pass": true, "model_calls": 3, "transport_failed": false}

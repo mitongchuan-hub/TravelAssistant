@@ -1,0 +1,153 @@
+{
+  "case_id": "BOUNDARY-002",
+  "attempt": 1,
+  "seconds": 22.3289821999997,
+  "source_text": "山城两日草案\n2026年11月14日—15日，2人，总预算2000元，含一晚住宿餐饮市内交通，不含往返票。\n天气只提供11月14日前后：约12–18°C，降雨概率最高约30%，查询时间11月10日。建议带薄外套，可备轻便雨具；出发当天复核。没有11月15日的预报。\n第1天：10:00到城市站，出站预留约40分钟缓冲（估算），之后前往酒店寄存行李，入住时间未定。午后河边散步。\n第2天：上午退房后附近休息，18:00离开城市站。\n住宿候选二选一：甲酒店（北路1号）或乙酒店（南路2号）；一晚一间，两人合计预算上限600–800元，非报价。价格、房态和是否含早待确认，尚未提供预订状态。",
+  "source_dates": [
+    "2026-11-14",
+    "2026-11-15"
+  ],
+  "result": {
+    "display": {
+      "schema_version": "1.1",
+      "title": "山城两日草案",
+      "overview": "2026年11月14日—15日，2人，总预算2000元，含一晚住宿餐饮市内交通，不含往返票。",
+      "budget_note": "总预算2000元，含一晚住宿餐饮市内交通，不含往返票。住宿两人合计预算上限600–800元，非报价。",
+      "weather": [
+        {
+          "date_text": "11月14日前后",
+          "summary": null,
+          "temperature_text": "约12–18°C",
+          "precipitation_text": "降雨概率最高约30%",
+          "queried_at_text": "11月10日",
+          "notes": [
+            "出发当天复核",
+            "没有11月15日的预报"
+          ]
+        }
+      ],
+      "days": [
+        {
+          "date": "2026-11-14",
+          "label": "第1天",
+          "theme": null,
+          "items": [
+            {
+              "time_text": "10:00",
+              "title": "到城市站",
+              "category": "transport",
+              "location": "城市站",
+              "duration_text": null,
+              "description": "10:00到城市站",
+              "cost_text": null,
+              "notes": []
+            },
+            {
+              "time_text": null,
+              "title": "出站缓冲",
+              "category": "rest",
+              "location": "城市站",
+              "duration_text": "约40分钟缓冲（估算）",
+              "description": "出站预留约40分钟缓冲（估算）",
+              "cost_text": null,
+              "notes": []
+            },
+            {
+              "time_text": null,
+              "title": "前往酒店寄存行李",
+              "category": "accommodation",
+              "location": null,
+              "duration_text": null,
+              "description": "前往酒店寄存行李",
+              "cost_text": null,
+              "notes": [
+                "入住时间未定"
+              ]
+            },
+            {
+              "time_text": "午后",
+              "title": "河边散步",
+              "category": "activity",
+              "location": "河边",
+              "duration_text": null,
+              "description": "午后河边散步",
+              "cost_text": null,
+              "notes": []
+            }
+          ]
+        },
+        {
+          "date": "2026-11-15",
+          "label": "第2天",
+          "theme": null,
+          "items": [
+            {
+              "time_text": "上午",
+              "title": "退房",
+              "category": "accommodation",
+              "location": null,
+              "duration_text": null,
+              "description": "上午退房",
+              "cost_text": null,
+              "notes": []
+            },
+            {
+              "time_text": null,
+              "title": "附近休息",
+              "category": "rest",
+              "location": null,
+              "duration_text": null,
+              "description": "附近休息",
+              "cost_text": null,
+              "notes": []
+            },
+            {
+              "time_text": "18:00",
+              "title": "离开城市站",
+              "category": "transport",
+              "location": "城市站",
+              "duration_text": null,
+              "description": "18:00离开城市站",
+              "cost_text": null,
+              "notes": []
+            }
+          ]
+        }
+      ],
+      "preparation": {
+        "clothing": [
+          {
+            "title": "薄外套",
+            "body": "建议带薄外套"
+          },
+          {
+            "title": "轻便雨具",
+            "body": "可备轻便雨具"
+          }
+        ],
+        "accommodation": [
+          {
+            "title": "住宿候选",
+            "body": "甲酒店（北路1号）或乙酒店（南路2号）"
+          },
+          {
+            "title": "住宿规格",
+            "body": "一晚一间，两人合计预算上限600–800元，非报价"
+          },
+          {
+            "title": "待确认事项",
+            "body": "价格、房态和是否含早待确认，尚未提供预订状态"
+          }
+        ]
+      },
+      "pending_items": [
+        "住宿价格、房态和是否含早待确认",
+        "入住时间未定",
+        "出发当天复核天气"
+      ],
+      "risks": []
+    },
+    "display_source_hash": "b5be84c2204d28db9934a183095cd6659ed68ea861211f49f3170619ee99d92a",
+    "display_status": "ready"
+  }
+}

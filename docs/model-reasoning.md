@@ -1,21 +1,22 @@
 # 按 Agent 角色设置思考强度
 
-历史的严格结构化响应探测只用于接口兼容性证据；当前行程链路直接保存文字，不发送行程 response_format，也没有结构化角色。
+当前工作流中，意图识别、闲聊与展示转换是无工具 LLM 节点；查询、规划、修改是三个共用 Loop 的业务 Agent。规划/修改直接输出完整文字，后续 display LLM 按 JSON Schema 提取展示数据。
 
-角色默认思考强度没有因文字行程改造变化，具体链路见 [当前实现](agent-role-implementation.md)。
+具体链路见 [当前实现](agent-role-implementation.md)。
 
 ## 默认值与配置
 
 | 角色/模式 | 默认请求值 |
 | --- | --- |
-| main（聊天和委派） | low |
-| requirements | low |
+| main（意图识别） | low |
+| chat（闲聊） | low |
+| display（展示转换） | low |
 | research | low |
 | planning | medium |
 | revision（修改） | medium |
 | revision / explain（只读解释） | low |
 
-配置优先级：单角色环境变量 > 全局环境变量 > 上表代码默认值。环境变量留空表示未覆盖；显式写 `default` 表示不发送思考参数，恢复服务端默认行为。
+配置优先级：单角色环境变量 > 全局环境变量 > 上表代码默认值。chat 未配置单独值时可沿用 MAIN 覆盖；独立 requirements 配置不再使用。环境变量留空表示未覆盖；显式写 `default` 表示不发送思考参数，恢复服务端默认行为。
 
 ```env
 # 可选全局覆盖：全部使用服务端默认行为
@@ -23,7 +24,8 @@ OPENAI_REASONING_EFFORT=default
 
 # 可选角色覆盖：优先于全局配置
 OPENAI_REASONING_EFFORT_MAIN=low
-OPENAI_REASONING_EFFORT_REQUIREMENTS=low
+OPENAI_REASONING_EFFORT_CHAT=low
+OPENAI_REASONING_EFFORT_DISPLAY=low
 OPENAI_REASONING_EFFORT_RESEARCH=low
 OPENAI_REASONING_EFFORT_PLANNING=medium
 OPENAI_REASONING_EFFORT_REVISION=medium
@@ -35,17 +37,19 @@ OPENAI_REASONING_EFFORT_REVISION=medium
 
 修改 `.env` 后需重启本地服务才能加载。新模型服务若暂未验证，可先配置 `OPENAI_REASONING_EFFORT=default`，再验证支持情况。
 
-## 当前 Responses 模型配置
+## 2026-10-08 协议切换验证（历史记录）
 
 2026-10-08 本机切换为 `https://mirror.xinshu.ai/v1` 的 `gpt-5.6-sol`，使用 `OPENAI_WIRE_API=responses`、`OPENAI_STORE_RESPONSES=false`，并关闭备用模型。`/models` 列出目标模型，实际 `/responses` 调用返回对应模型且状态 completed。
 
 Responses 将统一的角色档位映射到 `reasoning.effort`，工具定义映射为顶层 function，工具结果使用 function_call_output。每次请求发送 store=false，工具续轮在本地重放必要的 reasoning/function_call 条目，不传 previous_response_id；请求 include reasoning.encrypted_content 以兼容无服务端存储的续轮。加密推理状态不写入文字日志或业务数据。非 completed 输出视作失败，不保存部分正文。
 
-协议适配位于 `app/model_transport.py`；`test_model_transport.py` 覆盖真实 SDK 的请求转换、工具续轮、加密条目保留、格式、存储开关、参数拒绝与部分响应保护。共享角色 Loop 和文字行程保存协议沿用现有实现。
+协议适配位于 `app/model_transport.py`；`tests/automated/test_model_transport.py` 覆盖真实 SDK 的请求转换、工具续轮、加密条目保留、格式、存储开关、参数拒绝与部分响应保护。共享角色 Loop 和文字行程保存协议沿用现有实现。
 
 此次回归310项通过。真实模型在独立数据中完成聊天、需求更新、查询、规划、修改五类验收，共11次Responses请求，覆盖五个角色、low/medium档位与4次工具续轮，无思考参数降级；每次捕获请求均为目标模型、store=false且无previous_response_id。生成与修改各新增一个文字版本，独立SQLite重启保留内容，业务数据库哈希未变化。查询工具采用受控未知结果，这证明接口与保存链路兼容，不代表整套旅行质量验收已通过。
 
 本机原始结果：`C:\Users\16156\AppData\Local\Temp\travelassistant-gpt-switch-947a71114841491d867d11d982038264\smoke.json`。
+
+当前工作流验证与实际调用角色见 [2026-10-10验收报告](workflow-evaluation-20261010.md)。以下保留此前角色架构的验证记录。
 
 ## 历史 Kimi K3 服务的证据
 
@@ -87,8 +91,8 @@ Responses 将统一的角色档位映射到 `reasoning.effort`，工具定义映
 - `app/agent_runtime.py`：把角色/模式对应的值传到每次实际请求，维护本轮拒绝记录。
 - `app/agent_client.py`：发送参数、窄范围降级与重试、请求/响应计数日志。
 - `.env.example`：可选配置示例。
-- `test_reasoning.py`：真实 OpenAI SDK 的 MockTransport 请求检查，覆盖默认值、覆盖优先级、原始请求参数、错误分类、共享预算、备用模型隔离、格式回退与不记录思考正文。
-- `tests/live_reasoning_case.py`：可手动运行的真实接口验收，不导入业务 Store，不修改业务数据库。
+- `tests/automated/test_reasoning.py`：真实 OpenAI SDK 的 MockTransport 请求检查，覆盖默认值、覆盖优先级、原始请求参数、错误分类、共享预算、备用模型隔离、格式回退与不记录思考正文。
+- 当前真实模型验收入口为 `tests/run_travel_dataset_batch.py`，真实服务耗时测量为 `tests/performance/measure_workflow_latency.py`。早期的独立思考验收脚本已随测试目录整理删除；下面的历史统计仍保留原始成绩。
 
 最终 Python 回归为 **267 passed in 17.52s**；compileall 与 git diff --check 通过。真实低/中档接口和工具往返检查通过，业务数据库哈希未变化。此改动不改变 UI、子 Agent 权限或业务保存协议。
 

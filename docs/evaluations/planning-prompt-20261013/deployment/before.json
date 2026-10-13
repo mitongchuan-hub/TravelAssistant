@@ -1,0 +1,14 @@
+{
+  "schema_version": 5,
+  "trip_count": 15,
+  "message_count": 88,
+  "active_tasks": 0,
+  "active_display_jobs": 0,
+  "hashes": {
+    "users": "c30035ebcddcb6886ddbc1137ac6f12f0e4d4acbfb47eebf9b077db7b1dd1d38",
+    "trips": "58a040059c2212f38a0446248ef7d08749ce45547b3656536689fd863e026e9e",
+    "messages": "7cfe476a6b7488dea0b091a1ff4e8e80403a59e3a29ce066d451f316bb42e8f5",
+    "plans": "002f9127535c8b26460f19c38145319868e4eca24abb41ee1c1c36742b715a34",
+    "idea_cards": "e9caa805dbf94c537a931ec7f0cd110f76d3e941eab3c1086b6cf8a0627dfeb1"
+  }
+}

@@ -10,7 +10,7 @@
     {% block page_styles %}{% endblock %}
   </head>
   <body>
-    <main class="phone-shell{{ ' phone-shell--itinerary' if tab | default('') == 'itinerary' else '' }}">
+    <main class="phone-shell{{ ' phone-shell--itinerary' if tab | default('') == 'itinerary' else ' phone-shell--chat' if tab | default('') == 'chat' else '' }}">
       {% block content %}{% endblock %}
     </main>
     <script src="{{ url_for('static', path='/app.js') }}?v={{ static_version }}"></script>

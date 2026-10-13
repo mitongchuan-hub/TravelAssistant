@@ -1,0 +1,4 @@
+{"event": "job_start", "job": "business-chain"}
+{"event": "job_finished", "job": "business-chain", "returncode": 0}
+{"event": "job_start", "job": "business-boundaries"}
+{"event": "job_finished", "job": "business-boundaries", "returncode": 0}

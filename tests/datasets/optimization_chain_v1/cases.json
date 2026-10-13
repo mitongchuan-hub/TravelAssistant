@@ -1,0 +1,19 @@
+{
+  "dataset_id": "optimization_chain_v1",
+  "version": "1.0.0",
+  "current_date": "2026-10-13",
+  "fixtures": {
+    "trip": {"requirements": {"city": "杭州", "start_date": "2026-11-14", "end_date": "2026-11-15", "arrival_time": "10:00", "departure_time": "18:00", "arrival_location": "杭州东站", "departure_location": "杭州东站", "travelers": 2, "budget_amount": "2000", "budget_scope": "total", "budget_coverage": "含住宿餐饮市内交通门票，不含往返车票", "must_visit": ["西湖"], "dietary": ["不吃辣"], "pace": "轻松"}}
+  },
+  "tool_fixtures": {"baseline": {}},
+  "cases": [{
+    "id": "CHAIN-001", "title": "同一旅行更新、生成、精确修改与只读查询", "category": "workflow", "acceptance": "current", "execution_mode": "live_agent", "setup": "trip", "tool_fixture": "baseline",
+    "steps": [
+      {"action": "chat", "input": "两人总预算改为2500元，费用范围不变，先记下来，不要生成行程。", "expected_plan_changed": false, "checks": ["只更新预算，费用范围保留"], "assertions": {"requirements_equal": {"budget_amount": "2500", "budget_scope": "total"}, "requirements_preserved": ["budget_coverage", "start_date", "end_date", "dietary"], "external_calls_equal": 0}},
+      {"action": "plan", "input": null, "expected_plan_changed": true, "checks": ["按当前预算规划两日一晚，正文与卡片绑定一致"], "assertions": {"requirements_equal": {"budget_amount": "2500"}}},
+      {"action": "revision", "input": "只在完整行程原文末尾追加一行“补充提醒：带水，慢慢走。”，其余所有文字逐字保持，不查询外部资料。", "expected_plan_changed": true, "checks": ["追加原文，不重排、不重新查询"], "assertions": {"text_append": "\n补充提醒：带水，慢慢走。", "requirements_preserved": ["budget_amount", "budget_coverage", "dietary"], "external_calls_equal": 0}},
+      {"action": "chat", "input": "解释当前方案有哪些待核实事项，只读取已保存依据，不修改需求或行程，也不重新查询。", "expected_plan_changed": false, "checks": ["读取最新版及待核实事项"], "assertions": {"text_preserved": true, "requirements_preserved": ["budget_amount", "budget_coverage", "dietary"], "external_calls_equal": 0}}
+    ]
+  }],
+  "profiles": {"current": ["CHAIN-001"]}
+}

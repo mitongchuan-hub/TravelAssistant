@@ -1,0 +1,14 @@
+{
+  "started_at": "2026-10-13T11:52:10.129119",
+  "transport": "streamable_http_mcp",
+  "timeout_seconds": 20.0,
+  "source_hashes": {
+    "app/tools/amap_mcp.py": "9187b469507a95bc760c5e9a68054fa794c861947dcd9769a6ad2571887b8218",
+    "app/tools/places.py": "15013734d509309722437e0f5e8a101326d310606f25a5fd630961ecf8bad777",
+    "app/tools/food.py": "0c0018f3733df8fe243824c779749ee85fb5227772bfab96445cf4f1fa1ced06",
+    "app/tools/routes.py": "a1b58e1cc4399da5f09163131c2c98a6d9dbd3647f2d86c0408feb23eb317efb",
+    "requirements.txt": "0b4d1ada9f62c03fbf8a553ca93aa9813808b711962a2ce725d0dafecfdf190f"
+  },
+  "scope": "direct_readonly_tools_no_llm_no_store",
+  "quality_grade": "not_evaluated"
+}

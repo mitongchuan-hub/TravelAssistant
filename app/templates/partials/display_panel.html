@@ -1,0 +1,14 @@
+{% set display = plan.display | display_view %}
+<div data-display-panel data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash if display_state is defined else plan.display_source_hash }}"
+     data-display-status="{{ plan.display_status }}" data-business-busy="{{ 'true' if display_state is defined and display_state.busy else 'false' }}" data-version="{{ display_state.version if display_state is defined else plan.display_status }}">
+  {% include 'partials/display_summary.html' %}
+  {% if plan.display_status == 'pending' %}
+    <p class="display-progress" role="status" data-display-notice><span data-display-notice-text>行程已生成，正在整理卡片。可以先阅读完整文字。</span></p>
+  {% elif not plan.display and plan.text %}
+    <p class="display-progress" role="status" data-display-notice>
+      <span data-display-notice-text>{% if plan.display_status == 'fallback' %}卡片暂未整理完成，完整文字已保留。{% else %}完整行程已保存，可以整理为按天卡片。{% endif %}</span>
+      {% if display_state is not defined or display_state.enabled %}<button type="button" data-display-retry{% if display_state is defined and display_state.busy %} disabled{% endif %}>{% if plan.display_status == 'fallback' %}重新整理卡片{% else %}整理卡片{% endif %}</button>{% endif %}
+    </p>
+  {% endif %}
+  {% if plan.display %}{% include 'partials/display_itinerary.html' %}{% endif %}
+</div>

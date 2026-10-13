@@ -12,17 +12,21 @@
 {% block title %}{{ trip.destination }}{% endblock %}
 
 {% block page_styles %}
+  {% if tab == 'chat' %}<link rel="stylesheet" href="{{ url_for('static', path='/chat.css') }}?v={{ static_version }}" />{% endif %}
+  {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/workflow.css') }}?v={{ static_version }}" />{% endif %}
   {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/places.css') }}?v={{ static_version }}" />{% endif %}
   {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/itinerary.css') }}?v={{ static_version }}" />{% endif %}
 {% endblock %}
 {% block page_scripts %}
+  {% if tab == 'chat' %}<script src="{{ url_for('static', path='/chat.js') }}?v={{ static_version }}"></script>{% endif %}
   {% if travel_tasks is defined %}<script src="{{ url_for('static', path='/tasks.js') }}?v={{ static_version }}"></script>{% endif %}
   {% if tab == 'itinerary' %}<script src="{{ url_for('static', path='/places.js') }}?v={{ static_version }}"></script>{% endif %}
+  {% if tab == 'itinerary' %}<script src="{{ url_for('static', path='/display-itinerary.js') }}?v={{ static_version }}"></script>{% endif %}
   {% if tab == 'itinerary' %}<script src="{{ url_for('static', path='/itinerary.js') }}?v={{ static_version }}"></script>{% endif %}
 {% endblock %}
 
 {% block content %}
-<section class="workspace {{ 'workspace--board' if tab == 'board' else '' }}"{% if travel_tasks is defined %} data-travel-tasks-url="/api/trips/{{ trip.id }}/tasks"{% endif %}>
+<section class="workspace {{ 'workspace--board' if tab == 'board' else 'workspace--chat' if tab == 'chat' else '' }}"{% if travel_tasks is defined %} data-travel-tasks-url="/api/trips/{{ trip.id }}/tasks"{% endif %}>
   {% if tab == "board" %}
     <section class="idea-wall-screen">
       <header class="idea-wall-top">
@@ -75,29 +79,35 @@
     </section>
   {% elif tab == "chat" %}
     <section class="travel-tab-screen chat-screen">
-      <header class="travel-page-top">
-        <a href="/trips">我的旅行</a>
-        <div>
+      <header class="chat-top">
+        <a class="chat-back" href="/trips" aria-label="返回我的旅行">‹</a>
+        <div class="chat-heading">
           <h1>{{ trip.destination | replace("周末旅行", "") }}</h1>
-          <p>{{ trip.date_range }} · 旅行规划 Agent</p>
+          <p>{{ trip.date_range }}</p>
         </div>
-        <div class="chat-header-actions">
-          <a class="text-link" href="/workspace/{{ trip.id }}/requirements">旅行需求</a>
-          <form action="/workspace/{{ trip.id }}/messages/clear" method="post" onsubmit="return confirm('确定要清空这次旅行的全部聊天记录吗？清空后无法恢复。');">
-            <button type="submit" class="clear-chat-button">清空聊天</button>
-          </form>
-        </div>
+        <details class="chat-menu" data-chat-menu>
+          <summary aria-label="更多聊天操作" title="更多">⋯</summary>
+          <div class="chat-menu-panel">
+            <a href="/workspace/{{ trip.id }}/requirements">旅行需求</a>
+            <form action="/workspace/{{ trip.id }}/messages/clear" method="post" onsubmit="return confirm('确定要清空这次旅行的全部聊天记录吗？清空后无法恢复。');">
+              <button type="submit" class="clear-chat-button">清空聊天</button>
+            </form>
+          </div>
+        </details>
       </header>
 
-      <section class="chat-list" aria-live="polite" aria-label="与旅行规划 Agent 的对话" data-chat-list data-messages-url="/workspace/{{ trip.id }}/messages/partial">
+      <section class="chat-list" aria-label="与旅行助手的对话" data-chat-list data-messages-url="/workspace/{{ trip.id }}/messages/partial">
         {% include "partials/chat_messages.html" %}
       </section>
       <section class="chat-dock" aria-label="聊天输入区">
+        <button class="chat-new-replies" type="button" data-chat-new hidden>有新回复 ↓</button>
         <form class="composer" action="/workspace/{{ trip.id }}/messages" method="post" data-api-url="/api/trips/{{ trip.id }}/messages" data-current-name="{{ current_user.name }}" data-current-initials="{{ current_user.initials }}">
           {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
-          <input name="body" value="{{ request.query_params.get('draft', '') }}" placeholder="告诉 Agent 你的旅行想法" autocomplete="off" required />
+          <textarea name="body" rows="1" aria-label="聊天消息" placeholder="写下你的旅行想法…" autocomplete="off" required>{{ request.query_params.get('draft', '') }}</textarea>
           <button type="submit" aria-label="发送消息" title="发送消息"><span aria-hidden="true">↑</span></button>
         </form>
+        <p class="chat-send-feedback" data-chat-send-feedback role="status" hidden></p>
+        <span class="sr-only" data-chat-announcement role="status" aria-live="polite"></span>
       </section>
       {{ bottom_nav(trip, "chat") }}
     </section>
@@ -107,30 +117,27 @@
         <a href="/trips">我的旅行</a>
         <div>
           <h1>{{ trip.destination | replace("周末旅行", "行程") }}</h1>
-          <p>{{ trip.date_range }}</p>
+          {% if not plan.text %}<p>{{ metrics.plan_date_range }}</p>{% endif %}
         </div>
       </header>
 
       <section class="itinerary-panel">
+        {% if not plan.text %}
         <section class="itinerary-summary-card" aria-label="行程摘要">
           <div class="itinerary-summary-heading">
             <div class="itinerary-summary-copy">
               <p class="itinerary-summary-kicker">行程概览</p>
-              <p class="itinerary-summary-date">{{ trip.date_range | replace("-", "—") }}</p>
+              <p class="itinerary-summary-date">{{ metrics.plan_date_range | replace(" - ", " — ") }}</p>
               {% if metrics.date_coverage_note %}<p class="itinerary-summary-coverage">{{ metrics.date_coverage_note }}</p>{% endif %}
             </div>
           </div>
           <div class="itinerary-summary-stats" aria-label="行程统计">
-            {% if plan.text %}
-              <div><strong>{{ metrics.latest_version }}</strong><span>当前版本</span></div>
-              <div><strong>{{ plan.status }}</strong><span>行程状态</span></div>
-            {% else %}
-              <div><strong>{{ metrics.plan_day_count }}</strong><span>天已安排</span></div>
-              <div><strong>{{ metrics.plan_item_count }}</strong><span>个行程安排</span></div>
-            {% endif %}
+            <div><strong>{{ metrics.plan_day_count }}</strong><span>天已安排</span></div>
+            <div><strong>{{ metrics.plan_item_count }}</strong><span>个行程安排</span></div>
           </div>
         </section>
-        {% if plan.overview or plan.constraints_met or plan.pending_items or plan.risks %}
+        {% endif %}
+        {% if not plan.text and (plan.overview or plan.constraints_met or plan.pending_items or plan.risks) %}
           <section class="plan-details" aria-label="安排说明">
             <div class="plan-details-heading">
               <strong>安排说明</strong>
@@ -209,10 +216,16 @@
           {% endif %}
         {% endif %}
         {% if plan.text %}
-          <article class="text-itinerary" aria-label="行程安排">
+          <section data-display-controller data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash if display_state is defined else plan.display_source_hash }}"
+                   data-state-url="/api/trips/{{ trip.id }}/plan-state" data-partial-url="/workspace/{{ trip.id }}/display/partial" data-retry-url="/api/trips/{{ trip.id }}/display">
+            {% include 'partials/display_panel.html' %}
+          </section>
+          <details class="display-original"{% if not plan.display %} open{% endif %}><summary>查看完整行程原文</summary>
+          <article class="text-itinerary" aria-label="行程原文">
             <h2>{{ plan.title }}</h2>
             <div class="text-itinerary-content" data-itinerary-text>{{ plan.text }}</div>
           </article>
+          </details>
           {% include 'partials/plan_evidence.html' %}
           <section class="text-itinerary-actions" aria-label="行程操作">
             {% if plan.status != '已确认' %}
@@ -315,22 +328,6 @@
             </form>
             <a class="secondary-action compact" href="/workspace/{{ trip.id }}?tab=chat">回到对话补充需求</a>
           </div>
-        {% endif %}
-        {% if plan_versions | length > 1 %}
-          <details class="version-history" aria-label="行程版本历史">
-            <summary>版本记录 · {{ plan_versions | length }} 个版本</summary>
-            {% for version in plan_versions | reverse %}
-              <article>
-                <strong>{{ version.label }}</strong>
-                <span>{{ version.created_at }}</span>
-                <p>{{ version.change_summary }}</p>
-                <form action="/workspace/{{ trip.id }}/plan/restore" method="post">
-                  <input type="hidden" name="version_id" value="{{ version.id }}" />
-                  <button type="submit">恢复这版</button>
-                </form>
-              </article>
-            {% endfor %}
-          </details>
         {% endif %}
       </section>
       {% if plan.days %}

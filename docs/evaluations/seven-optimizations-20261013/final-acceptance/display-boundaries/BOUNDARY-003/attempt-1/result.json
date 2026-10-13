@@ -1,0 +1,80 @@
+{
+  "case_id": "BOUNDARY-003",
+  "attempt": 1,
+  "seconds": 25.812895999999455,
+  "source_text": "城市一日草案\n2026年11月14日，2人，总预算900元，不含往返票，当天不住宿。\n上午博物馆参观：建议出发前1–3天确认开放、门票和预约；仅常设展免门票，特展价格未知。\n午餐：候选甲餐厅（东路1号）、乙餐厅（西路2号）、丙餐厅（北路3号），三选一。建议当天电话确认营业与做法。有人花生严重过敏，菜名不能证明无花生或无交叉污染，无法确认安全就不要在该店用餐。\n下午：若雨大则改为室内休息；否则可沿河散步，不同时安排两项。\n没有具体天气预报与衣物建议。",
+  "source_dates": [
+    "2026-11-14"
+  ],
+  "result": {
+    "display": {
+      "schema_version": "1.1",
+      "title": "城市一日草案",
+      "overview": "2026年11月14日，2人，总预算900元，不含往返票，当天不住宿。",
+      "budget_note": "2人，总预算900元，不含往返票",
+      "weather": [],
+      "days": [
+        {
+          "date": "2026-11-14",
+          "label": "第1天",
+          "theme": null,
+          "items": [
+            {
+              "time_text": "上午",
+              "title": "博物馆参观",
+              "category": "activity",
+              "location": null,
+              "duration_text": null,
+              "description": "建议出发前1–3天确认开放、门票和预约",
+              "cost_text": "仅常设展免门票，特展价格未知",
+              "notes": []
+            },
+            {
+              "time_text": null,
+              "title": "午餐",
+              "category": "meal",
+              "location": "甲餐厅（东路1号）、乙餐厅（西路2号）、丙餐厅（北路3号）",
+              "duration_text": null,
+              "description": "候选甲餐厅（东路1号）、乙餐厅（西路2号）、丙餐厅（北路3号），三选一",
+              "cost_text": null,
+              "notes": [
+                "建议当天电话确认营业与做法",
+                "有人花生严重过敏，菜名不能证明无花生或无交叉污染，无法确认安全就不要在该店用餐"
+              ]
+            },
+            {
+              "time_text": "下午",
+              "title": "沿河散步",
+              "category": "activity",
+              "location": null,
+              "duration_text": null,
+              "description": "若雨大则改为室内休息；否则可沿河散步，不同时安排两项",
+              "cost_text": null,
+              "notes": []
+            }
+          ]
+        }
+      ],
+      "preparation": {
+        "clothing": [],
+        "accommodation": [
+          {
+            "title": "住宿说明",
+            "body": "当天不住宿"
+          }
+        ]
+      },
+      "pending_items": [
+        "建议出发前1–3天确认开放、门票和预约",
+        "建议当天电话确认营业与做法",
+        "特展价格未知"
+      ],
+      "risks": [
+        "有人花生严重过敏，菜名不能证明无花生或无交叉污染，无法确认安全就不要在该店用餐",
+        "若雨大则改为室内休息，不同时安排两项"
+      ]
+    },
+    "display_source_hash": "a857fe407a8a9e3a55d17fd1f71adf41d06a2fbc31bfb4a3d6bea13dbf25710f",
+    "display_status": "ready"
+  }
+}

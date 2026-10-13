@@ -1,0 +1,382 @@
+{
+  "rows": [
+    {
+      "tool": "search_places",
+      "arguments": {
+        "city": "杭州",
+        "keywords": "杭州东站"
+      },
+      "seconds": 1.2793329000000995,
+      "result": {
+        "status": "available",
+        "city": "杭州",
+        "keywords": "杭州东站",
+        "candidates": [
+          {
+            "poi_id": "B023B08WDR",
+            "name": "杭州东站",
+            "address": "天城路1号",
+            "longitude": 120.212605,
+            "latitude": 30.290846,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T01:38:28+00:00",
+            "transport": "amap_mcp",
+            "mcp_tools": [
+              "maps_text_search",
+              "maps_search_detail"
+            ]
+          },
+          {
+            "poi_id": "B023B1EQ98",
+            "name": "杭州东站(东进站口)",
+            "address": "天城路1号杭州东站",
+            "longitude": 120.214623,
+            "latitude": 30.292279,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T01:38:28+00:00",
+            "transport": "amap_mcp",
+            "mcp_tools": [
+              "maps_text_search",
+              "maps_search_detail"
+            ]
+          },
+          {
+            "poi_id": "B0FFHGISS4",
+            "name": "杭州东站(西进站口)",
+            "address": "火车东站地铁站C2口西南50米",
+            "longitude": 120.211468,
+            "latitude": 30.290144,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T01:38:28+00:00",
+            "transport": "amap_mcp",
+            "mcp_tools": [
+              "maps_text_search",
+              "maps_search_detail"
+            ]
+          }
+        ],
+        "source": "高德地图 POI",
+        "transport": "amap_mcp",
+        "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；营业、开放和预约情况仍需另行核实。"
+      }
+    },
+    {
+      "tool": "search_places",
+      "arguments": {
+        "city": "杭州",
+        "keywords": "西湖湖滨公园"
+      },
+      "seconds": 0.8363180999999713,
+      "result": {
+        "status": "available",
+        "city": "杭州",
+        "keywords": "西湖湖滨公园",
+        "candidates": [
+          {
+            "poi_id": "B023B05MLT",
+            "name": "杭州西湖风景名胜区-湖滨公园",
+            "address": "龙井路1号杭州西湖风景名胜区内(东北角)",
+            "longitude": 120.158818,
+            "latitude": 30.256583,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T01:38:29+00:00",
+            "transport": "amap_mcp",
+            "mcp_tools": [
+              "maps_text_search",
+              "maps_search_detail"
+            ]
+          },
+          {
+            "poi_id": "B0HUY5RU2L",
+            "name": "杭州西湖风景名胜区-湖滨公园停车点",
+            "address": "西湖隧道西湖风景区",
+            "longitude": 120.158342,
+            "latitude": 30.25805,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T01:38:29+00:00",
+            "transport": "amap_mcp",
+            "mcp_tools": [
+              "maps_text_search",
+              "maps_search_detail"
+            ]
+          },
+          {
+            "poi_id": "B0L0HPPDV8",
+            "name": "西湖自划船",
+            "address": "西湖边六公园",
+            "longitude": 120.156927,
+            "latitude": 30.258832,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-13T01:38:29+00:00",
+            "transport": "amap_mcp",
+            "mcp_tools": [
+              "maps_text_search",
+              "maps_search_detail"
+            ]
+          }
+        ],
+        "source": "高德地图 POI",
+        "transport": "amap_mcp",
+        "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；营业、开放和预约情况仍需另行核实。"
+      }
+    },
+    {
+      "tool": "search_food",
+      "arguments": {
+        "city": "杭州",
+        "keywords": "杭帮菜",
+        "max_results": 3
+      },
+      "seconds": 0.8041530000000421,
+      "result": {
+        "status": "available",
+        "city": "杭州",
+        "keywords": "杭帮菜",
+        "total_matched": 20,
+        "recommendations": [
+          {
+            "name": "乔村二十八道(钱江世纪城店)",
+            "rating": "4.9",
+            "cost_per_person_cny": 166.0,
+            "address": "盈丰街道左右商务中心2幢",
+            "district": null,
+            "business_area": "亚奥万象天地",
+            "cuisine_tags": null,
+            "open_time": "周一至周五 11:00-14:00,17:00-21:00；周六至周日 11:00-14:00,16:40-21:00",
+            "tel": null
+          },
+          {
+            "name": "四灶儿·地道杭帮菜(湖墅南路店)",
+            "rating": "4.7",
+            "cost_per_person_cny": 102.0,
+            "address": "湖墅南路258号",
+            "district": null,
+            "business_area": null,
+            "cuisine_tags": null,
+            "open_time": "周一至周日 10:30-21:30",
+            "tel": null
+          },
+          {
+            "name": "新周记·巷子里的江南味(鼓楼店)",
+            "rating": "4.7",
+            "cost_per_person_cny": 81.0,
+            "address": "十五奎巷2-3号(近鼓楼城门)",
+            "district": null,
+            "business_area": "吴山",
+            "cuisine_tags": null,
+            "open_time": "周一至周日 10:30-23:30",
+            "tel": null
+          }
+        ],
+        "source": "高德地图 POI",
+        "transport": "amap_mcp",
+        "note": "评分排序仅针对本次已获取详情的候选，非全城排名。人均为元/人参考，缺失信息待核实；营业、电话、忌口和排队仍需确认。"
+      }
+    },
+    {
+      "tool": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B08WDR",
+        "destination_poi_id": "B023B05MLT",
+        "mode": "walking"
+      },
+      "seconds": 0.2936270999998669,
+      "result": {
+        "origin_poi_id": "B023B08WDR",
+        "origin_name": "杭州东站",
+        "destination_poi_id": "B023B05MLT",
+        "destination_name": "杭州西湖风景名胜区-湖滨公园",
+        "mode": "walking",
+        "status": "available",
+        "duration_minutes": 111,
+        "distance_meters": 8317,
+        "source": "高德路线规划",
+        "transport": "amap_mcp",
+        "fetched_at": "2026-10-13T01:38:29+00:00",
+        "reason": "查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    },
+    {
+      "tool": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B08WDR",
+        "destination_poi_id": "B023B05MLT",
+        "mode": "transit"
+      },
+      "seconds": 0.5142687000002297,
+      "result": {
+        "origin_poi_id": "B023B08WDR",
+        "origin_name": "杭州东站",
+        "destination_poi_id": "B023B05MLT",
+        "destination_name": "杭州西湖风景名胜区-湖滨公园",
+        "mode": "transit",
+        "status": "available",
+        "duration_minutes": 31,
+        "distance_meters": 8975,
+        "source": "高德路线规划",
+        "transport": "amap_mcp",
+        "fetched_at": "2026-10-13T01:38:30+00:00",
+        "reason": "查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    },
+    {
+      "tool": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B08WDR",
+        "destination_poi_id": "B023B05MLT",
+        "mode": "driving"
+      },
+      "seconds": 0.3023336000001109,
+      "result": {
+        "origin_poi_id": "B023B08WDR",
+        "origin_name": "杭州东站",
+        "destination_poi_id": "B023B05MLT",
+        "destination_name": "杭州西湖风景名胜区-湖滨公园",
+        "mode": "driving",
+        "status": "available",
+        "duration_minutes": 32,
+        "distance_meters": 8683,
+        "source": "高德路线规划",
+        "transport": "amap_mcp",
+        "fetched_at": "2026-10-13T01:38:30+00:00",
+        "reason": "查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    },
+    {
+      "tool": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B08WDR",
+        "destination_poi_id": "B023B05MLT",
+        "mode": "transit"
+      },
+      "seconds": 6.100000064179767e-06,
+      "result": {
+        "origin_poi_id": "B023B08WDR",
+        "origin_name": "杭州东站",
+        "destination_poi_id": "B023B05MLT",
+        "destination_name": "杭州西湖风景名胜区-湖滨公园",
+        "mode": "transit",
+        "status": "available",
+        "duration_minutes": 31,
+        "distance_meters": 8975,
+        "source": "高德路线规划",
+        "transport": "amap_mcp",
+        "fetched_at": "2026-10-13T01:38:30+00:00",
+        "reason": "查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    }
+  ],
+  "requests": [
+    {
+      "tool": "maps_text_search",
+      "seconds": 0.22103800000013507,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.09404719999974986,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.0960866000000351,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.10523520000015196,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.05440080000016678,
+      "status": "failed",
+      "error_type": "AmapMCPError"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.06260519999977987,
+      "status": "failed",
+      "error_type": "AmapMCPError"
+    },
+    {
+      "tool": "maps_text_search",
+      "seconds": 0.19782220000024608,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.11378309999963676,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.07512339999993856,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.07948039999973844,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.07307730000002266,
+      "status": "failed",
+      "error_type": "AmapMCPError"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.1077712999999676,
+      "status": "failed",
+      "error_type": "AmapMCPError"
+    },
+    {
+      "tool": "maps_text_search",
+      "seconds": 0.30182460000014544,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.09639749999996639,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.10085669999989477,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_search_detail",
+      "seconds": 0.09955489999993006,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_direction_walking",
+      "seconds": 0.07451240000000325,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_direction_transit_integrated",
+      "seconds": 0.28386760000012146,
+      "status": "returned"
+    },
+    {
+      "tool": "maps_direction_driving",
+      "seconds": 0.10920080000005328,
+      "status": "returned"
+    }
+  ]
+}
