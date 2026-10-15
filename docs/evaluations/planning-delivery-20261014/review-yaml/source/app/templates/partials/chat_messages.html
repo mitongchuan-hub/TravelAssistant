@@ -1,0 +1,42 @@
+{% for message in messages %}
+  {% set previous = messages[loop.index0 - 1] if not loop.first else none %}
+  {% set time_break = message | chat_time_break(previous) %}
+  <article class="message {{ message.sender_type }}{% if previous and previous.sender_type == message.sender_type and not time_break %} message--continued{% endif %}{% if message.status == 'thinking' %} thinking-message{% endif %}" data-message-id="{{ message.id }}" data-status="{{ message.status }}"{% if time_break %} data-time-break="{{ time_break }}"{% endif %}{% if message.status == 'thinking' %} data-agent-thinking-message="true"{% endif %} aria-label="{{ '你' if message.sender_type == 'user' else '旅行助手' }}的消息">
+    {% if message.sender_type != 'user' %}<span class="avatar" aria-hidden="true">✦</span>{% endif %}
+    <div class="message-body">
+      {% if message.status == 'thinking' %}
+        <div class="chat-bubble chat-thinking" role="status">正在整理回复 <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+      {% elif message.sender_type == 'user' %}
+        <div class="chat-bubble chat-user-text">{{ message.body }}</div>
+      {% else %}
+        {% set reply = message.body | chat_reply_view(message.agent_card) %}
+        <div class="chat-bubble chat-reply{% if message.status == 'failed' %} chat-reply--failed{% endif %}">
+          {% if reply.long %}
+            <details class="chat-full-reply" data-chat-full-reply>
+              <summary><div class="chat-reply-preview">{{ reply.preview }}</div><span class="chat-expand-label">{{ '展开完整行程' if reply.overview else '展开完整回复' }} <span aria-hidden="true">⌄</span></span></summary>
+              <div class="chat-reply-content">{{ reply.html }}</div>
+              <button class="chat-collapse" type="button" data-chat-collapse>收起完整回复 ↑</button>
+            </details>
+          {% else %}<div class="chat-reply-content">{{ reply.html }}</div>{% endif %}
+        </div>
+        {% set supplemental = message.body | chat_supplemental(message.agent_card) %}
+        {% if supplemental %}<details class="chat-supplemental"><summary>补充信息</summary><ul>{% for bullet in supplemental %}<li>{{ bullet }}</li>{% endfor %}</ul></details>{% endif %}
+        {% if message.status == 'failed' and previous and previous.sender_type == 'user' %}
+          <button class="chat-message-action" type="button" data-chat-draft="{{ previous.body }}">重新发送这条消息</button>
+        {% else %}
+          {% set actions = message.agent_card | chat_actions %}
+          {% if actions %}<div class="chat-message-actions">
+            {% for action in actions %}
+              {% if action.target == 'generate' %}
+                <form action="/workspace/{{ trip.id }}/plan" method="post"><input type="hidden" name="request_id" value="plan-{{ message.id }}" /><button class="chat-message-action" type="submit">{{ action.label }}</button></form>
+              {% else %}<a class="chat-message-action" href="/workspace/{{ trip.id }}?tab={{ action.target }}">{{ '查看当前行程' if action.target == 'itinerary' else action.label }} <span aria-hidden="true">↗</span></a>{% endif %}
+            {% endfor %}
+          </div>{% endif %}
+        {% endif %}
+      {% endif %}
+      <span class="chat-message-state" data-message-state>{{ '发送中…' if message.status == 'sending' else '' }}</span>
+    </div>
+  </article>
+{% else %}
+  <div class="chat-empty" data-chat-empty><span aria-hidden="true">✦</span><h2>一起聊聊这趟旅行</h2><p>想去哪里、怎么玩，或者先说一个小想法。</p></div>
+{% endfor %}

@@ -1,0 +1,280 @@
+{
+  "case_id": "DEL-003",
+  "title": "07:30早离站、酒店未定与自带早餐",
+  "steps": [
+    {
+      "input": {
+        "action": "plan",
+        "expected_plan_changed": true,
+        "assertions": {
+          "requirements_preserved": [
+            "city",
+            "start_date",
+            "end_date",
+            "arrival_time",
+            "departure_time",
+            "arrival_location",
+            "departure_location",
+            "travelers",
+            "budget_amount",
+            "budget_scope",
+            "budget_coverage",
+            "must_visit",
+            "avoid",
+            "dietary",
+            "pace"
+          ],
+          "required_tools": [
+            "query_route"
+          ]
+        }
+      },
+      "before": {
+        "trip": {
+          "id": "trip-109",
+          "destination": "唐山",
+          "date_range": "2026年10月19日 - 2026年10月20日",
+          "budget": "总预算 1000 元",
+          "style": "轻松",
+          "note": "次日很早离站，早餐自备；酒店尚未选好，不指定门店。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "旅行需求已更新",
+          "requirements": {
+            "start_date": "2026-10-19",
+            "end_date": "2026-10-20",
+            "arrival_time": "14:33",
+            "departure_time": "07:30",
+            "city": "唐山",
+            "arrival_location": "唐山站",
+            "departure_location": "唐山站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1000",
+            "budget_scope": "total",
+            "budget_coverage": "不包含来回车票",
+            "must_visit": [
+              "河头老街"
+            ],
+            "avoid": [],
+            "dietary": [],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [],
+        "ideas": []
+      },
+      "after": {
+        "trip": {
+          "id": "trip-109",
+          "destination": "唐山",
+          "date_range": "2026年10月19日 - 2026年10月20日",
+          "budget": "总预算 1000 元",
+          "style": "轻松",
+          "note": "次日很早离站，早餐自备；酒店尚未选好，不指定门店。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "Agent 已更新需求摘要",
+          "requirements": {
+            "start_date": "2026-10-19",
+            "end_date": "2026-10-20",
+            "arrival_time": "14:33",
+            "departure_time": "07:30",
+            "city": "唐山",
+            "arrival_location": "唐山站",
+            "departure_location": "唐山站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1000",
+            "budget_scope": "total",
+            "budget_coverage": "不包含来回车票",
+            "must_visit": [
+              "河头老街"
+            ],
+            "avoid": [],
+            "dietary": [],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [
+          {
+            "id": "m-112",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "这次模型回复没有完成，你的消息已保留，请稍后重试。",
+            "created_at": "19:41",
+            "status": "failed",
+            "agent_card": {
+              "kind": "missing-info",
+              "title": "模型调用暂时失败",
+              "summary": "消息已保留，可以检查 API Key、Base URL 和模型名后再试。",
+              "bullets": [
+                "消息已经保留",
+                "请检查模型服务配置",
+                "稍后可以直接重新发送"
+              ],
+              "actions": [
+                {
+                  "label": "查看旅行想法",
+                  "target": "board"
+                }
+              ]
+            }
+          }
+        ],
+        "ideas": []
+      },
+      "seconds": 2.059805,
+      "machine_checks": {
+        "plan_change": false,
+        "requirements_preserved.city": true,
+        "requirements_preserved.start_date": true,
+        "requirements_preserved.end_date": true,
+        "requirements_preserved.arrival_time": true,
+        "requirements_preserved.departure_time": true,
+        "requirements_preserved.arrival_location": true,
+        "requirements_preserved.departure_location": true,
+        "requirements_preserved.travelers": true,
+        "requirements_preserved.budget_amount": true,
+        "requirements_preserved.budget_scope": true,
+        "requirements_preserved.budget_coverage": true,
+        "requirements_preserved.must_visit": true,
+        "requirements_preserved.avoid": true,
+        "requirements_preserved.dietary": true,
+        "requirements_preserved.pace": true,
+        "tool_called.query_route": false,
+        "task_succeeded": false
+      },
+      "machine_checks_pass": false,
+      "task": {
+        "id": "554e8a9eb28048aba2fda23d7aa3eb4d",
+        "trip_id": "trip-109",
+        "kind": "plan",
+        "payload": {},
+        "request_id": "DEL-003-1",
+        "retry_of": "",
+        "status": "failed",
+        "message": "这次模型回复没有完成，你的消息已保留，请稍后重试。",
+        "created_at": "2026-10-14T11:41:31+00:00",
+        "updated_at": "2026-10-14T11:41:33+00:00",
+        "message_id": "",
+        "thinking_id": "m-111",
+        "result_url": "/workspace/trip-109?tab=chat",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "needs_input": false
+      },
+      "model_calls": [
+        {
+          "role": "planning",
+          "error_type": "APIConnectionError",
+          "seconds": 2.054102
+        }
+      ],
+      "queries": []
+    }
+  ],
+  "tool_mode": "controlled",
+  "events": [
+    {
+      "title": "Agent Loop 状态",
+      "value": {
+        "mode": "planning",
+        "seconds": 2.054,
+        "status": "failed",
+        "steps": 0,
+        "tool_calls": 0,
+        "stop_reason": "Connection error.",
+        "history": [
+          {
+            "step": 1,
+            "phase": "working",
+            "action": "loop_error",
+            "error": "Connection error.",
+            "at": "2026-10-14T11:41:33+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "title": "共享调用预算",
+      "value": {
+        "model_calls": 1,
+        "tool_calls": 0,
+        "external_calls": 0
+      }
+    },
+    {
+      "title": "调用异常",
+      "value": "APIConnectionError: Connection error."
+    }
+  ],
+  "manual_review_checklist": [
+    "两个方向各用自己的32/45或60/75分钟受控依据，不反向套用",
+    "未知酒店位置不套用景点路线推酒店离开时刻",
+    "07:30是车站离站，自带早餐不新增早餐店或挤占接驳",
+    "首日14:33后开始，次日没有离站后的景点或午餐",
+    "费用范围和两人1000保留，付费备选不当已发生费用",
+    "简短概览与完整原文同时保留，不输出内部守规则解释"
+  ],
+  "quality_grade": "pending_manual_review",
+  "display_conversion": "not_run"
+}

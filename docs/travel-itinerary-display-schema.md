@@ -7,7 +7,7 @@
 - [JSON Schema](travel-itinerary-display-schema-v1.json)
 - [合成示例原文](travel-itinerary-display-example.txt)
 - [对应展示 JSON](travel-itinerary-display-example.json)
-- [完整框架讨论稿](travel-workflow-proposal.md)
+- [当前工作流与架构](agent-architecture-current.md)
 
 ## 每日行程
 

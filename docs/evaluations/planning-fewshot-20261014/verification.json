@@ -1,0 +1,40 @@
+{
+  "before_machine_passed": 3,
+  "after_machine_passed": 3,
+  "semantic_grade": "not_fully_passed",
+  "review_calls": 0,
+  "examples_only_in_planning": true,
+  "review_role_absent": true,
+  "source_hash_matches": {
+    "app/prompts/agents/planning.txt": true,
+    "app/prompts/agents/planning_examples.txt": true,
+    "app/prompts/agents/travel_rules.txt": true,
+    "app/agent_roles.py": true,
+    "app/agent_runtime.py": true,
+    "app/planning.py": true,
+    "app/planning_evidence.py": true,
+    "app/chat_presentation.py": true,
+    "app/prompts/agents/revision.txt": true,
+    "app/templates/partials/chat_messages.html": true,
+    "tests/performance/check_planning_prompt.py": true
+  },
+  "credential_findings": [],
+  "business_db_preserved": {
+    "before": true,
+    "after": true
+  },
+  "targeted_regression": {
+    "passed": 101,
+    "seconds": 13.1
+  },
+  "deployment": {
+    "schema_version": true,
+    "trip_count": true,
+    "message_count": true,
+    "hashes": true
+  },
+  "server_pid": 21412,
+  "health": "ok",
+  "trips": 6,
+  "messages": 39
+}

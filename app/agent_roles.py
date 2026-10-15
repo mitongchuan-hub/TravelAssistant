@@ -104,9 +104,10 @@ def roles():
     return {
         'main': AgentRole('main', load_prompt('agents/main.txt'), response_format={
             'type': 'json_schema', 'json_schema': {'name': 'travel_intent', 'strict': True, 'schema': INTENT_SCHEMA}}),
-        'chat': AgentRole('chat', '你是旅行助手。用简体中文自然回应闲聊。没有工具，不声称查询、更新需求或保存行程。'),
+        'chat': AgentRole('chat', '你是旅行助手。用简体中文自然回应闲聊，也可回答当前已保存旅行需求的问题。requirements是当前保存状态，包含requirements字段和trip备注；它优先于conversation中的旧值、欢迎文案或缺项提示。已填写的信息直接使用，不重复索要；必去地点、忌口和节奏等可选偏好不作为回复前提。字段未记录时如实说明，不猜未知。没有工具，不声称查询、更新需求或保存行程；涉及新需求或生成、修改、外部资料查询的请求应由对应业务流程处理。'),
         'research': AgentRole('research', load_prompt('agents/research.txt') + '\n\n' + rules, read + facts, max_steps=6),
-        'planning': AgentRole('planning', load_prompt('agents/planning.txt') + '\n\n' + rules, read + requirements + facts, max_steps=10, reasoning_effort='medium'),
+        'planning': AgentRole('planning', load_prompt('agents/planning.txt') + '\n\n' + rules
+            + '\n\n' + load_prompt('agents/planning_examples.txt'), read + requirements + facts, max_steps=10, reasoning_effort='medium'),
         'revision': AgentRole('revision', load_prompt('agents/revision.txt') + '\n\n' + rules,
             read + requirements + (EDIT_PLAN_TEXT,) + facts, max_steps=10, reasoning_effort='medium'),
         'display': AgentRole('display', load_prompt('agents/display.txt')),

@@ -26,7 +26,7 @@ trip = store.create_trip('杭州慢旅行', '', '', '', '', user, requirements={
     'departure_location': '杭州东站', 'travelers': 2, 'budget_amount': '2500', 'budget_scope': 'total',
     'budget_coverage': '含住宿餐饮市内交通，不含往返车票', 'pace': '轻松'})
 TID = trip.id
-long = '## 杭州两日，慢慢走\n\n按你们的节奏，每天留出午休和自由时间。预算是两人合计2500元，含住宿、餐饮和市内交通，不含往返车票；实际费用待核实。\n\n'
+long = '## 杭州两日，慢慢走\n\n按你们的节奏，首日湖滨、次日休息后返程，每天留出午休和自由时间。\n\n- **预算取舍**：两人合计2500元，含住宿、餐饮和市内交通，不含往返车票；付费体验作为可选。\n- **出发前确认**：酒店位置和接待条件，实际费用待核实。\n\n---\n\n'
 long += '\n\n'.join(f'### 安排 {i+1}\n\n午后在湖边散步，累了就原地休息。保留不吃辣的要求，点餐时再次确认。交通、营业及价格仍待核实。' for i in range(12))
 long += '\n\n<script>window.chatInjected = true</script>\n\n[不可信链接](javascript:alert(1))'
 rows = [

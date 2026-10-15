@@ -1,6 +1,6 @@
 # 按 Agent 角色设置思考强度
 
-当前工作流中，意图识别、闲聊与展示转换是无工具 LLM 节点；查询、规划、修改是三个共用 Loop 的业务 Agent。规划/修改直接输出完整文字，后续 display LLM 按 JSON Schema 提取展示数据。
+当前工作流中，意图识别、闲聊与展示转换是无工具 LLM 节点；查询、规划、修改是三个共用 Loop 的业务 Agent。规划/修改直接输出并保存完整文字，后续 display LLM 提取展示数据。独立交付复核角色已删除。
 
 具体链路见 [当前实现](agent-role-implementation.md)。
 

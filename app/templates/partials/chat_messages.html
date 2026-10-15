@@ -9,11 +9,11 @@
       {% elif message.sender_type == 'user' %}
         <div class="chat-bubble chat-user-text">{{ message.body }}</div>
       {% else %}
-        {% set reply = message.body | chat_reply_view %}
+        {% set reply = message.body | chat_reply_view(message.agent_card) %}
         <div class="chat-bubble chat-reply{% if message.status == 'failed' %} chat-reply--failed{% endif %}">
           {% if reply.long %}
             <details class="chat-full-reply" data-chat-full-reply>
-              <summary><div class="chat-reply-preview">{{ reply.preview }}</div><span class="chat-expand-label">展开完整回复 <span aria-hidden="true">⌄</span></span></summary>
+              <summary><div class="chat-reply-preview">{{ reply.preview }}</div><span class="chat-expand-label">{{ '展开完整行程' if reply.overview else '展开完整回复' }} <span aria-hidden="true">⌄</span></span></summary>
               <div class="chat-reply-content">{{ reply.html }}</div>
               <button class="chat-collapse" type="button" data-chat-collapse>收起完整回复 ↑</button>
             </details>

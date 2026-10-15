@@ -1,0 +1,42 @@
+{
+  "started_at": "2026-10-14T20:57:08.741747",
+  "dataset": "planning_delivery_v1",
+  "model": "qwen3.8:27b",
+  "wire_api": "chat_completions",
+  "reasoning": {},
+  "scope": "live_model_isolated_memory_store_planning_text_only",
+  "tool_modes": {
+    "DEL-001": "live_external"
+  },
+  "display_conversion": "not_run",
+  "business_http_used": false,
+  "source_hashes": {
+    "app/prompts/agents/planning.txt": "e90e897b3d3b838ad9baa77661adea19b1c36f6968545bd7c07c758f299d63f2",
+    "app/prompts/agents/planning_examples.txt": "18c6dd652c9bc0fc086aa31ff42cf682832ad0cbb517d7acbd1432a3e21d1cd4",
+    "app/prompts/agents/travel_rules.txt": "6edd94c87211f47932bdfbdf7ee8a4f20044f8dcb08472f9932230af3fbdfb41",
+    "app/agent_roles.py": "4fcdbceec126e7d783b6842b6baece2089c0cbd1de6501aa59a560f4ef697b2e",
+    "app/agent_runtime.py": "8ca7e9fe0347fbc927a5db3c66d34773282885fa4edc2f5640f02c218ff5d9a4",
+    "app/planning.py": "41484fce62372db3362ad8b3391111ca022fed5d8bff79c38b3b32304d6ecc0b",
+    "app/planning_evidence.py": "4c6e43e7c0dc88fd2474c88b1ebd6c7ae0652d1b0c8bf3aa79cc5d4c8a06df4c",
+    "app/chat_presentation.py": "127d7c5ea98dc479fecdf447b80cfbc915c858ea7c35e80aff6591094699114e",
+    "app/prompts/agents/revision.txt": "ec703a004c6db5cc0d069b07945ba7a5ac720e3ff8b1c01dcc1adf7448814f98",
+    "app/templates/partials/chat_messages.html": "cbc2177e465ca3bb2588de05f9d398d96c56925d2c4ae60ad4ec41659cf640c9",
+    "tests/performance/check_planning_prompt.py": "dcbae6d168cd3c5ce7868d9bf92896a271adc4ab56cef5338887e827beddd523"
+  },
+  "cases": [
+    "DEL-001"
+  ],
+  "results": [
+    {
+      "case": "DEL-001",
+      "machine_checks_pass": true,
+      "model_calls": 6,
+      "transport_failed": false
+    }
+  ],
+  "quality_grade": "pending_manual_review",
+  "business_db_before": "73a695602c1f50246d63b72e2b429d70f01ea7be8ca6163a98216cafdc22845e",
+  "finished_at": "2026-10-14T20:58:33.974137",
+  "business_db_after": "73a695602c1f50246d63b72e2b429d70f01ea7be8ca6163a98216cafdc22845e",
+  "business_db_unchanged": true
+}

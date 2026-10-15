@@ -1,0 +1,726 @@
+{
+  "case_id": "FS-001",
+  "title": "三人南京当天往返与双向路线",
+  "steps": [
+    {
+      "input": {
+        "action": "plan",
+        "expected_plan_changed": true,
+        "assertions": {
+          "requirements_preserved": [
+            "city",
+            "start_date",
+            "end_date",
+            "travelers",
+            "arrival_time",
+            "departure_time",
+            "budget_amount",
+            "budget_scope",
+            "dietary"
+          ],
+          "required_tools": [
+            "query_route"
+          ]
+        }
+      },
+      "before": {
+        "trip": {
+          "id": "trip-100",
+          "destination": "南京",
+          "date_range": "2026年10月23日 - 2026年10月23日",
+          "budget": "总预算 1200 元",
+          "style": "轻松",
+          "note": "抵达前已经吃过早餐。只安排玄武湖为核心的轻松行程，不指定餐厅。不需要住宿。午晚餐三人全程合计450元，包含饮品；沿用不吃辣。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "旅行需求已更新",
+          "requirements": {
+            "start_date": "2026-10-23",
+            "end_date": "2026-10-23",
+            "arrival_time": "10:20",
+            "departure_time": "20:10",
+            "city": "南京",
+            "arrival_location": "南京站",
+            "departure_location": "南京站",
+            "day_count": 1,
+            "travelers": 3,
+            "budget_amount": "1200",
+            "budget_scope": "total",
+            "budget_coverage": "含市内交通、餐饮、门票，不含往返车票",
+            "must_visit": [
+              "玄武湖"
+            ],
+            "avoid": [],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [],
+        "ideas": []
+      },
+      "after": {
+        "trip": {
+          "id": "trip-100",
+          "destination": "南京",
+          "date_range": "2026年10月23日 - 2026年10月23日",
+          "budget": "总预算 1200 元",
+          "style": "轻松",
+          "note": "抵达前已经吃过早餐。只安排玄武湖为核心的轻松行程，不指定餐厅。不需要住宿。午晚餐三人全程合计450元，包含饮品；沿用不吃辣。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "草案",
+          "last_activity": "Agent 已生成行程草案",
+          "requirements": {
+            "start_date": "2026-10-23",
+            "end_date": "2026-10-23",
+            "arrival_time": "10:20",
+            "departure_time": "20:10",
+            "city": "南京",
+            "arrival_location": "南京站",
+            "departure_location": "南京站",
+            "day_count": 1,
+            "travelers": 3,
+            "budget_amount": "1200",
+            "budget_scope": "total",
+            "budget_coverage": "含市内交通、餐饮、门票，不含往返车票",
+            "must_visit": [
+              "玄武湖"
+            ],
+            "avoid": [],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "plan-103",
+          "title": "南京行程",
+          "status": "草案",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "建议以玄武湖为当天唯一核心，10:20到站后前往湖边，午后散步、傍晚就近晚餐，18:15左右返程回南京站。1200元三人合计优先保障餐饮（450元）和必要交通，玄武湖门票价格待确认，若超过预留额度则用机动金覆盖。当天天气暂无预报，户外安排视当日实际天气微调。\n\n---\n\n**10月23日 行程**\n\n**10:20** 抵达南京站。出站后乘公交/地铁前往玄武湖方向，乘车约45分钟，另预留候车和步行至站台时间，建议11:00前出发，11:45前到达玄武湖入口。\n\n**11:45 – 12:30** 玄武湖轻松漫步，以环湖步道、湖边座椅休息为主，不赶景点。入园以确认当日开放为条件。\n\n**12:30 – 13:30 午餐**\n在玄武湖周边选择清淡家常菜（如本帮面馆、小炒或简餐），不吃辣，三人合计预算上限约200元含饮品。预留约50分钟。\n\n**13:30 – 16:30** 继续湖边慢走、找个安静角落坐着休息，节奏以不累为准。若天气转差可转入附近商场或茶歇区休息。\n\n**17:00 – 18:00 晚餐**\n仍在玄武湖片区解决，选择口味偏咸鲜或清炒的菜式，避免辣味，三人合计预算上限约250元含饮品。预留约60分钟。\n\n**18:00 – 18:15** 步行至最近公交/地铁站。\n\n**18:15 – 19:10 返程交通**\n玄武湖→南京站公交约55分钟，另预留候车时间。预计19:15前到达南京站，距20:10离站仍有约55分钟候车安检余量。\n\n---\n\n**预算分配（三人合计，非实际报价）**\n\n| 项目 | 上限 | 说明 |\n|------|------|------|\n| 餐饮（午+晚，含饮品） | 450 元 | 已按需求锁定 |\n| 市内交通（往返乘车） | 150 元 | 公交/地铁，3人 |\n| 玄武湖门票 | 250 元 | 实际票价待确认 |\n| 机动（含小食、补水） | 350 元 | 应对门票超差或临时小支出 |\n| **合计** | **1200 元** | |\n\n---\n\n**行前需确认**\n- 玄武湖当日是否开放及具体票价（影响门票额度是否充足）\n- 出发前查看南京10月23日天气预报，若遇降雨将湖边散步替换为商场/茶歇区，餐饮安排不变",
+          "evidence": [
+            {
+              "tool": "search_places",
+              "arguments": {
+                "city": "南京",
+                "keywords": "南京站"
+              },
+              "result": {
+                "status": "available",
+                "city": "南京",
+                "keywords": "南京站",
+                "candidates": [
+                  {
+                    "poi_id": "nj-station",
+                    "name": "南京站",
+                    "address": "合成测试地址",
+                    "longitude": 118.8,
+                    "latitude": 32.1,
+                    "city": "南京",
+                    "district": "",
+                    "source": "高德地图 POI",
+                    "fetched_at": "2026-10-14T00:00:00Z"
+                  }
+                ],
+                "source": "合成测试地点",
+                "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+              },
+              "queried_at": "2026-10-14T12:29:51+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "search_places",
+              "arguments": {
+                "city": "南京",
+                "keywords": "玄武湖"
+              },
+              "result": {
+                "status": "available",
+                "city": "南京",
+                "keywords": "玄武湖",
+                "candidates": [
+                  {
+                    "poi_id": "nj-core",
+                    "name": "玄武湖",
+                    "address": "合成测试地址",
+                    "longitude": 118.81,
+                    "latitude": 32.1,
+                    "city": "南京",
+                    "district": "",
+                    "source": "高德地图 POI",
+                    "fetched_at": "2026-10-14T00:00:00Z"
+                  }
+                ],
+                "source": "合成测试地点",
+                "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+              },
+              "queried_at": "2026-10-14T12:29:51+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "query_route",
+              "arguments": {
+                "origin_poi_id": "nj-station",
+                "destination_poi_id": "nj-core",
+                "mode": "transit"
+              },
+              "result": {
+                "status": "available",
+                "origin_poi_id": "nj-station",
+                "destination_poi_id": "nj-core",
+                "mode": "transit",
+                "duration_minutes": 45,
+                "distance_meters": 6000,
+                "source": "受控合成路线",
+                "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+              },
+              "queried_at": "2026-10-14T12:29:54+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "query_route",
+              "arguments": {
+                "origin_poi_id": "nj-core",
+                "destination_poi_id": "nj-station",
+                "mode": "transit"
+              },
+              "result": {
+                "status": "available",
+                "origin_poi_id": "nj-core",
+                "destination_poi_id": "nj-station",
+                "mode": "transit",
+                "duration_minutes": 55,
+                "distance_meters": 6000,
+                "source": "受控合成路线",
+                "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+              },
+              "queried_at": "2026-10-14T12:29:54+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "query_weather",
+              "arguments": {
+                "city": "南京",
+                "date": "2026-10-23"
+              },
+              "result": {
+                "status": "unavailable",
+                "reason": "目标日期超出受控预报范围，温度与降雨概率未知。",
+                "source": "合成天气资料",
+                "fetched_at": "2026-10-14T00:00:00+00:00"
+              },
+              "queried_at": "2026-10-14T12:29:54+00:00",
+              "seconds": 0.0
+            }
+          ],
+          "requirements_revision": 1,
+          "display": null,
+          "display_source_hash": "d1b2861e3cd4186ce56d5c16df233d855637ca2bba33ae945b1e8c38b84b13d6",
+          "display_status": "pending",
+          "requirements_snapshot": {
+            "start_date": "2026-10-23",
+            "end_date": "2026-10-23",
+            "arrival_time": "10:20",
+            "departure_time": "20:10",
+            "city": "南京",
+            "arrival_location": "南京站",
+            "departure_location": "南京站",
+            "day_count": 1,
+            "travelers": 3,
+            "budget_amount": "1200",
+            "budget_scope": "total",
+            "budget_coverage": "含市内交通、餐饮、门票，不含往返车票",
+            "must_visit": [
+              "玄武湖"
+            ],
+            "avoid": [],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          }
+        },
+        "messages": [
+          {
+            "id": "m-104",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "建议以玄武湖为当天唯一核心，10:20到站后前往湖边，午后散步、傍晚就近晚餐，18:15左右返程回南京站。1200元三人合计优先保障餐饮（450元）和必要交通，玄武湖门票价格待确认，若超过预留额度则用机动金覆盖。当天天气暂无预报，户外安排视当日实际天气微调。\n\n---\n\n**10月23日 行程**\n\n**10:20** 抵达南京站。出站后乘公交/地铁前往玄武湖方向，乘车约45分钟，另预留候车和步行至站台时间，建议11:00前出发，11:45前到达玄武湖入口。\n\n**11:45 – 12:30** 玄武湖轻松漫步，以环湖步道、湖边座椅休息为主，不赶景点。入园以确认当日开放为条件。\n\n**12:30 – 13:30 午餐**\n在玄武湖周边选择清淡家常菜（如本帮面馆、小炒或简餐），不吃辣，三人合计预算上限约200元含饮品。预留约50分钟。\n\n**13:30 – 16:30** 继续湖边慢走、找个安静角落坐着休息，节奏以不累为准。若天气转差可转入附近商场或茶歇区休息。\n\n**17:00 – 18:00 晚餐**\n仍在玄武湖片区解决，选择口味偏咸鲜或清炒的菜式，避免辣味，三人合计预算上限约250元含饮品。预留约60分钟。\n\n**18:00 – 18:15** 步行至最近公交/地铁站。\n\n**18:15 – 19:10 返程交通**\n玄武湖→南京站公交约55分钟，另预留候车时间。预计19:15前到达南京站，距20:10离站仍有约55分钟候车安检余量。\n\n---\n\n**预算分配（三人合计，非实际报价）**\n\n| 项目 | 上限 | 说明 |\n|------|------|------|\n| 餐饮（午+晚，含饮品） | 450 元 | 已按需求锁定 |\n| 市内交通（往返乘车） | 150 元 | 公交/地铁，3人 |\n| 玄武湖门票 | 250 元 | 实际票价待确认 |\n| 机动（含小食、补水） | 350 元 | 应对门票超差或临时小支出 |\n| **合计** | **1200 元** | |\n\n---\n\n**行前需确认**\n- 玄武湖当日是否开放及具体票价（影响门票额度是否充足）\n- 出发前查看南京10月23日天气预报，若遇降雨将湖边散步替换为商场/茶歇区，餐饮安排不变",
+            "created_at": "20:30",
+            "status": "sent",
+            "agent_card": {
+              "kind": "itinerary-draft",
+              "title": "行程草案",
+              "summary": "建议以玄武湖为当天唯一核心，10:20到站后前往湖边，午后散步、傍晚就近晚餐，18:15左右返程回南京站。1200元三人合计优先保障餐饮（450元）和必要交通，玄武湖门票价格待确认，若超过预留额度则用机动金覆盖。当天天气暂无预报，户外安排视",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "查看行程",
+                  "target": "itinerary"
+                }
+              ]
+            }
+          }
+        ],
+        "ideas": []
+      },
+      "seconds": 39.248908,
+      "machine_checks": {
+        "plan_change": true,
+        "requirements_preserved.city": true,
+        "requirements_preserved.start_date": true,
+        "requirements_preserved.end_date": true,
+        "requirements_preserved.travelers": true,
+        "requirements_preserved.arrival_time": true,
+        "requirements_preserved.departure_time": true,
+        "requirements_preserved.budget_amount": true,
+        "requirements_preserved.budget_scope": true,
+        "requirements_preserved.dietary": true,
+        "tool_called.query_route": true,
+        "task_succeeded": true
+      },
+      "machine_checks_pass": true,
+      "task": {
+        "id": "992765e2de1d4c0a99e51909faede7a6",
+        "trip_id": "trip-100",
+        "kind": "plan",
+        "payload": {},
+        "request_id": "FS-001-1",
+        "retry_of": "",
+        "status": "succeeded",
+        "message": "已完成",
+        "created_at": "2026-10-14T12:29:42+00:00",
+        "updated_at": "2026-10-14T12:30:21+00:00",
+        "message_id": "",
+        "thinking_id": "m-102",
+        "result_url": "/workspace/trip-100?tab=itinerary",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "needs_input": false
+      },
+      "model_calls": [
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 5322,
+            "completion_tokens": 412
+          },
+          "proposed_tools": [
+            "search_places",
+            "search_places"
+          ],
+          "seconds": 8.463308
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 5831,
+            "completion_tokens": 186
+          },
+          "proposed_tools": [
+            "query_route",
+            "query_route",
+            "query_weather"
+          ],
+          "seconds": 2.995937
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 6268,
+            "completion_tokens": 1797
+          },
+          "proposed_tools": [],
+          "seconds": 26.85547
+        }
+      ],
+      "queries": [
+        {
+          "name": "search_places",
+          "arguments": {
+            "city": "南京",
+            "keywords": "南京站"
+          },
+          "result": {
+            "status": "available",
+            "city": "南京",
+            "keywords": "南京站",
+            "candidates": [
+              {
+                "poi_id": "nj-station",
+                "name": "南京站",
+                "address": "合成测试地址",
+                "longitude": 118.8,
+                "latitude": 32.1,
+                "city": "南京",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T00:00:00Z"
+              }
+            ],
+            "source": "合成测试地点",
+            "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+          }
+        },
+        {
+          "name": "search_places",
+          "arguments": {
+            "city": "南京",
+            "keywords": "玄武湖"
+          },
+          "result": {
+            "status": "available",
+            "city": "南京",
+            "keywords": "玄武湖",
+            "candidates": [
+              {
+                "poi_id": "nj-core",
+                "name": "玄武湖",
+                "address": "合成测试地址",
+                "longitude": 118.81,
+                "latitude": 32.1,
+                "city": "南京",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T00:00:00Z"
+              }
+            ],
+            "source": "合成测试地点",
+            "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+          }
+        },
+        {
+          "name": "query_route",
+          "arguments": {
+            "origin_poi_id": "nj-station",
+            "destination_poi_id": "nj-core",
+            "mode": "transit"
+          },
+          "result": {
+            "status": "available",
+            "origin_poi_id": "nj-station",
+            "destination_poi_id": "nj-core",
+            "mode": "transit",
+            "duration_minutes": 45,
+            "distance_meters": 6000,
+            "source": "受控合成路线",
+            "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+          }
+        },
+        {
+          "name": "query_route",
+          "arguments": {
+            "origin_poi_id": "nj-core",
+            "destination_poi_id": "nj-station",
+            "mode": "transit"
+          },
+          "result": {
+            "status": "available",
+            "origin_poi_id": "nj-core",
+            "destination_poi_id": "nj-station",
+            "mode": "transit",
+            "duration_minutes": 55,
+            "distance_meters": 6000,
+            "source": "受控合成路线",
+            "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+          }
+        },
+        {
+          "name": "query_weather",
+          "arguments": {
+            "city": "南京",
+            "date": "2026-10-23"
+          },
+          "result": {
+            "status": "unavailable",
+            "reason": "目标日期超出受控预报范围，温度与降雨概率未知。",
+            "source": "合成天气资料",
+            "fetched_at": "2026-10-14T00:00:00+00:00"
+          }
+        }
+      ]
+    }
+  ],
+  "tool_mode": "controlled",
+  "events": [
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_places",
+        "arguments": {
+          "city": "南京",
+          "keywords": "南京站"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "city": "南京",
+          "keywords": "南京站",
+          "candidates": [
+            {
+              "poi_id": "nj-station",
+              "name": "南京站",
+              "address": "合成测试地址",
+              "longitude": 118.8,
+              "latitude": 32.1,
+              "city": "南京",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T00:00:00Z"
+            }
+          ],
+          "source": "合成测试地点",
+          "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。",
+          "route_review": []
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_places",
+        "arguments": {
+          "city": "南京",
+          "keywords": "玄武湖"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "city": "南京",
+          "keywords": "玄武湖",
+          "candidates": [
+            {
+              "poi_id": "nj-core",
+              "name": "玄武湖",
+              "address": "合成测试地址",
+              "longitude": 118.81,
+              "latitude": 32.1,
+              "city": "南京",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T00:00:00Z"
+            }
+          ],
+          "source": "合成测试地点",
+          "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。",
+          "route_review": [
+            {
+              "purpose": "抵达接驳",
+              "status": "not_attempted",
+              "origins": [
+                {
+                  "poi_id": "nj-station",
+                  "name": "南京站"
+                }
+              ],
+              "destinations": [
+                {
+                  "poi_id": "nj-core",
+                  "name": "玄武湖"
+                }
+              ]
+            },
+            {
+              "purpose": "返程接驳",
+              "status": "not_attempted",
+              "origins": [
+                {
+                  "poi_id": "nj-core",
+                  "name": "玄武湖"
+                }
+              ],
+              "destinations": [
+                {
+                  "poi_id": "nj-station",
+                  "name": "南京站"
+                }
+              ]
+            }
+          ]
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "nj-station",
+          "destination_poi_id": "nj-core",
+          "mode": "transit"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "origin_poi_id": "nj-station",
+          "destination_poi_id": "nj-core",
+          "mode": "transit",
+          "duration_minutes": 45,
+          "distance_meters": 6000,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "nj-core",
+          "destination_poi_id": "nj-station",
+          "mode": "transit"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "origin_poi_id": "nj-core",
+          "destination_poi_id": "nj-station",
+          "mode": "transit",
+          "duration_minutes": 55,
+          "distance_meters": 6000,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_weather",
+        "arguments": {
+          "city": "南京",
+          "date": "2026-10-23"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "unavailable",
+          "reason": "目标日期超出受控预报范围，温度与降雨概率未知。",
+          "source": "合成天气资料",
+          "fetched_at": "2026-10-14T00:00:00+00:00"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "Agent Loop 状态",
+      "value": {
+        "mode": "planning",
+        "seconds": 38.316,
+        "status": "completed",
+        "steps": 3,
+        "tool_calls": 5,
+        "stop_reason": "Agent 已完成本次工作。",
+        "history": [
+          {
+            "step": 1,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 2,
+            "error": "",
+            "at": "2026-10-14T12:29:51+00:00"
+          },
+          {
+            "step": 2,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 3,
+            "error": "",
+            "at": "2026-10-14T12:29:54+00:00"
+          },
+          {
+            "step": 3,
+            "phase": "working",
+            "action": "finish",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 0,
+            "error": "",
+            "at": "2026-10-14T12:30:21+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "title": "共享调用预算",
+      "value": {
+        "model_calls": 3,
+        "tool_calls": 5,
+        "external_calls": 3
+      }
+    }
+  ],
+  "manual_review_checklist": [
+    "首末时刻10:20与20:10、三人总额1200与450餐饮额度保留",
+    "双向和交通方式分别用45/55或28/33等实际受控结果，无照搬示例25/35分钟",
+    "午晚餐与休息完整，已吃早餐不追加、不住宿",
+    "预算分项上界与餐饮额度正确，门票未知不保证免费",
+    "概览主线预算条件与完整原文，未照搬其他城市的样例"
+  ],
+  "quality_grade": "pending_manual_review",
+  "display_conversion": "not_run"
+}

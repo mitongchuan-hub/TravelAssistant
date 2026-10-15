@@ -1,0 +1,6 @@
+{"event": "case_start", "case": "FS-001"}
+{"case": "FS-001", "machine_checks_pass": true, "model_calls": 3, "transport_failed": false}
+{"event": "case_start", "case": "FS-002"}
+{"case": "FS-002", "machine_checks_pass": true, "model_calls": 3, "transport_failed": false}
+{"event": "case_start", "case": "FS-003"}
+{"case": "FS-003", "machine_checks_pass": true, "model_calls": 3, "transport_failed": false}

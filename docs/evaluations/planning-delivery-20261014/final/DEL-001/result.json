@@ -1,0 +1,1133 @@
+{
+  "case_id": "DEL-001",
+  "title": "原唐山输入，真实工具与当前模型",
+  "steps": [
+    {
+      "input": {
+        "action": "chat",
+        "input": "生成行程吧",
+        "expected_plan_changed": true,
+        "assertions": {
+          "requirements_preserved": [
+            "city",
+            "start_date",
+            "end_date",
+            "arrival_time",
+            "departure_time",
+            "arrival_location",
+            "departure_location",
+            "travelers",
+            "budget_amount",
+            "budget_scope",
+            "budget_coverage",
+            "must_visit",
+            "avoid",
+            "dietary",
+            "pace"
+          ],
+          "required_tools": [
+            "query_route"
+          ]
+        }
+      },
+      "before": {
+        "trip": {
+          "id": "trip-100",
+          "destination": "唐山",
+          "date_range": "2026年10月19日 - 2026年10月20日",
+          "budget": "总预算 1000 元",
+          "style": "轻松",
+          "note": "",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "旅行需求已更新",
+          "requirements": {
+            "start_date": "2026-10-19",
+            "end_date": "2026-10-20",
+            "arrival_time": "14:33",
+            "departure_time": "14:35",
+            "city": "唐山",
+            "arrival_location": "唐山站",
+            "departure_location": "唐山站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1000",
+            "budget_scope": "total",
+            "budget_coverage": "不包含来回车票",
+            "must_visit": [
+              "河头老街"
+            ],
+            "avoid": [],
+            "dietary": [],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [],
+        "ideas": []
+      },
+      "after": {
+        "trip": {
+          "id": "trip-100",
+          "destination": "唐山",
+          "date_range": "2026年10月19日 - 2026年10月20日",
+          "budget": "总预算 1000 元",
+          "style": "轻松",
+          "note": "",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "Agent 已更新需求摘要",
+          "requirements": {
+            "start_date": "2026-10-19",
+            "end_date": "2026-10-20",
+            "arrival_time": "14:33",
+            "departure_time": "14:35",
+            "city": "唐山",
+            "arrival_location": "唐山站",
+            "departure_location": "唐山站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1000",
+            "budget_scope": "total",
+            "budget_coverage": "不包含来回车票",
+            "must_visit": [
+              "河头老街"
+            ],
+            "avoid": [],
+            "dietary": [],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [
+          {
+            "id": "m-102",
+            "sender": {
+              "id": "u1",
+              "name": "林夏",
+              "initials": "林"
+            },
+            "sender_type": "user",
+            "body": "生成行程吧",
+            "created_at": "19:43",
+            "status": "sent",
+            "agent_card": null
+          },
+          {
+            "id": "m-104",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "这版行程的安排尚未核对通过，暂未保存。已填写的需求和现有行程保留，可以稍后重新生成。",
+            "created_at": "19:46",
+            "status": "failed",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "这版行程的安排尚未核对通过，暂未保存。已填写的需求和现有行程保留，可以稍后重新生成。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            }
+          }
+        ],
+        "ideas": []
+      },
+      "seconds": 155.117232,
+      "machine_checks": {
+        "plan_change": false,
+        "requirements_preserved.city": true,
+        "requirements_preserved.start_date": true,
+        "requirements_preserved.end_date": true,
+        "requirements_preserved.arrival_time": true,
+        "requirements_preserved.departure_time": true,
+        "requirements_preserved.arrival_location": true,
+        "requirements_preserved.departure_location": true,
+        "requirements_preserved.travelers": true,
+        "requirements_preserved.budget_amount": true,
+        "requirements_preserved.budget_scope": true,
+        "requirements_preserved.budget_coverage": true,
+        "requirements_preserved.must_visit": true,
+        "requirements_preserved.avoid": true,
+        "requirements_preserved.dietary": true,
+        "requirements_preserved.pace": true,
+        "tool_called.query_route": true,
+        "task_succeeded": false
+      },
+      "machine_checks_pass": false,
+      "task": {
+        "id": "f51eb8a35b104639930994f49c6a243d",
+        "trip_id": "trip-100",
+        "kind": "chat",
+        "payload": {
+          "body": "生成行程吧"
+        },
+        "request_id": "DEL-001-1",
+        "retry_of": "",
+        "status": "failed",
+        "message": "这版行程的安排尚未核对通过，暂未保存。已填写的需求和现有行程保留，可以稍后重新生成。",
+        "created_at": "2026-10-14T11:43:37+00:00",
+        "updated_at": "2026-10-14T11:46:12+00:00",
+        "message_id": "m-102",
+        "thinking_id": "m-103",
+        "result_url": "/workspace/trip-100?tab=chat",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "needs_input": false
+      },
+      "model_calls": [
+        {
+          "role": "main",
+          "usage": {
+            "prompt_tokens": 939,
+            "completion_tokens": 175
+          },
+          "proposed_tools": [],
+          "seconds": 3.088695
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 4881,
+            "completion_tokens": 257
+          },
+          "proposed_tools": [
+            "check_requirements"
+          ],
+          "seconds": 5.696125
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 5334,
+            "completion_tokens": 376
+          },
+          "proposed_tools": [
+            "search_places",
+            "search_places",
+            "query_weather"
+          ],
+          "seconds": 5.815202
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 6299,
+            "completion_tokens": 133
+          },
+          "proposed_tools": [
+            "search_places",
+            "query_weather"
+          ],
+          "seconds": 2.348261
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 7075,
+            "completion_tokens": 183
+          },
+          "proposed_tools": [
+            "query_route",
+            "query_route"
+          ],
+          "seconds": 3.062721
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 7557,
+            "completion_tokens": 1904
+          },
+          "proposed_tools": [],
+          "seconds": 28.49937
+        },
+        {
+          "role": "review",
+          "usage": {
+            "prompt_tokens": 4618,
+            "completion_tokens": 2348
+          },
+          "proposed_tools": [],
+          "seconds": 37.54611
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 8749,
+            "completion_tokens": 1716
+          },
+          "proposed_tools": [],
+          "seconds": 26.776843
+        },
+        {
+          "role": "review",
+          "usage": {
+            "prompt_tokens": 4720,
+            "completion_tokens": 2269
+          },
+          "proposed_tools": [],
+          "seconds": 36.678554
+        }
+      ],
+      "queries": [
+        {
+          "name": "search_places",
+          "arguments": {
+            "city": "唐山",
+            "keywords": "河头老街"
+          },
+          "result": {
+            "status": "available",
+            "city": "唐山",
+            "keywords": "河头老街",
+            "candidates": [
+              {
+                "poi_id": "B013B0QGF1",
+                "name": "河头老街",
+                "address": "运河西路66号",
+                "longitude": 118.075413,
+                "latitude": 39.561789,
+                "city": "唐山市",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T11:43:53+00:00"
+              },
+              {
+                "poi_id": "B0MB4KY5Q7",
+                "name": "河头老街·大唐百戏园",
+                "address": "瑞景街68号",
+                "longitude": 118.073914,
+                "latitude": 39.558621,
+                "city": "唐山市",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T11:43:53+00:00"
+              },
+              {
+                "poi_id": "B0FFJ8GJZE",
+                "name": "河头老街-游船",
+                "address": "运河西路河头老街",
+                "longitude": 118.075389,
+                "latitude": 39.562217,
+                "city": "唐山市",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T11:43:53+00:00"
+              },
+              {
+                "poi_id": "BV09456011",
+                "name": "河头老街(公交站)",
+                "address": "唐山宴-河头老街旅游专线",
+                "longitude": 118.0771,
+                "latitude": 39.568377,
+                "city": "唐山市",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T11:43:53+00:00"
+              },
+              {
+                "poi_id": "B0L2290ESB",
+                "name": "河头老街-南检票口",
+                "address": "运河西路66号河头老街(西南角)",
+                "longitude": 118.073089,
+                "latitude": 39.560146,
+                "city": "唐山市",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T11:43:53+00:00"
+              }
+            ],
+            "source": "高德地图 POI",
+            "transport": "amap_mcp",
+            "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；营业、开放和预约情况仍需另行核实。"
+          }
+        },
+        {
+          "name": "search_places",
+          "arguments": {
+            "city": "唐山",
+            "keywords": "唐山站"
+          },
+          "result": {
+            "status": "unavailable",
+            "reason": "没有找到带有效坐标的候选地点，请换一个更具体的名称；当前地点仍待核实。",
+            "candidates": []
+          }
+        },
+        {
+          "name": "query_weather",
+          "arguments": {
+            "city": "唐山",
+            "date": "2026-10-19"
+          },
+          "result": {
+            "status": "available",
+            "city": "唐山",
+            "requested_date": "2026-10-19",
+            "timezone": "Asia/Shanghai",
+            "condition": "阴",
+            "temperature_max_c": 23.1,
+            "temperature_min_c": 16.1,
+            "precipitation_probability_max": 6,
+            "clothing_advice": "长袖和薄外套，早晚可能偏凉",
+            "source": "Open-Meteo"
+          }
+        },
+        {
+          "name": "search_places",
+          "arguments": {
+            "city": "唐山",
+            "keywords": "唐山火车站"
+          },
+          "result": {
+            "status": "available",
+            "city": "唐山",
+            "keywords": "唐山火车站",
+            "candidates": [
+              {
+                "poi_id": "B013B015E6",
+                "name": "唐山站",
+                "address": "站前路160号",
+                "longitude": 118.117914,
+                "latitude": 39.625639,
+                "city": "唐山市",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T11:43:59+00:00"
+              },
+              {
+                "poi_id": "B0FFG6LGIQ",
+                "name": "唐山站(东进站口)",
+                "address": "站前路158号",
+                "longitude": 118.119662,
+                "latitude": 39.625821,
+                "city": "唐山市",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T11:43:59+00:00"
+              },
+              {
+                "poi_id": "B013B01960",
+                "name": "唐山南站",
+                "address": "车站路",
+                "longitude": 118.195866,
+                "latitude": 39.612341,
+                "city": "唐山市",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T11:43:59+00:00"
+              }
+            ],
+            "source": "高德地图 POI",
+            "transport": "amap_mcp",
+            "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；营业、开放和预约情况仍需另行核实。"
+          }
+        },
+        {
+          "name": "query_weather",
+          "arguments": {
+            "city": "唐山",
+            "date": "2026-10-20"
+          },
+          "result": {
+            "status": "available",
+            "city": "唐山",
+            "requested_date": "2026-10-20",
+            "timezone": "Asia/Shanghai",
+            "condition": "阴",
+            "temperature_max_c": 23.3,
+            "temperature_min_c": 14.6,
+            "precipitation_probability_max": 26,
+            "clothing_advice": "长袖和薄外套，早晚可能偏凉",
+            "source": "Open-Meteo"
+          }
+        },
+        {
+          "name": "query_route",
+          "arguments": {
+            "origin_poi_id": "B013B015E6",
+            "destination_poi_id": "B013B0QGF1",
+            "mode": "transit"
+          },
+          "result": {
+            "origin_poi_id": "B013B015E6",
+            "origin_name": "唐山站",
+            "destination_poi_id": "B013B0QGF1",
+            "destination_name": "河头老街",
+            "mode": "transit",
+            "status": "available",
+            "duration_minutes": 66,
+            "distance_meters": 10741,
+            "source": "高德路线规划",
+            "fetched_at": "2026-10-14T11:44:02+00:00",
+            "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+          }
+        },
+        {
+          "name": "query_route",
+          "arguments": {
+            "origin_poi_id": "B013B0QGF1",
+            "destination_poi_id": "B013B015E6",
+            "mode": "transit"
+          },
+          "result": {
+            "origin_poi_id": "B013B0QGF1",
+            "origin_name": "河头老街",
+            "destination_poi_id": "B013B015E6",
+            "destination_name": "唐山站",
+            "mode": "transit",
+            "status": "available",
+            "duration_minutes": 60,
+            "distance_meters": 10741,
+            "source": "高德路线规划",
+            "fetched_at": "2026-10-14T11:44:02+00:00",
+            "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+          }
+        }
+      ]
+    }
+  ],
+  "tool_mode": "live_external",
+  "events": [
+    {
+      "title": "意图识别结果",
+      "value": {
+        "intent": "planning",
+        "action": "generate",
+        "scope": "",
+        "user_quote": "生成行程吧",
+        "question": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "check_requirements",
+        "arguments": {
+          "user_quote": "生成行程吧"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "ready",
+          "requirements": {
+            "basis": {
+              "requirements_revision": 1,
+              "plan_id": "empty"
+            },
+            "requirements": {
+              "start_date": "2026-10-19",
+              "end_date": "2026-10-20",
+              "arrival_time": "14:33",
+              "departure_time": "14:35",
+              "city": "唐山",
+              "arrival_location": "唐山站",
+              "departure_location": "唐山站",
+              "day_count": 2,
+              "travelers": 2,
+              "budget_amount": "1000",
+              "budget_scope": "total",
+              "budget_coverage": "不包含来回车票",
+              "must_visit": [
+                "河头老街"
+              ],
+              "avoid": [],
+              "dietary": [],
+              "pace": "轻松",
+              "revision": 1
+            },
+            "trip": {
+              "destination": "唐山",
+              "date_range": "2026年10月19日 - 2026年10月20日",
+              "budget": "总预算 1000 元",
+              "style": "轻松",
+              "note": ""
+            }
+          },
+          "travel_window": {
+            "city": "唐山",
+            "start_date": "2026-10-19",
+            "end_date": "2026-10-20",
+            "dates": [
+              "2026-10-19",
+              "2026-10-20"
+            ],
+            "day_count": 2,
+            "overnight_count": 1,
+            "arrival": {
+              "time": "14:33",
+              "location": "唐山站"
+            },
+            "departure": {
+              "time": "14:35",
+              "location": "唐山站"
+            },
+            "time_basis": "旅游城市当地时间",
+            "requirements_revision": 1,
+            "note": "跨午夜次数不代表已预订酒店；当天往返不住宿。未知抵离时刻保持未知，不自行填充。"
+          }
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_places",
+        "arguments": {
+          "city": "唐山",
+          "keywords": "河头老街"
+        },
+        "seconds": 0.867,
+        "result": {
+          "status": "available",
+          "city": "唐山",
+          "keywords": "河头老街",
+          "candidates": [
+            {
+              "poi_id": "B013B0QGF1",
+              "name": "河头老街",
+              "address": "运河西路66号",
+              "longitude": 118.075413,
+              "latitude": 39.561789,
+              "city": "唐山市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T11:43:53+00:00"
+            },
+            {
+              "poi_id": "B0MB4KY5Q7",
+              "name": "河头老街·大唐百戏园",
+              "address": "瑞景街68号",
+              "longitude": 118.073914,
+              "latitude": 39.558621,
+              "city": "唐山市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T11:43:53+00:00"
+            },
+            {
+              "poi_id": "B0FFJ8GJZE",
+              "name": "河头老街-游船",
+              "address": "运河西路河头老街",
+              "longitude": 118.075389,
+              "latitude": 39.562217,
+              "city": "唐山市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T11:43:53+00:00"
+            },
+            {
+              "poi_id": "BV09456011",
+              "name": "河头老街(公交站)",
+              "address": "唐山宴-河头老街旅游专线",
+              "longitude": 118.0771,
+              "latitude": 39.568377,
+              "city": "唐山市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T11:43:53+00:00"
+            },
+            {
+              "poi_id": "B0L2290ESB",
+              "name": "河头老街-南检票口",
+              "address": "运河西路66号河头老街(西南角)",
+              "longitude": 118.073089,
+              "latitude": 39.560146,
+              "city": "唐山市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T11:43:53+00:00"
+            }
+          ],
+          "source": "高德地图 POI",
+          "transport": "amap_mcp",
+          "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；营业、开放和预约情况仍需另行核实。",
+          "route_review": []
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_places",
+        "arguments": {
+          "city": "唐山",
+          "keywords": "唐山站"
+        },
+        "seconds": 0.703,
+        "result": {
+          "status": "unavailable",
+          "reason": "没有找到带有效坐标的候选地点，请换一个更具体的名称；当前地点仍待核实。",
+          "candidates": [],
+          "route_review": []
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_weather",
+        "arguments": {
+          "city": "唐山",
+          "date": "2026-10-19"
+        },
+        "seconds": 1.799,
+        "result": {
+          "status": "available",
+          "city": "唐山",
+          "requested_date": "2026-10-19",
+          "timezone": "Asia/Shanghai",
+          "condition": "阴",
+          "temperature_max_c": 23.1,
+          "temperature_min_c": 16.1,
+          "precipitation_probability_max": 6,
+          "clothing_advice": "长袖和薄外套，早晚可能偏凉",
+          "source": "Open-Meteo"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_places",
+        "arguments": {
+          "city": "唐山",
+          "keywords": "唐山火车站"
+        },
+        "seconds": 0.786,
+        "result": {
+          "status": "available",
+          "city": "唐山",
+          "keywords": "唐山火车站",
+          "candidates": [
+            {
+              "poi_id": "B013B015E6",
+              "name": "唐山站",
+              "address": "站前路160号",
+              "longitude": 118.117914,
+              "latitude": 39.625639,
+              "city": "唐山市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T11:43:59+00:00"
+            },
+            {
+              "poi_id": "B0FFG6LGIQ",
+              "name": "唐山站(东进站口)",
+              "address": "站前路158号",
+              "longitude": 118.119662,
+              "latitude": 39.625821,
+              "city": "唐山市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T11:43:59+00:00"
+            },
+            {
+              "poi_id": "B013B01960",
+              "name": "唐山南站",
+              "address": "车站路",
+              "longitude": 118.195866,
+              "latitude": 39.612341,
+              "city": "唐山市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T11:43:59+00:00"
+            }
+          ],
+          "source": "高德地图 POI",
+          "transport": "amap_mcp",
+          "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；营业、开放和预约情况仍需另行核实。",
+          "route_review": [
+            {
+              "purpose": "抵达接驳",
+              "status": "not_attempted",
+              "origins": [
+                {
+                  "poi_id": "B013B015E6",
+                  "name": "唐山站"
+                }
+              ],
+              "destinations": [
+                {
+                  "poi_id": "B013B0QGF1",
+                  "name": "河头老街"
+                }
+              ]
+            },
+            {
+              "purpose": "返程接驳",
+              "status": "not_attempted",
+              "origins": [
+                {
+                  "poi_id": "B013B0QGF1",
+                  "name": "河头老街"
+                }
+              ],
+              "destinations": [
+                {
+                  "poi_id": "B013B015E6",
+                  "name": "唐山站"
+                }
+              ]
+            }
+          ]
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_weather",
+        "arguments": {
+          "city": "唐山",
+          "date": "2026-10-20"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "city": "唐山",
+          "requested_date": "2026-10-20",
+          "timezone": "Asia/Shanghai",
+          "condition": "阴",
+          "temperature_max_c": 23.3,
+          "temperature_min_c": 14.6,
+          "precipitation_probability_max": 26,
+          "clothing_advice": "长袖和薄外套，早晚可能偏凉",
+          "source": "Open-Meteo"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "B013B015E6",
+          "destination_poi_id": "B013B0QGF1",
+          "mode": "transit"
+        },
+        "seconds": 0.304,
+        "result": {
+          "origin_poi_id": "B013B015E6",
+          "origin_name": "唐山站",
+          "destination_poi_id": "B013B0QGF1",
+          "destination_name": "河头老街",
+          "mode": "transit",
+          "status": "available",
+          "duration_minutes": 66,
+          "distance_meters": 10741,
+          "source": "高德路线规划",
+          "fetched_at": "2026-10-14T11:44:02+00:00",
+          "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "B013B0QGF1",
+          "destination_poi_id": "B013B015E6",
+          "mode": "transit"
+        },
+        "seconds": 0.331,
+        "result": {
+          "origin_poi_id": "B013B0QGF1",
+          "origin_name": "河头老街",
+          "destination_poi_id": "B013B015E6",
+          "destination_name": "唐山站",
+          "mode": "transit",
+          "status": "available",
+          "duration_minutes": 60,
+          "distance_meters": 10741,
+          "source": "高德路线规划",
+          "fetched_at": "2026-10-14T11:44:02+00:00",
+          "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "行程交付复核",
+      "value": {
+        "source_hash": "f47ee4c158b8fc9490250b1bf7b750d83cdc78b997f0cd68b126cad9f47e1f7e",
+        "review": {
+          "status": "revise",
+          "issues": [
+            "预算分项上界之和1080元超过1000元总预算：住宿400+餐饮300+交通80+门票150+机动70=1080，应调整使各分项合计不超1000。",
+            "Day 2午餐结束12:30到12:45出发仅10分钟步行至公交站，随后还需候车，50分钟候车窗口被候车时间挤占，建议将午餐收至12:20或提前出发时刻。"
+          ],
+          "checks": {
+            "requirements": true,
+            "route_evidence": true,
+            "schedule": false,
+            "lodging": true,
+            "meals": true,
+            "budget": false,
+            "facts": true,
+            "delivery": true
+          },
+          "budget_items": [
+            {
+              "label": "住宿（1晚两人）",
+              "upper_total_cny": 400,
+              "included": true
+            },
+            {
+              "label": "餐饮（19日晚+20日早午）",
+              "upper_total_cny": 300,
+              "included": true
+            },
+            {
+              "label": "市内交通（站↔老街2程+短程）",
+              "upper_total_cny": 80,
+              "included": true
+            },
+            {
+              "label": "门票/体验（游船、百戏园等可选）",
+              "upper_total_cny": 150,
+              "included": true
+            },
+            {
+              "label": "机动（打车、饮水、临时调整）",
+              "upper_total_cny": 70,
+              "included": true
+            }
+          ]
+        },
+        "issues": [
+          "预算分项上界之和1080元超过1000元总预算：住宿400+餐饮300+交通80+门票150+机动70=1080，应调整使各分项合计不超1000。",
+          "Day 2午餐结束12:30到12:45出发仅10分钟步行至公交站，随后还需候车，50分钟候车窗口被候车时间挤占，建议将午餐收至12:20或提前出发时刻。",
+          "时间窗口及活动衔接尚未通过复核。",
+          "预算分项与可行性条件尚未通过复核。"
+        ]
+      }
+    },
+    {
+      "title": "行程交付复核",
+      "value": {
+        "source_hash": "26bc6c4b3d5f93bb432a0421f782992700406a82162a675966b1f646ce8e88b3",
+        "review": {
+          "status": "revise",
+          "issues": [
+            "去方向（唐山站→河头老街）查询结果为66分钟，接驳依据段写成\"约60–66分钟\"，其中60是回方向数值，不能用来支撑去方向的范围下限。"
+          ],
+          "checks": {
+            "requirements": true,
+            "route_evidence": false,
+            "schedule": true,
+            "lodging": true,
+            "meals": true,
+            "budget": true,
+            "facts": true,
+            "delivery": true
+          },
+          "budget_items": [
+            {
+              "label": "住宿1晚（两人合住）",
+              "upper_total_cny": 400,
+              "included": true
+            },
+            {
+              "label": "餐饮（19日晚餐+20日早餐+20日午餐）",
+              "upper_total_cny": 280,
+              "included": true
+            },
+            {
+              "label": "市内交通（站↔老街+周边短程）",
+              "upper_total_cny": 80,
+              "included": true
+            },
+            {
+              "label": "门票/可选体验",
+              "upper_total_cny": 150,
+              "included": true
+            },
+            {
+              "label": "机动",
+              "upper_total_cny": 90,
+              "included": true
+            }
+          ]
+        },
+        "issues": [
+          "去方向（唐山站→河头老街）查询结果为66分钟，接驳依据段写成\"约60–66分钟\"，其中60是回方向数值，不能用来支撑去方向的范围下限。",
+          "交通起终点、方向与方式对应尚未通过复核。"
+        ]
+      }
+    },
+    {
+      "title": "Agent Loop 状态",
+      "value": {
+        "mode": "planning",
+        "seconds": 151.218,
+        "status": "completed",
+        "steps": 6,
+        "tool_calls": 8,
+        "stop_reason": "Agent 已完成本次工作。",
+        "history": [
+          {
+            "step": 1,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 1,
+            "error": "",
+            "at": "2026-10-14T11:43:46+00:00"
+          },
+          {
+            "step": 2,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 3,
+            "error": "",
+            "at": "2026-10-14T11:43:55+00:00"
+          },
+          {
+            "step": 3,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 2,
+            "error": "",
+            "at": "2026-10-14T11:43:59+00:00"
+          },
+          {
+            "step": 4,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 2,
+            "error": "",
+            "at": "2026-10-14T11:44:02+00:00"
+          },
+          {
+            "step": 5,
+            "phase": "working",
+            "action": "finish",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": "delivery_review",
+            "tool_calls": 0,
+            "error": "",
+            "at": "2026-10-14T11:45:08+00:00"
+          },
+          {
+            "step": 6,
+            "phase": "delivery_review",
+            "action": "finish",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 0,
+            "error": "",
+            "at": "2026-10-14T11:46:12+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "title": "共享调用预算",
+      "value": {
+        "model_calls": 9,
+        "tool_calls": 8,
+        "external_calls": 22
+      }
+    }
+  ],
+  "manual_review_checklist": [
+    "关键抵达和返程方向分别查询，未查不能写成查不到",
+    "酒店未选好不虚构酒店到达时刻或套景点耗时",
+    "14:35离站与提前到站目标区分，上午活动午餐不挤占接驳候车",
+    "预算分项不超过1000，交通与门票/可选游船分开且说明可行性条件",
+    "每餐有时段、区域/解决方式和类型/选择标准，不机械三餐",
+    "不把未提供忌口说成没有限制，不保证未核实避雨备选",
+    "分隔线前有简短主线、预算判断和关键条件，无内部工具/守规则术语和反复核实清单"
+  ],
+  "quality_grade": "pending_manual_review",
+  "display_conversion": "not_run"
+}

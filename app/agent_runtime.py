@@ -11,6 +11,7 @@ from .agent_loop import AgentLoop, AgentLoopState, LoopAction, LoopObservation, 
 from .agent_roles import roles, role_reasoning_effort, INTENT_SCHEMA
 from .requirements import chat_changes, update_requirements, LIST_FIELDS
 from .planning import planning_brief, required_information
+from .planning_evidence import critical_route_review
 from .places import collect_places
 from jsonschema import ValidationError
 from .plan_display import validate_display, display_format, text_hash, parse_display_output
@@ -101,6 +102,7 @@ class TravelAgentRuntime:
         self.requirements_checked = False
         self.requirement_completion_attempts = 0
         self.used_saved_evidence = False
+        self.route_review_enabled = False
         self.last_response = None
         self.action = 'reply'
         self.entry_role = None
@@ -154,6 +156,7 @@ class TravelAgentRuntime:
         payload = {'user_message': self.user_body, 'conversation': self.snapshot.get('recent_chat', []),
             'current_date': self.snapshot.get('current_date'), 'has_plan': bool(self.plan and self.plan.has_content),
             'workflow_state': self.snapshot.get('workflow_state', getattr(self.trip, 'workflow_state', {})),
+            'requirements': self.read_context({'section': 'requirements'}),
             'missing_requirements': required_information(self.trip)}
         data = json.loads(self.model_node('main', payload))
         Draft202012Validator(INTENT_SCHEMA).validate(data)
@@ -190,7 +193,10 @@ class TravelAgentRuntime:
     def execute_route(self, role, scope, target_item_id):
         if role == 'chat':
             return self.text_reply(self.model_node('chat', {'user_message': self.user_body,
-                'conversation': self.snapshot.get('recent_chat', [])}))
+                'conversation': self.snapshot.get('recent_chat', []),
+                'current_date': self.snapshot.get('current_date'),
+                'requirements': self.read_context({'section': 'requirements'}),
+                'missing_requirements': required_information(self.trip)}))
         if role == 'revision' and (not self.plan or not self.plan.has_content):
             return replace(self.text_reply('需要补充：当前没有可修改的行程，请先生成方案。'), needs_input=True)
         if role == 'revision' and self.action == 'confirm':
@@ -229,11 +235,13 @@ class TravelAgentRuntime:
             specs = [s for s in specs if s['function']['name'] in {'read_context', 'update_requirements', 'check_requirements'}]
         allowed = {s['function']['name'] for s in specs}
         started = monotonic()
+        self.route_review_enabled = role == 'planning' and self.action == 'generate'
         messages = self._initial_messages(role, task, scope, target_item_id)
         state = AgentLoopState(self.trace.request_id if self.trace else 'turn', role, 'working',
             goal=task, max_steps=config.max_steps, max_tool_calls=self.budget.max_tools)
         results, errors = [], []
         review_retries = 0
+        route_review_retries = 0
 
         def decide(current):
             response = self.request(self.client, self.model, messages, tools=specs, trace=self.trace,
@@ -244,7 +252,7 @@ class TravelAgentRuntime:
             return LoopAction('tools', {'message': assistant, 'calls': calls}) if calls else LoopAction('finish', {'content': (assistant.content or '').strip()})
 
         def execute(action, current):
-            nonlocal review_retries
+            nonlocal review_retries, route_review_retries
             self.budget.remaining()
             if action.name == 'tools':
                 calls = action.payload['calls']
@@ -283,6 +291,21 @@ class TravelAgentRuntime:
                 # 中途提醒使用 user 角色：部分服务端（如 llama.cpp）要求 system 消息只能在开头
                 messages.extend([{'role': 'assistant', 'content': content}, {'role': 'user', 'content': '请先审阅整条user_message，执行update_requirements或check_requirements；完成后再交付结果。'}])
                 return LoopObservation(next_phase='requirements')
+            if self.route_review_enabled and not asks:
+                review = self.planning_route_review()
+                pending = [row for row in review if row['status'] == 'not_attempted']
+                if pending:
+                    self.event('关键接驳复核', {'routes': review, 'attempt': route_review_retries + 1})
+                    if route_review_retries >= 1:
+                        raise ValueError('已匹配的关键接驳尚未查询，未保存新行程')
+                    route_review_retries += 1
+                    instruction = {'route_review': review, 'instruction':
+                        '先查询not_attempted的关键接驳，再重新交付完整方案；每项的候选起终点由实际主线选择，'
+                        '两个方向分别查询。原草稿未保存，不能把没有查询写成查询失败。查询失败或预算不足时'
+                        '如实给条件草案，不填写未知通勤或酒店到达时刻。用户明确禁止外查时先说明限制并确认取舍。'}
+                    messages.extend([{'role': 'assistant', 'content': content},
+                                     {'role': 'user', 'content': json.dumps(instruction, ensure_ascii=False)}])
+                    return LoopObservation(next_phase='routes')
             result = self.finish_role(role, content, scope, target_item_id)
             results.append(result)
             return LoopObservation(done=True, wait_for_user=result.needs_input)
@@ -309,6 +332,15 @@ class TravelAgentRuntime:
         if outcome.status not in {LOOP_COMPLETED, LOOP_WAITING_USER} or not results:
             raise AgentBudgetError(outcome.stop_reason or 'Agent 未完成本次任务')
         return results[-1]
+
+    def planning_route_review(self):
+        return critical_route_review(self.trip, self.catalog, self.evidence,
+                                     self.budget.max_external - self.budget.external_calls)
+
+    def planning_tool_output(self, name, output):
+        if self.route_review_enabled and name == 'search_places':
+            return dict(output, route_review=self.planning_route_review())
+        return output
 
     def read_context(self, args):
         section = args.get('section')
@@ -427,10 +459,15 @@ class TravelAgentRuntime:
             raise ValueError('当前动作不允许外部查询；修改前须审阅本轮需求')
         if name not in {s['function']['name'] for s in self.configs[role].tools}:
             raise ValueError('当前角色不允许使用此工具')
+        if self.route_review_enabled and name == 'search_food':
+            pending = [row for row in self.planning_route_review() if row['status'] == 'not_attempted']
+            if pending:
+                return {'status': 'prerequisite_needed', 'route_review': pending,
+                        'instruction': '先查询关键抵达/返程接驳，再查询餐饮候选，避免无关推荐耗尽预算。'}, None
         cache_key = (name, json.dumps(args, sort_keys=True, ensure_ascii=False))
         if name in {'search_places', 'search_food', 'query_weather'} and cache_key in self.external_results:
             self.event('查询缓存复用', {'tool': name, 'scope': 'current_turn'})
-            return deepcopy(self.external_results[cache_key]), None
+            return self.planning_tool_output(name, deepcopy(self.external_results[cache_key])), None
         if name != 'query_route':
             # Search includes up to five MCP detail calls. Decline an operation
             # before starting it when its bounded cost cannot fit the turn.
@@ -448,7 +485,7 @@ class TravelAgentRuntime:
             self.external_results[cache_key] = deepcopy(output)
         self.evidence.append({'tool': name, 'arguments': deepcopy(args), 'result': deepcopy(output),
             'queried_at': datetime.now(timezone.utc).isoformat(timespec='seconds'), 'seconds': seconds})
-        return output, None
+        return self.planning_tool_output(name, output), None
 
     def check_quote(self, args, whole=False):
         quote = args.get('user_quote')

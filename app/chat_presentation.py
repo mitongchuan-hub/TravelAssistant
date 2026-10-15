@@ -7,24 +7,35 @@ import re
 _MARKDOWN = MarkdownIt('commonmark', {'html': False, 'breaks': True}).enable('table').disable('image')
 
 
-def chat_reply_view(body):
+def chat_reply_view(body, card=None):
     text = body or ''
     long = len(text) > 900 or len(text.splitlines()) > 18
     preview = text
-    if long:
+    overview = False
+    is_plan = getattr(card, 'kind', '') in {'itinerary-draft', 'revision'}
+    if long or is_plan:
         tokens = _MARKDOWN.parse(text)
-        # Take the first whole paragraph, including preceding headings. Never
-        # cut inside a sentence or ask a model for another summary.
-        block = next((tokens[i + 1] for i, token in enumerate(tokens[:-1])
-                      if token.type == 'paragraph_open' and tokens[i + 1].map), None)
-        if block is None:
-            block = next((token for token in tokens if token.map and token.type in {'fence', 'code_block', 'inline'}), None)
-        if block:
-            preview = '\n'.join(text.splitlines()[:block.map[1]])
-        # A single long paragraph stays fully readable rather than disappearing
-        # behind an expansion which would duplicate the whole reply.
-        long = preview != text
-    return {'html': Markup(_MARKDOWN.render(text)), 'preview': Markup(_MARKDOWN.render(preview)), 'long': long}
+        if is_plan:
+            lines = text.splitlines(keepends=True)
+            boundary = next((token for token in tokens
+                             if token.type == 'hr' and token.level == 0 and token.map), None)
+            if boundary:
+                prefix = ''.join(lines[:boundary.map[0]]).rstrip('\r\n')
+                tail = ''.join(lines[boundary.map[1]:]).strip()
+                if prefix.strip() and tail and len(prefix) <= 650:
+                    preview, long, overview = prefix, True, True
+        if not overview and long:
+            # Take the first whole paragraph, including preceding headings.
+            # Never cut a sentence or ask a model to summarize the source.
+            block = next((tokens[i + 1] for i, token in enumerate(tokens[:-1])
+                          if token.type == 'paragraph_open' and tokens[i + 1].map), None)
+            if block is None:
+                block = next((token for token in tokens if token.map and token.type in {'fence', 'code_block', 'inline'}), None)
+            if block:
+                preview = '\n'.join(text.splitlines()[:block.map[1]])
+            long = preview != text
+    return {'html': Markup(_MARKDOWN.render(text)), 'preview': Markup(_MARKDOWN.render(preview)),
+            'long': long, 'overview': overview}
 
 
 def chat_time_break(message, previous=None):

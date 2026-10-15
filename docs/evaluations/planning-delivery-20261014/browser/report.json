@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "widths": [
+    320,
+    390,
+    430,
+    1000
+  ],
+  "errors": [],
+  "scope": "isolated_memory_store_synthetic_replies"
+}

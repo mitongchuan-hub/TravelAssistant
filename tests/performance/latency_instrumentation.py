@@ -171,7 +171,7 @@ class Instrumentation:
             with self.t.span('组织日志：' + title, 'logging', cache_hit=title == '查询缓存复用'):
                 original_add(trace, title, value)
             if title in {'意图识别结果', '文字行程', '展示转换', '共享调用预算', 'Workflow 返回结果',
-                         '思考参数降级', '模型请求重试', '调用异常', 'Agent Loop 状态'}:
+                         '思考参数降级', '模型请求重试', '调用异常', 'Agent Loop 状态', '关键接驳复核'}:
                 self.t.event(title, value=deepcopy(value))
         self.set(agent_client.ConversationTrace, 'add', add)
         def write(trace, error=None):

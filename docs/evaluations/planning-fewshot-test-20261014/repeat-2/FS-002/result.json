@@ -1,0 +1,793 @@
+{
+  "case_id": "FS-002",
+  "title": "长沙两日路线失败及未知酒店",
+  "steps": [
+    {
+      "input": {
+        "action": "plan",
+        "expected_plan_changed": true,
+        "assertions": {
+          "requirements_preserved": [
+            "city",
+            "start_date",
+            "end_date",
+            "travelers",
+            "arrival_time",
+            "departure_time",
+            "budget_amount",
+            "dietary"
+          ],
+          "required_tools": [
+            "query_route"
+          ]
+        }
+      },
+      "before": {
+        "trip": {
+          "id": "trip-105",
+          "destination": "长沙",
+          "date_range": "2026年10月24日 - 2026年10月25日",
+          "budget": "总预算 1500 元",
+          "style": "轻松",
+          "note": "抵达前已吃午餐。酒店尚未选择，房型、房间数与位置都未定。首日只安排核心景点和晚餐，次日早餐、午餐后返程，节奏轻松；不指定酒店或餐厅，不增加其他景点。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "未生成",
+          "last_activity": "旅行需求已更新",
+          "requirements": {
+            "start_date": "2026-10-24",
+            "end_date": "2026-10-25",
+            "arrival_time": "14:40",
+            "departure_time": "15:50",
+            "city": "长沙",
+            "arrival_location": "长沙站",
+            "departure_location": "长沙站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1500",
+            "budget_scope": "total",
+            "budget_coverage": "含市内交通、餐饮、门票、住宿，不含往返车票",
+            "must_visit": [
+              "橘子洲"
+            ],
+            "avoid": [],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "",
+          "evidence": [],
+          "requirements_revision": null,
+          "display": null,
+          "display_source_hash": "",
+          "display_status": "not_requested",
+          "requirements_snapshot": {}
+        },
+        "messages": [],
+        "ideas": []
+      },
+      "after": {
+        "trip": {
+          "id": "trip-105",
+          "destination": "长沙",
+          "date_range": "2026年10月24日 - 2026年10月25日",
+          "budget": "总预算 1500 元",
+          "style": "轻松",
+          "note": "抵达前已吃午餐。酒店尚未选择，房型、房间数与位置都未定。首日只安排核心景点和晚餐，次日早餐、午餐后返程，节奏轻松；不指定酒店或餐厅，不增加其他景点。",
+          "owner": {
+            "id": "u1",
+            "name": "林夏",
+            "initials": "林"
+          },
+          "status": "草案",
+          "last_activity": "Agent 已生成行程草案",
+          "requirements": {
+            "start_date": "2026-10-24",
+            "end_date": "2026-10-25",
+            "arrival_time": "14:40",
+            "departure_time": "15:50",
+            "city": "长沙",
+            "arrival_location": "长沙站",
+            "departure_location": "长沙站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1500",
+            "budget_scope": "total",
+            "budget_coverage": "含市内交通、餐饮、门票、住宿，不含往返车票",
+            "must_visit": [
+              "橘子洲"
+            ],
+            "avoid": [],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          },
+          "workflow_state": {}
+        },
+        "plan": {
+          "id": "plan-108",
+          "title": "长沙行程",
+          "status": "草案",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "text": "这是一版条件草案：接驳耗时和橘子洲开放/门票都还没核实，酒店也未选定，所以移动时间和到站时刻要等你确定住宿、并核实路线后再落定。1500元优先保住宿、正常用餐和必要交通，暂不加其他景点，门票以实际票价确认后再调额度。\n\n---\n**10月24日**\n- 14:40抵达长沙站（抵达前已吃午餐，不另安排）。先与选定住宿确认接待和行李安置，再前往橘子洲方向；因接驳耗时未查到，先按\"安置行李→前往橘子洲→游核心段\"的顺序走，具体出发时刻等路线核实后再排。\n- 橘子洲以确认开放和入园条件为条件，轻松游览核心段，不额外跨区加景点。\n- 傍晚在橘子洲片区选不吃辣的家常菜吃晚餐，预留约一小时，之后回住处休息。\n- 天气未知，若为雨则户外段按实际情况缩短、优先室内/休息。\n\n**10月25日**\n- 早餐在住处所在区域选简餐，若酒店含早则用含早。\n- 上午轻松休息，不安排远处活动。\n- 午餐在回程方向选不吃辣的家常饭，预留约一小时；结束午餐、取行李后前往长沙站。因酒店位置未定、路线未查，最晚出发时刻暂无法确定，等你选定酒店并核实路线后再据此排接驳。\n- 建议15:00前到长沙站候车，15:50离站（候车时间需另留）。晚餐在离站后自行解决。\n\n**预算上限（2人合计，非实际报价）**\n- 一晚全部住宿：600元\n- 三天相关餐饮（首日晚餐、次日早午餐，含饮品）：400元\n- 市内交通（含必要接驳）：200元\n- 橘子洲必要门票：150元\n- 机动：150元\n- 合计：1500元；房间数、房型与票价确认后再微调。\n\n**需要你确认/办理**\n1. 选定住宿并确认是否可寄存行李、含早情况。\n2. 核实长沙站↔橘子洲的实际接驳耗时与橘子洲开放/门票，我再补到站与出发时刻。\n3. 同行两人均不吃辣已纳入点餐标准，如有其他忌口请补充。",
+          "evidence": [
+            {
+              "tool": "search_places",
+              "arguments": {
+                "city": "长沙",
+                "keywords": "长沙站"
+              },
+              "result": {
+                "status": "available",
+                "city": "长沙",
+                "keywords": "长沙站",
+                "candidates": [
+                  {
+                    "poi_id": "cs-station",
+                    "name": "长沙站",
+                    "address": "合成测试地址",
+                    "longitude": 113.0,
+                    "latitude": 28.2,
+                    "city": "长沙",
+                    "district": "",
+                    "source": "高德地图 POI",
+                    "fetched_at": "2026-10-14T00:00:00Z"
+                  }
+                ],
+                "source": "合成测试地点",
+                "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+              },
+              "queried_at": "2026-10-14T12:56:37+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "search_places",
+              "arguments": {
+                "city": "长沙",
+                "keywords": "橘子洲"
+              },
+              "result": {
+                "status": "available",
+                "city": "长沙",
+                "keywords": "橘子洲",
+                "candidates": [
+                  {
+                    "poi_id": "cs-core",
+                    "name": "橘子洲",
+                    "address": "合成测试地址",
+                    "longitude": 113.01,
+                    "latitude": 28.2,
+                    "city": "长沙",
+                    "district": "",
+                    "source": "高德地图 POI",
+                    "fetched_at": "2026-10-14T00:00:00Z"
+                  }
+                ],
+                "source": "合成测试地点",
+                "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+              },
+              "queried_at": "2026-10-14T12:56:37+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "query_route",
+              "arguments": {
+                "origin_poi_id": "cs-station",
+                "destination_poi_id": "cs-core",
+                "mode": "transit"
+              },
+              "result": {
+                "status": "unavailable",
+                "origin_poi_id": "cs-station",
+                "destination_poi_id": "cs-core",
+                "mode": "transit",
+                "duration_minutes": null,
+                "distance_meters": null,
+                "source": "受控合成路线",
+                "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+              },
+              "queried_at": "2026-10-14T12:56:39+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "query_route",
+              "arguments": {
+                "origin_poi_id": "cs-core",
+                "destination_poi_id": "cs-station",
+                "mode": "transit"
+              },
+              "result": {
+                "status": "unavailable",
+                "origin_poi_id": "cs-core",
+                "destination_poi_id": "cs-station",
+                "mode": "transit",
+                "duration_minutes": null,
+                "distance_meters": null,
+                "source": "受控合成路线",
+                "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+              },
+              "queried_at": "2026-10-14T12:56:39+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "query_weather",
+              "arguments": {
+                "city": "长沙",
+                "date": "2026-10-24"
+              },
+              "result": {
+                "status": "unavailable",
+                "reason": "目标日期超出受控预报范围，温度与降雨概率未知。",
+                "source": "合成天气资料",
+                "fetched_at": "2026-10-14T00:00:00+00:00"
+              },
+              "queried_at": "2026-10-14T12:56:42+00:00",
+              "seconds": 0.0
+            },
+            {
+              "tool": "query_weather",
+              "arguments": {
+                "city": "长沙",
+                "date": "2026-10-25"
+              },
+              "result": {
+                "status": "unavailable",
+                "reason": "目标日期超出受控预报范围，温度与降雨概率未知。",
+                "source": "合成天气资料",
+                "fetched_at": "2026-10-14T00:00:00+00:00"
+              },
+              "queried_at": "2026-10-14T12:56:42+00:00",
+              "seconds": 0.0
+            }
+          ],
+          "requirements_revision": 1,
+          "display": null,
+          "display_source_hash": "b8843e44edd494373380f142ace1ff91e50548505ba523991d4e7763537b2c98",
+          "display_status": "pending",
+          "requirements_snapshot": {
+            "start_date": "2026-10-24",
+            "end_date": "2026-10-25",
+            "arrival_time": "14:40",
+            "departure_time": "15:50",
+            "city": "长沙",
+            "arrival_location": "长沙站",
+            "departure_location": "长沙站",
+            "day_count": 2,
+            "travelers": 2,
+            "budget_amount": "1500",
+            "budget_scope": "total",
+            "budget_coverage": "含市内交通、餐饮、门票、住宿，不含往返车票",
+            "must_visit": [
+              "橘子洲"
+            ],
+            "avoid": [],
+            "dietary": [
+              "不吃辣"
+            ],
+            "pace": "轻松",
+            "revision": 1
+          }
+        },
+        "messages": [
+          {
+            "id": "m-109",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "这是一版条件草案：接驳耗时和橘子洲开放/门票都还没核实，酒店也未选定，所以移动时间和到站时刻要等你确定住宿、并核实路线后再落定。1500元优先保住宿、正常用餐和必要交通，暂不加其他景点，门票以实际票价确认后再调额度。\n\n---\n**10月24日**\n- 14:40抵达长沙站（抵达前已吃午餐，不另安排）。先与选定住宿确认接待和行李安置，再前往橘子洲方向；因接驳耗时未查到，先按\"安置行李→前往橘子洲→游核心段\"的顺序走，具体出发时刻等路线核实后再排。\n- 橘子洲以确认开放和入园条件为条件，轻松游览核心段，不额外跨区加景点。\n- 傍晚在橘子洲片区选不吃辣的家常菜吃晚餐，预留约一小时，之后回住处休息。\n- 天气未知，若为雨则户外段按实际情况缩短、优先室内/休息。\n\n**10月25日**\n- 早餐在住处所在区域选简餐，若酒店含早则用含早。\n- 上午轻松休息，不安排远处活动。\n- 午餐在回程方向选不吃辣的家常饭，预留约一小时；结束午餐、取行李后前往长沙站。因酒店位置未定、路线未查，最晚出发时刻暂无法确定，等你选定酒店并核实路线后再据此排接驳。\n- 建议15:00前到长沙站候车，15:50离站（候车时间需另留）。晚餐在离站后自行解决。\n\n**预算上限（2人合计，非实际报价）**\n- 一晚全部住宿：600元\n- 三天相关餐饮（首日晚餐、次日早午餐，含饮品）：400元\n- 市内交通（含必要接驳）：200元\n- 橘子洲必要门票：150元\n- 机动：150元\n- 合计：1500元；房间数、房型与票价确认后再微调。\n\n**需要你确认/办理**\n1. 选定住宿并确认是否可寄存行李、含早情况。\n2. 核实长沙站↔橘子洲的实际接驳耗时与橘子洲开放/门票，我再补到站与出发时刻。\n3. 同行两人均不吃辣已纳入点餐标准，如有其他忌口请补充。",
+            "created_at": "20:56",
+            "status": "sent",
+            "agent_card": {
+              "kind": "itinerary-draft",
+              "title": "行程草案",
+              "summary": "这是一版条件草案：接驳耗时和橘子洲开放/门票都还没核实，酒店也未选定，所以移动时间和到站时刻要等你确定住宿、并核实路线后再落定。1500元优先保住宿、正常用餐和必要交通，暂不加其他景点，门票以实际票价确认后再调额度。\n\n---\n**10月2",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "查看行程",
+                  "target": "itinerary"
+                }
+              ]
+            }
+          }
+        ],
+        "ideas": []
+      },
+      "seconds": 22.176525,
+      "machine_checks": {
+        "plan_change": true,
+        "requirements_preserved.city": true,
+        "requirements_preserved.start_date": true,
+        "requirements_preserved.end_date": true,
+        "requirements_preserved.travelers": true,
+        "requirements_preserved.arrival_time": true,
+        "requirements_preserved.departure_time": true,
+        "requirements_preserved.budget_amount": true,
+        "requirements_preserved.dietary": true,
+        "tool_called.query_route": true,
+        "task_succeeded": true
+      },
+      "machine_checks_pass": true,
+      "task": {
+        "id": "f129b6279dce448ebcb5c6e745132452",
+        "trip_id": "trip-105",
+        "kind": "plan",
+        "payload": {},
+        "request_id": "FS-002-1",
+        "retry_of": "",
+        "status": "succeeded",
+        "message": "已完成",
+        "created_at": "2026-10-14T12:56:30+00:00",
+        "updated_at": "2026-10-14T12:56:52+00:00",
+        "message_id": "",
+        "thinking_id": "m-107",
+        "result_url": "/workspace/trip-105?tab=itinerary",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "needs_input": false
+      },
+      "model_calls": [
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 5347,
+            "completion_tokens": 457
+          },
+          "proposed_tools": [
+            "search_places",
+            "search_places"
+          ],
+          "seconds": 7.279865
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 5856,
+            "completion_tokens": 139
+          },
+          "proposed_tools": [
+            "query_route",
+            "query_route"
+          ],
+          "seconds": 2.406524
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 6166,
+            "completion_tokens": 136
+          },
+          "proposed_tools": [
+            "query_weather",
+            "query_weather"
+          ],
+          "seconds": 2.318039
+        },
+        {
+          "role": "planning",
+          "usage": {
+            "prompt_tokens": 6412,
+            "completion_tokens": 647
+          },
+          "proposed_tools": [],
+          "seconds": 10.164375
+        }
+      ],
+      "queries": [
+        {
+          "name": "search_places",
+          "arguments": {
+            "city": "长沙",
+            "keywords": "长沙站"
+          },
+          "result": {
+            "status": "available",
+            "city": "长沙",
+            "keywords": "长沙站",
+            "candidates": [
+              {
+                "poi_id": "cs-station",
+                "name": "长沙站",
+                "address": "合成测试地址",
+                "longitude": 113.0,
+                "latitude": 28.2,
+                "city": "长沙",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T00:00:00Z"
+              }
+            ],
+            "source": "合成测试地点",
+            "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+          }
+        },
+        {
+          "name": "search_places",
+          "arguments": {
+            "city": "长沙",
+            "keywords": "橘子洲"
+          },
+          "result": {
+            "status": "available",
+            "city": "长沙",
+            "keywords": "橘子洲",
+            "candidates": [
+              {
+                "poi_id": "cs-core",
+                "name": "橘子洲",
+                "address": "合成测试地址",
+                "longitude": 113.01,
+                "latitude": 28.2,
+                "city": "长沙",
+                "district": "",
+                "source": "高德地图 POI",
+                "fetched_at": "2026-10-14T00:00:00Z"
+              }
+            ],
+            "source": "合成测试地点",
+            "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+          }
+        },
+        {
+          "name": "query_route",
+          "arguments": {
+            "origin_poi_id": "cs-station",
+            "destination_poi_id": "cs-core",
+            "mode": "transit"
+          },
+          "result": {
+            "status": "unavailable",
+            "origin_poi_id": "cs-station",
+            "destination_poi_id": "cs-core",
+            "mode": "transit",
+            "duration_minutes": null,
+            "distance_meters": null,
+            "source": "受控合成路线",
+            "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+          }
+        },
+        {
+          "name": "query_route",
+          "arguments": {
+            "origin_poi_id": "cs-core",
+            "destination_poi_id": "cs-station",
+            "mode": "transit"
+          },
+          "result": {
+            "status": "unavailable",
+            "origin_poi_id": "cs-core",
+            "destination_poi_id": "cs-station",
+            "mode": "transit",
+            "duration_minutes": null,
+            "distance_meters": null,
+            "source": "受控合成路线",
+            "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+          }
+        },
+        {
+          "name": "query_weather",
+          "arguments": {
+            "city": "长沙",
+            "date": "2026-10-24"
+          },
+          "result": {
+            "status": "unavailable",
+            "reason": "目标日期超出受控预报范围，温度与降雨概率未知。",
+            "source": "合成天气资料",
+            "fetched_at": "2026-10-14T00:00:00+00:00"
+          }
+        },
+        {
+          "name": "query_weather",
+          "arguments": {
+            "city": "长沙",
+            "date": "2026-10-25"
+          },
+          "result": {
+            "status": "unavailable",
+            "reason": "目标日期超出受控预报范围，温度与降雨概率未知。",
+            "source": "合成天气资料",
+            "fetched_at": "2026-10-14T00:00:00+00:00"
+          }
+        }
+      ]
+    }
+  ],
+  "tool_mode": "controlled",
+  "events": [
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_places",
+        "arguments": {
+          "city": "长沙",
+          "keywords": "长沙站"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "city": "长沙",
+          "keywords": "长沙站",
+          "candidates": [
+            {
+              "poi_id": "cs-station",
+              "name": "长沙站",
+              "address": "合成测试地址",
+              "longitude": 113.0,
+              "latitude": 28.2,
+              "city": "长沙",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T00:00:00Z"
+            }
+          ],
+          "source": "合成测试地点",
+          "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。",
+          "route_review": []
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "search_places",
+        "arguments": {
+          "city": "长沙",
+          "keywords": "橘子洲"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "available",
+          "city": "长沙",
+          "keywords": "橘子洲",
+          "candidates": [
+            {
+              "poi_id": "cs-core",
+              "name": "橘子洲",
+              "address": "合成测试地址",
+              "longitude": 113.01,
+              "latitude": 28.2,
+              "city": "长沙",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T00:00:00Z"
+            }
+          ],
+          "source": "合成测试地点",
+          "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。",
+          "route_review": [
+            {
+              "purpose": "抵达接驳",
+              "status": "not_attempted",
+              "origins": [
+                {
+                  "poi_id": "cs-station",
+                  "name": "长沙站"
+                }
+              ],
+              "destinations": [
+                {
+                  "poi_id": "cs-core",
+                  "name": "橘子洲"
+                }
+              ]
+            },
+            {
+              "purpose": "返程接驳",
+              "status": "not_attempted",
+              "origins": [
+                {
+                  "poi_id": "cs-core",
+                  "name": "橘子洲"
+                }
+              ],
+              "destinations": [
+                {
+                  "poi_id": "cs-station",
+                  "name": "长沙站"
+                }
+              ]
+            }
+          ]
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "cs-station",
+          "destination_poi_id": "cs-core",
+          "mode": "transit"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "unavailable",
+          "origin_poi_id": "cs-station",
+          "destination_poi_id": "cs-core",
+          "mode": "transit",
+          "duration_minutes": null,
+          "distance_meters": null,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "cs-core",
+          "destination_poi_id": "cs-station",
+          "mode": "transit"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "unavailable",
+          "origin_poi_id": "cs-core",
+          "destination_poi_id": "cs-station",
+          "mode": "transit",
+          "duration_minutes": null,
+          "distance_meters": null,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_weather",
+        "arguments": {
+          "city": "长沙",
+          "date": "2026-10-24"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "unavailable",
+          "reason": "目标日期超出受控预报范围，温度与降雨概率未知。",
+          "source": "合成天气资料",
+          "fetched_at": "2026-10-14T00:00:00+00:00"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "工具执行",
+      "value": {
+        "role": "planning",
+        "name": "query_weather",
+        "arguments": {
+          "city": "长沙",
+          "date": "2026-10-25"
+        },
+        "seconds": 0.0,
+        "result": {
+          "status": "unavailable",
+          "reason": "目标日期超出受控预报范围，温度与降雨概率未知。",
+          "source": "合成天气资料",
+          "fetched_at": "2026-10-14T00:00:00+00:00"
+        },
+        "error_type": null
+      }
+    },
+    {
+      "title": "Agent Loop 状态",
+      "value": {
+        "mode": "planning",
+        "seconds": 22.171,
+        "status": "completed",
+        "steps": 4,
+        "tool_calls": 6,
+        "stop_reason": "Agent 已完成本次工作。",
+        "history": [
+          {
+            "step": 1,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 2,
+            "error": "",
+            "at": "2026-10-14T12:56:37+00:00"
+          },
+          {
+            "step": 2,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 2,
+            "error": "",
+            "at": "2026-10-14T12:56:39+00:00"
+          },
+          {
+            "step": 3,
+            "phase": "working",
+            "action": "tools",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 2,
+            "error": "",
+            "at": "2026-10-14T12:56:42+00:00"
+          },
+          {
+            "step": 4,
+            "phase": "working",
+            "action": "finish",
+            "reason": "",
+            "observation_status": "applied",
+            "next_phase": null,
+            "tool_calls": 0,
+            "error": "",
+            "at": "2026-10-14T12:56:52+00:00"
+          }
+        ]
+      }
+    },
+    {
+      "title": "共享调用预算",
+      "value": {
+        "model_calls": 4,
+        "tool_calls": 6,
+        "external_calls": 4
+      }
+    }
+  ],
+  "manual_review_checklist": [
+    "确实尝试双向接驳且失败，无未知通勤分钟或酒店到达/出发时刻",
+    "住宿是两人一晚总额度，不假设一间房、可寄存或免费开放",
+    "晚餐、次日早餐午餐有时段/顺序与区域/方式，已吃午餐不重复",
+    "15:50离站及提前到站目标正确，返程条件不能用示例时刻替代",
+    "1500总额与上界合计正确，原文自然、简短且保留必要条件"
+  ],
+  "quality_grade": "pending_manual_review",
+  "display_conversion": "not_run"
+}

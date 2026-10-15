@@ -53,8 +53,11 @@ def main():
         path.write_text(redact(json.dumps(value, ensure_ascii=False, indent=2, default=str)), encoding='utf-8')
 
     hashes = {}
-    for relative in ('app/prompts/agents/planning.txt', 'app/prompts/agents/travel_rules.txt',
+    for relative in ('app/prompts/agents/planning.txt', 'app/prompts/agents/planning_examples.txt',
+                     'app/prompts/agents/travel_rules.txt',
                      'app/agent_roles.py', 'app/agent_runtime.py', 'app/planning.py',
+                     'app/planning_evidence.py', 'app/chat_presentation.py',
+                     'app/prompts/agents/revision.txt', 'app/templates/partials/chat_messages.html',
                      'tests/performance/check_planning_prompt.py'):
         source = ROOT / relative
         target = output / 'source' / relative
@@ -66,13 +69,16 @@ def main():
     manifest = {'started_at': datetime.now().isoformat(), 'dataset': data['dataset_id'],
                 'model': os.getenv('OPENAI_MODEL'), 'wire_api': os.getenv('OPENAI_WIRE_API'),
                 'reasoning': {key: value for key, value in os.environ.items() if key.startswith('OPENAI_REASONING_EFFORT')},
-                'scope': 'live_model_controlled_facts_isolated_memory_store_planning_text_only',
+                'scope': 'live_model_isolated_memory_store_planning_text_only',
+                'tool_modes': {case['id']: 'live_external' if case['tool_fixture'] == 'live_external' else 'controlled'
+                               for case in cases},
                 'display_conversion': 'not_run', 'business_http_used': False,
                 'source_hashes': hashes, 'cases': [case['id'] for case in cases], 'results': [],
                 'quality_grade': 'pending_manual_review', 'business_db_before': before}
     dump(output / 'manifest.json', manifest)
     consecutive_transport_failures = 0
     original_request = agent_client._create_chat_completion
+    original_run_tool = agent_client.run_tool
     original_init = TravelAgentRuntime.__init__
     for case in cases:
         directory = output / case['id']
@@ -95,7 +101,7 @@ def main():
 
         def trace_add(trace, title, value):
             original_add(trace, title, value)
-            if title in {'工具执行', '意图识别结果', 'Agent Loop 状态', '共享调用预算', '调用异常'}:
+            if title in {'工具执行', '意图识别结果', 'Agent Loop 状态', '共享调用预算', '调用异常', '关键接驳复核'}:
                 events.append({'title': title, 'value': deepcopy(value)})
 
         def request(*positional, **kwargs):
@@ -117,7 +123,9 @@ def main():
         def run_tool(name, arguments, **kwargs):
             override = next((item for item in data.get('tool_overrides', {}).get(case['tool_fixture'], [])
                              if item['name'] == name and item['arguments'] == arguments), None)
-            if override is not None:
+            if case['tool_fixture'] == 'live_external':
+                result = original_run_tool(name, arguments, **kwargs)
+            elif override is not None:
                 result = deepcopy(override['result'])
             else:
                 result = controlled_tool(data, case['tool_fixture'], name, arguments, **kwargs)
@@ -148,6 +156,7 @@ def main():
                              'machine_checks_pass': all(checks.values()), 'task': deepcopy(local.tasks[task['id']]),
                              'model_calls': deepcopy(calls[offsets[0]:]), 'queries': deepcopy(tools[offsets[2]:])})
                 result = {'case_id': case['id'], 'title': case['title'], 'steps': rows,
+                          'tool_mode': 'live_external' if case['tool_fixture'] == 'live_external' else 'controlled',
                           'events': events, 'manual_review_checklist': case['review'],
                           'quality_grade': 'pending_manual_review', 'display_conversion': 'not_run'}
                 dump(directory / 'result.json', result)

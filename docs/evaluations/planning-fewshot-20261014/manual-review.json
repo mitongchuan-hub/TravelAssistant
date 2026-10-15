@@ -1,0 +1,26 @@
+{
+  "scope": "Three fixed held-out inputs, one run per condition. Evidence and outcome checks are separate from full semantic acceptance.",
+  "cases": {
+    "FS-001": {
+      "before": "需求、双向公交45/55分钟和450餐饮保留；无证据公交费用、通常免费和避雨备选，查询天气先于接驳。",
+      "after": "优先查接驳，无复制示例25/35分钟；三人1200与餐饮200+250=450正确，去掉免费与交通价格猜测。仍称公交/地铁、安排未经查询的15分钟步行和未确认商场/茶歇备选。",
+      "semantic_grade": "not_fully_passed"
+    },
+    "FS-002": {
+      "before": "双向失败后没有补数值，但入住/寄存条件写得不充分，泛查餐厅未用于路线；预算夹带自费排除描述不清。",
+      "after": "先查路线，再查天气，不重复失败或泛查餐厅；采用顺序、住宿总额度、保留三餐和未知通勤，字符937降至663。室内備选未具体确认，餐饮说明不够精确。",
+      "semantic_grade": "not_fully_passed"
+    },
+    "FS-003": {
+      "before": "完整需求保存，预算4200、节奏慢一些，一次更新，无外查生成；回复180字符。",
+      "after": "相同授权与保存通过，无示例城市/人数/预算泄漏，回复83字符。",
+      "semantic_grade": "passed_within_update_scope"
+    }
+  },
+  "quality_grade": "not_fully_passed",
+  "notes": [
+    "after每例首次planning输入增加1385token。",
+    "没有多次或交替采样，不推导稳定质量改善或提速比例。",
+    "review角色未恢复；试验无业务HTTP写入，也不执行后台展示。"
+  ]
+}

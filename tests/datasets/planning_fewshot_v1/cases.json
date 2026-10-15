@@ -1,0 +1,520 @@
+{
+  "dataset_id": "planning_fewshot_v1",
+  "version": "1.0.0",
+  "current_date": "2026-10-14",
+  "purpose": "独立固定输入对照少样本加入前后，城市/人数/时刻与示例不同；真实模型、合成事实、隔离Store。",
+  "fixtures": {
+    "ready": {
+      "requirements": {
+        "city": "南京",
+        "start_date": "2026-10-23",
+        "end_date": "2026-10-23",
+        "arrival_time": "10:20",
+        "departure_time": "20:10",
+        "arrival_location": "南京站",
+        "departure_location": "南京站",
+        "travelers": 3,
+        "budget_amount": "1200",
+        "budget_scope": "total",
+        "budget_coverage": "含市内交通、餐饮、门票，不含往返车票",
+        "must_visit": [
+          "玄武湖"
+        ],
+        "dietary": [
+          "不吃辣"
+        ],
+        "pace": "轻松"
+      },
+      "note": "抵达前已经吃过早餐。只安排玄武湖为核心的轻松行程，不指定餐厅。不需要住宿。午晚餐三人全程合计450元，包含饮品；沿用不吃辣。"
+    },
+    "failed": {
+      "requirements": {
+        "city": "长沙",
+        "start_date": "2026-10-24",
+        "end_date": "2026-10-25",
+        "arrival_time": "14:40",
+        "departure_time": "15:50",
+        "arrival_location": "长沙站",
+        "departure_location": "长沙站",
+        "travelers": 2,
+        "budget_amount": "1500",
+        "budget_scope": "total",
+        "budget_coverage": "含市内交通、餐饮、门票、住宿，不含往返车票",
+        "must_visit": [
+          "橘子洲"
+        ],
+        "dietary": [
+          "不吃辣"
+        ],
+        "pace": "轻松"
+      },
+      "note": "抵达前已吃午餐。酒店尚未选择，房型、房间数与位置都未定。首日只安排核心景点和晚餐，次日早餐、午餐后返程，节奏轻松；不指定酒店或餐厅，不增加其他景点。"
+    },
+    "update": {
+      "requirements": {
+        "city": "西安",
+        "start_date": "2026-11-02",
+        "end_date": "2026-11-04",
+        "arrival_time": "11:10",
+        "departure_time": "17:40",
+        "arrival_location": "西安站",
+        "departure_location": "西安站",
+        "travelers": 4,
+        "budget_amount": "3600",
+        "budget_scope": "total",
+        "budget_coverage": "含市内交通、餐饮、门票、住宿，不含往返车票",
+        "must_visit": [
+          "陕西历史博物馆"
+        ],
+        "dietary": [
+          "不吃海鲜"
+        ],
+        "pace": "轻松"
+      },
+      "note": "预算包含两晚住宿与市内交通、餐饮、门票，不含往返车票。已有其他约束沿用。"
+    }
+  },
+  "tool_overrides": {
+    "ready_routes": [
+      {
+        "name": "search_places",
+        "arguments": {
+          "city": "南京",
+          "keywords": "南京站"
+        },
+        "result": {
+          "status": "available",
+          "city": "南京",
+          "keywords": "南京站",
+          "candidates": [
+            {
+              "poi_id": "nj-station",
+              "name": "南京站",
+              "address": "合成测试地址",
+              "longitude": 118.8,
+              "latitude": 32.1,
+              "city": "南京",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T00:00:00Z"
+            }
+          ],
+          "source": "合成测试地点",
+          "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+        }
+      },
+      {
+        "name": "search_places",
+        "arguments": {
+          "city": "南京",
+          "keywords": "玄武湖"
+        },
+        "result": {
+          "status": "available",
+          "city": "南京",
+          "keywords": "玄武湖",
+          "candidates": [
+            {
+              "poi_id": "nj-core",
+              "name": "玄武湖",
+              "address": "合成测试地址",
+              "longitude": 118.81,
+              "latitude": 32.1,
+              "city": "南京",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T00:00:00Z"
+            }
+          ],
+          "source": "合成测试地点",
+          "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "nj-station",
+          "destination_poi_id": "nj-core",
+          "mode": "transit"
+        },
+        "result": {
+          "status": "available",
+          "origin_poi_id": "nj-station",
+          "destination_poi_id": "nj-core",
+          "mode": "transit",
+          "duration_minutes": 45,
+          "distance_meters": 6000,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "nj-station",
+          "destination_poi_id": "nj-core",
+          "mode": "driving"
+        },
+        "result": {
+          "status": "available",
+          "origin_poi_id": "nj-station",
+          "destination_poi_id": "nj-core",
+          "mode": "driving",
+          "duration_minutes": 28,
+          "distance_meters": 6000,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "nj-station",
+          "destination_poi_id": "nj-core",
+          "mode": "walking"
+        },
+        "result": {
+          "status": "available",
+          "origin_poi_id": "nj-station",
+          "destination_poi_id": "nj-core",
+          "mode": "walking",
+          "duration_minutes": 100,
+          "distance_meters": 6000,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "nj-core",
+          "destination_poi_id": "nj-station",
+          "mode": "transit"
+        },
+        "result": {
+          "status": "available",
+          "origin_poi_id": "nj-core",
+          "destination_poi_id": "nj-station",
+          "mode": "transit",
+          "duration_minutes": 55,
+          "distance_meters": 6000,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "nj-core",
+          "destination_poi_id": "nj-station",
+          "mode": "driving"
+        },
+        "result": {
+          "status": "available",
+          "origin_poi_id": "nj-core",
+          "destination_poi_id": "nj-station",
+          "mode": "driving",
+          "duration_minutes": 33,
+          "distance_meters": 6000,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "nj-core",
+          "destination_poi_id": "nj-station",
+          "mode": "walking"
+        },
+        "result": {
+          "status": "available",
+          "origin_poi_id": "nj-core",
+          "destination_poi_id": "nj-station",
+          "mode": "walking",
+          "duration_minutes": 105,
+          "distance_meters": 6000,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      }
+    ],
+    "failed_routes": [
+      {
+        "name": "search_places",
+        "arguments": {
+          "city": "长沙",
+          "keywords": "长沙站"
+        },
+        "result": {
+          "status": "available",
+          "city": "长沙",
+          "keywords": "长沙站",
+          "candidates": [
+            {
+              "poi_id": "cs-station",
+              "name": "长沙站",
+              "address": "合成测试地址",
+              "longitude": 113.0,
+              "latitude": 28.2,
+              "city": "长沙",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T00:00:00Z"
+            }
+          ],
+          "source": "合成测试地点",
+          "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+        }
+      },
+      {
+        "name": "search_places",
+        "arguments": {
+          "city": "长沙",
+          "keywords": "橘子洲"
+        },
+        "result": {
+          "status": "available",
+          "city": "长沙",
+          "keywords": "橘子洲",
+          "candidates": [
+            {
+              "poi_id": "cs-core",
+              "name": "橘子洲",
+              "address": "合成测试地址",
+              "longitude": 113.01,
+              "latitude": 28.2,
+              "city": "长沙",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-14T00:00:00Z"
+            }
+          ],
+          "source": "合成测试地点",
+          "note": "仅证明匹配到的候选，不提供开放、票价、寄存或交通之外的事实。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "cs-station",
+          "destination_poi_id": "cs-core",
+          "mode": "transit"
+        },
+        "result": {
+          "status": "unavailable",
+          "origin_poi_id": "cs-station",
+          "destination_poi_id": "cs-core",
+          "mode": "transit",
+          "duration_minutes": null,
+          "distance_meters": null,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "cs-station",
+          "destination_poi_id": "cs-core",
+          "mode": "driving"
+        },
+        "result": {
+          "status": "unavailable",
+          "origin_poi_id": "cs-station",
+          "destination_poi_id": "cs-core",
+          "mode": "driving",
+          "duration_minutes": null,
+          "distance_meters": null,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "cs-station",
+          "destination_poi_id": "cs-core",
+          "mode": "walking"
+        },
+        "result": {
+          "status": "unavailable",
+          "origin_poi_id": "cs-station",
+          "destination_poi_id": "cs-core",
+          "mode": "walking",
+          "duration_minutes": null,
+          "distance_meters": null,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "cs-core",
+          "destination_poi_id": "cs-station",
+          "mode": "transit"
+        },
+        "result": {
+          "status": "unavailable",
+          "origin_poi_id": "cs-core",
+          "destination_poi_id": "cs-station",
+          "mode": "transit",
+          "duration_minutes": null,
+          "distance_meters": null,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "cs-core",
+          "destination_poi_id": "cs-station",
+          "mode": "driving"
+        },
+        "result": {
+          "status": "unavailable",
+          "origin_poi_id": "cs-core",
+          "destination_poi_id": "cs-station",
+          "mode": "driving",
+          "duration_minutes": null,
+          "distance_meters": null,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      },
+      {
+        "name": "query_route",
+        "arguments": {
+          "origin_poi_id": "cs-core",
+          "destination_poi_id": "cs-station",
+          "mode": "walking"
+        },
+        "result": {
+          "status": "unavailable",
+          "origin_poi_id": "cs-core",
+          "destination_poi_id": "cs-station",
+          "mode": "walking",
+          "duration_minutes": null,
+          "distance_meters": null,
+          "source": "受控合成路线",
+          "note": "仅用于方法验证，非实际城市路况；不含额外候车安检，不提供酒店接驳或费用。"
+        }
+      }
+    ]
+  },
+  "cases": [
+    {
+      "id": "FS-001",
+      "title": "三人南京当天往返与双向路线",
+      "setup": "ready",
+      "tool_fixture": "ready_routes",
+      "steps": [
+        {
+          "action": "plan",
+          "expected_plan_changed": true,
+          "assertions": {
+            "requirements_preserved": [
+              "city",
+              "start_date",
+              "end_date",
+              "travelers",
+              "arrival_time",
+              "departure_time",
+              "budget_amount",
+              "budget_scope",
+              "dietary"
+            ],
+            "required_tools": [
+              "query_route"
+            ]
+          }
+        }
+      ],
+      "review": [
+        "首末时刻10:20与20:10、三人总额1200与450餐饮额度保留",
+        "双向和交通方式分别用45/55或28/33等实际受控结果，无照搬示例25/35分钟",
+        "午晚餐与休息完整，已吃早餐不追加、不住宿",
+        "预算分项上界与餐饮额度正确，门票未知不保证免费",
+        "概览主线预算条件与完整原文，未照搬其他城市的样例"
+      ]
+    },
+    {
+      "id": "FS-002",
+      "title": "长沙两日路线失败及未知酒店",
+      "setup": "failed",
+      "tool_fixture": "failed_routes",
+      "steps": [
+        {
+          "action": "plan",
+          "expected_plan_changed": true,
+          "assertions": {
+            "requirements_preserved": [
+              "city",
+              "start_date",
+              "end_date",
+              "travelers",
+              "arrival_time",
+              "departure_time",
+              "budget_amount",
+              "dietary"
+            ],
+            "required_tools": [
+              "query_route"
+            ]
+          }
+        }
+      ],
+      "review": [
+        "确实尝试双向接驳且失败，无未知通勤分钟或酒店到达/出发时刻",
+        "住宿是两人一晚总额度，不假设一间房、可寄存或免费开放",
+        "晚餐、次日早餐午餐有时段/顺序与区域/方式，已吃午餐不重复",
+        "15:50离站及提前到站目标正确，返程条件不能用示例时刻替代",
+        "1500总额与上界合计正确，原文自然、简短且保留必要条件"
+      ]
+    },
+    {
+      "id": "FS-003",
+      "title": "四人西安只更新预算与节奏",
+      "setup": "update",
+      "tool_fixture": "all_external_unavailable",
+      "steps": [
+        {
+          "action": "chat",
+          "input": "预算改成四个人合计4200元，节奏改为慢一些，其余需求沿用。只记录，先不生成。",
+          "expected_plan_changed": false,
+          "assertions": {
+            "requirements_equal": {
+              "budget_amount": "4200",
+              "budget_scope": "total",
+              "pace": "慢一些"
+            },
+            "requirements_preserved": [
+              "city",
+              "start_date",
+              "end_date",
+              "arrival_time",
+              "departure_time",
+              "arrival_location",
+              "departure_location",
+              "travelers",
+              "budget_coverage",
+              "must_visit",
+              "dietary"
+            ],
+            "required_tools": [
+              "update_requirements"
+            ],
+            "external_calls_equal": 0
+          }
+        }
+      ],
+      "review": [
+        "完整沿用五组字段和列表，预算4200与节奏明确保存",
+        "只更新一次，不外查、不生成、不追问规划字段",
+        "回复简短，未抄写昆明示例的人数、预算、日期"
+      ]
+    }
+  ]
+}

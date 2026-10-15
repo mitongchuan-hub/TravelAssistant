@@ -89,16 +89,62 @@ def local_trip():
     return local,trip
 
 
-def test_casual_chat_uses_classifier_and_plain_llm_without_business_context(monkeypatch):
+def test_casual_chat_reads_saved_requirements_without_tools_or_full_plan(monkeypatch):
     local,trip=local_trip()
-    local.update_trip_requirements(trip.id,{'dietary':['私有忌口']},0)
+    local.update_trip_requirements(trip.id,{'dietary':['私有忌口'],'note':'多留自由时间'},0)
     local.plans[trip.id].title='private-plan'
+    other=local.create_trip('其他旅行','','','','另一次旅行的备注')
+    local.update_trip_requirements(other.id,{'dietary':['其他旅行的忌口']},0)
+    before=deepcopy(local.plans[trip.id])
+    expected=asdict(local.trips[trip.id].requirements)
     calls=scripted(monkeypatch,[route('chat','你好'),completion('你好，想聊些什么？')])
     local.add_user_message(trip.id,'你好')
     assert [kw['agent_role'] for _,kw in calls]==['main','chat']
     assert all(kw['tools'] is None for _,kw in calls)
-    assert all('private-plan' not in m[1]['content'] and '私有忌口' not in m[1]['content'] for m,_ in calls)
+    for messages,_ in calls:
+        payload=json.loads(messages[1]['content'])
+        assert payload['requirements']['requirements']==expected
+        assert payload['requirements']['trip']['note']=='多留自由时间'
+        assert payload['missing_requirements']==[]
+        assert 'private-plan' not in messages[1]['content']
+        assert '其他旅行的忌口' not in messages[1]['content']
+        assert '另一次旅行的备注' not in messages[1]['content']
+    assert local.plans[trip.id]==before
+    assert asdict(local.trips[trip.id].requirements)==expected
     assert local.messages[trip.id][-1].body == '你好，想聊些什么？'
+
+
+@pytest.mark.parametrize('history',['long_chat','cleared_chat','restart'])
+def test_saved_requirements_reach_chat_after_history_changes(monkeypatch,tmp_path,history):
+    local=DemoStore(db_path=str(tmp_path/'chat-context.sqlite3'),persistence_enabled=True,
+                    display_worker_enabled=False)
+    trip=local.create_trip('杭州','','人均1500','轻松','')
+    ready_for_planning(local,trip.id)
+    for index in range(12):
+        local.add_user_message(trip.id,f'此前闲聊第{index}条',process_agent=False)
+    local.add_user_message(trip.id,'此前的预算是1500元',process_agent=False)
+    local.update_trip_requirements(trip.id,{'budget_amount':'2200','budget_scope':'total',
+        'dietary':['不吃海鲜'],'note':'多留自由时间'},0)
+    if history=='cleared_chat':
+        local.clear_chat(trip.id)
+    elif history=='restart':
+        local=DemoStore(db_path=local.db_path,persistence_enabled=True,display_worker_enabled=False)
+    expected=asdict(local.trips[trip.id].requirements)
+    before=deepcopy(local.plans[trip.id])
+    text='我保存的预算是多少，人数和日期是什么？'
+    calls=scripted(monkeypatch,[route('chat',text),completion('当前保存的预算是两人总额2200元。')])
+    local.add_user_message(trip.id,text)
+    assert [kw['agent_role'] for _,kw in calls]==['main','chat']
+    for messages,kwargs in calls:
+        payload=json.loads(messages[1]['content'])
+        assert payload['requirements']['requirements']==expected
+        assert payload['requirements']['basis']['requirements_revision']==1
+        assert payload['requirements']['trip']['note']=='多留自由时间'
+        assert payload['missing_requirements']==[]
+        assert len(payload['conversation'])<=8
+        assert kwargs['tools'] is None
+    assert asdict(local.trips[trip.id].requirements)==expected
+    assert local.plans[trip.id]==before
 
 
 def test_requirements_are_tools_inside_planning_without_replanning(monkeypatch):

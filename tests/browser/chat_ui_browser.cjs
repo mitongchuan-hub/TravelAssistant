@@ -52,6 +52,12 @@ const root = path.resolve(__dirname, '../..');
     assert.equal(await page.locator('.chat-reply-content strong').count()>0,true);
     assert.equal(await page.locator('.chat-full-reply').count(),1);
     assert.equal(await page.locator('.chat-full-reply').evaluate(el=>el.open),false);
+    const planPreview = page.locator('.chat-full-reply > summary');
+    assert.match(await planPreview.innerText(),/首日湖滨、次日休息后返程/);
+    assert.match(await planPreview.innerText(),/预算取舍/);
+    assert.match(await planPreview.innerText(),/酒店位置和接待条件/);
+    assert.match(await planPreview.innerText(),/展开完整行程/);
+    assert.doesNotMatch(await planPreview.innerText(),/安排 12/);
     assert.equal(await page.evaluate(()=>window.chatInjected),undefined);
     assert.equal(await page.locator('.chat-reply a[href^="javascript:"]').count(),0);
     for (const width of [320,390,430,1000]) {

@@ -32,6 +32,7 @@ from .display_tasks import DisplayTasks
 from .tasks import ACTIVE, TravelTasks
 from .plan_validation import PlanValidationError, validate_plan
 from .requirements import chat_changes, initial_requirements, update_requirements
+from .trip_welcome import trip_welcome
 from .persistence import CURRENT_SCHEMA_VERSION, backup_database, load_snapshot, restore_state, save_snapshot, serialize_state
 
 USERS = {
@@ -287,20 +288,15 @@ class DemoStore(TravelTasks, DisplayTasks):
             if question:
                 raise ValueError(question)
         self.trips[trip_id] = trip
+        welcome_body, welcome_card = trip_welcome(trip)
         self.messages[trip_id] = [
             Message(
                 id=f"m-{next(_id_counter)}",
                 sender=USERS["agent"],
                 sender_type="agent",
-                body="旅行已经建好。告诉我你最在意的时间、预算、地点或节奏，我会边聊边整理。",
+                body=welcome_body,
                 created_at=_now_label(),
-                agent_card=AgentCard(
-                    kind="missing-info",
-                    title="先从最确定的事聊起",
-                    summary="不必一次说完整，我会在每轮对话后更新旅行想法。",
-                    bullets=["大概什么时候出发", "预算范围", "最想去的地方", "不想接受的安排"],
-                    actions=[AgentAction(label="查看旅行想法", target="board")],
-                ),
+                agent_card=welcome_card,
             )
         ]
         self.plans[trip_id] = TripPlan(id="empty", title="还没有行程计划", status="未生成", days=[])

@@ -52,8 +52,41 @@ def test_creation_saves_durable_requirements_and_five_fieldsets(web):
     p=local.trips[tid].requirements
     assert p.city=='杭州' and p.travelers==2 and p.day_count==2 and p.budget_scope=='total'
     assert p.budget_coverage=='含住宿餐饮当地交通和门票，不含往返车票'
+    welcome=local.messages[tid][0]
+    assert welcome.agent_card.kind=='requirement-summary' and not welcome.agent_card.bullets
+    chat=client.get(response.headers['location'])
+    assert chat.status_code==200
+    for value in (p.city,p.start_date,p.end_date,p.arrival_time,p.departure_time,
+                  p.arrival_location,p.departure_location,p.budget_amount,p.budget_coverage):
+        assert value in chat.text
+    assert '可以直接让我生成行程' in chat.text and '补充信息</summary>' not in chat.text
     local.clear_chat(tid)
     assert local.trips[tid].requirements==p
+
+
+@pytest.mark.parametrize('entry', ['page', 'chat', 'replan'])
+def test_generated_text_is_saved_without_a_second_model_verdict(monkeypatch, entry):
+    local=DemoStore(persistence_enabled=False)
+    trip=local.create_trip('杭州','','','','')
+    ready_for_planning(local,trip.id)
+    source='推荐主线：湖滨散步，午后休息。\n\n---\n\n完整逐日安排，预算与待确认条件。'
+    text='生成行程吧' if entry!='replan' else '整体重新安排，节奏轻松'
+    replies=[]
+    if entry=='chat':
+        replies=[route('planning',text,'generate'),requirements_unchanged()]
+    elif entry=='replan':
+        local._apply_text_plan(trip.id,'原有行程')
+        replies=[route('revision',text,'modify','all'),requirements_unchanged()]
+    calls=scripted(monkeypatch,[*replies,completion(source)])
+    if entry=='page':
+        local.generate_plan(trip.id)
+    else:
+        local.add_user_message(trip.id,text)
+    expected=['planning'] if entry=='page' else ['main']+['revision' if entry=='replan' else 'planning']*2
+    assert [kwargs['agent_role'] for _,kwargs in calls]==expected
+    assert local.plans[trip.id].text==local.messages[trip.id][-1].body==source
+    assert local.messages[trip.id][-1].status=='sent'
+    assert local.plans[trip.id].display_status=='pending'
 
 
 @pytest.mark.parametrize('key',['city','start_date','end_date','arrival_time','departure_time','arrival_location',

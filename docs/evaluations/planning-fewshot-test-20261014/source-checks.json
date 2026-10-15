@@ -1,0 +1,41 @@
+{
+  "repeat-1": {
+    "app/prompts/agents/planning.txt": true,
+    "app/prompts/agents/planning_examples.txt": true,
+    "app/prompts/agents/travel_rules.txt": true,
+    "app/agent_roles.py": true,
+    "app/agent_runtime.py": true,
+    "app/planning.py": true,
+    "app/planning_evidence.py": true,
+    "app/chat_presentation.py": true,
+    "app/prompts/agents/revision.txt": true,
+    "app/templates/partials/chat_messages.html": true,
+    "tests/performance/check_planning_prompt.py": true
+  },
+  "repeat-2": {
+    "app/prompts/agents/planning.txt": true,
+    "app/prompts/agents/planning_examples.txt": true,
+    "app/prompts/agents/travel_rules.txt": true,
+    "app/agent_roles.py": true,
+    "app/agent_runtime.py": true,
+    "app/planning.py": true,
+    "app/planning_evidence.py": true,
+    "app/chat_presentation.py": true,
+    "app/prompts/agents/revision.txt": true,
+    "app/templates/partials/chat_messages.html": true,
+    "tests/performance/check_planning_prompt.py": true
+  },
+  "live-tangshan": {
+    "app/prompts/agents/planning.txt": true,
+    "app/prompts/agents/planning_examples.txt": true,
+    "app/prompts/agents/travel_rules.txt": true,
+    "app/agent_roles.py": true,
+    "app/agent_runtime.py": true,
+    "app/planning.py": true,
+    "app/planning_evidence.py": true,
+    "app/chat_presentation.py": true,
+    "app/prompts/agents/revision.txt": true,
+    "app/templates/partials/chat_messages.html": true,
+    "tests/performance/check_planning_prompt.py": true
+  }
+}

@@ -21,6 +21,8 @@ tests/
 
 `automated/` 按功能划分的测试文件仍覆盖有效代码：角色权限、Loop、模型协议与错误恢复、需求校验、页面认证、任务并发、持久化迁移、正文/展示绑定、工具及测试集执行器。旧格式行程的地图、路线、时间线和旧库迁移仍在应用中使用，相关测试继续保留。
 
+`test_workflow.py`覆盖完整创建信息在欢迎消息中的确认，`test_agent_roles.py`验证意图识别与闲聊收到当前需求及备注，并覆盖长对话、清空聊天、重启后的读取和旅行之间的隔离。受控请求检查上下文传递与无工具权限，不能据此认定真实模型一定正确复述。
+
 ```powershell
 & E:\anaconda\envs\TravelAssistant\python.exe -m pytest -q
 & E:\anaconda\envs\TravelAssistant\python.exe -m pytest tests/automated/test_workflow.py -q
@@ -79,6 +81,10 @@ v1保留为历史协议和复测输入，不再扩充；执行时显式传 `--da
 [planning_prompt_v1](datasets/planning_prompt_v1/README.md)六例用真实模型与合成资料检查规划正文和动作授权，后台展示不执行。包括七日、雷雨、晚到早走、完整需求提取、撤销与过敏组合查询；结果中的机器检查与人工语义评审分开，首轮和独立补测保留。运行 `performance/check_planning_prompt.py --output <新空目录>`，可用`--cases`选择。见[改版记录](../docs/planning-prompt-redesign-20261013.md)。
 
 [planning_meals_v1](datasets/planning_meals_v1/README.md)新增四例用餐专项：餐次覆盖、区域衔接、已支付预约、自带餐、早离站和全程餐饮额度。使用同一执行器，加`--dataset tests/datasets/planning_meals_v1/cases.json`，逐餐预算与已有安排需人工对照原文验收。
+
+[planning_delivery_v1](datasets/planning_delivery_v1/README.md)覆盖唐山原场景真实工具、双向接驳失败、早离站自带早餐。执行器显式支持`live_external`，其余仍为受控资料。当前只验证规划正文、工具查询和原文概览，不调用独立模型复核。`test_planning_evidence.py`验证有限接驳补查；`test_workflow.py`验证页面生成、聊天生成和整体修改直接保存正文，之后后台整理卡片。删除前的复核实验和失败记录保留在历史证据目录，不作为当前执行流程。
+
+[planning_fewshot_v1](datasets/planning_fewshot_v1/README.md)用与示例不同的南京、长沙、西安固定输入对照少样本加入前后。执行同一工具资料的成功接驳、失败接驳和只更新需求，记录原文、完整五组需求、预算、餐次、调用及token；通过`check_planning_prompt.py --dataset tests/datasets/planning_fewshot_v1/cases.json`运行。少样本只作用于planning，不增加复核节点；人工语义与机器检查独立报告。
 
 ## 浏览器回归
 
