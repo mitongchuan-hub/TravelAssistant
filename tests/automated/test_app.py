@@ -6,7 +6,7 @@ import pytest
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from test_workflow import creation_fields
+from test_workflow import city_creation_fields as creation_fields
 
 from app.agent_client import _build_context, AgentReply
 from app.models import AgentCard
@@ -27,6 +27,17 @@ client.post(
     data={"email": TEST_EMAIL, "password": TEST_PASSWORD},
     follow_redirects=False,
 )
+
+
+@pytest.fixture(autouse=True)
+def controlled_creation_map(monkeypatch):
+    def search(arguments):
+        city = arguments.get('city') or '杭州市'
+        return {'status': 'available', 'total_matched': 1, 'candidates': [{
+            'poi_id': 'test-lodging', 'name': arguments['keywords'], 'address': '测试路1号',
+            'longitude': 120.15, 'latitude': 30.25, 'city': city, 'district': '',
+            'source': '高德地图 POI', 'fetched_at': '2026-10-15T00:00:00+00:00'}]}
+    monkeypatch.setattr(importlib.import_module('app.main'), 'search_places', search)
 
 
 @pytest.fixture
@@ -263,7 +274,7 @@ def test_login_page_describes_private_agent_product():
     assert 'autocomplete="current-password"' in response.text
     assert "登录你的账号" not in response.text
     assert "欢迎回来" in response.text
-    assert "把下一次出发，慢慢聊清楚" in response.text
+    assert "从住处出发，慢慢发现这座城" in response.text
     assert "auth-idea-board" in response.text
     assert "auth-idea-note--place" in response.text
     assert "auth-mode-switch" in response.text
@@ -408,7 +419,7 @@ def test_trip_list_and_create_page_use_personal_copy():
     assert list_response.status_code == 200
     assert "我的旅行" in list_response.text
     assert "创建旅行群" not in list_response.text
-    assert "创建行程" in create_response.text
+    assert "创建同城行程" in create_response.text
     assert "创建并开始对话" in create_response.text
     assert "聊天里补充" in create_response.text
     assert "邀请" not in create_response.text

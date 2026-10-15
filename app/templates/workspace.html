@@ -33,7 +33,7 @@
         <a href="/trips"><span>旅行想法</span>{{ trip.destination | replace("周末旅行", "想法墙") }}</a>
         <form action="/workspace/{{ trip.id }}/plan" method="post">
           {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
-          <button class="generate-plan" type="submit">生成计划</button>
+          <button class="generate-plan" type="submit">{{ '生成路线' if trip.mode == 'city' else '生成计划' }}</button>
         </form>
       </header>
 
@@ -88,7 +88,13 @@
         <details class="chat-menu" data-chat-menu>
           <summary aria-label="更多聊天操作" title="更多">⋯</summary>
           <div class="chat-menu-panel">
-            <a href="/workspace/{{ trip.id }}/requirements">旅行需求</a>
+            <a href="/workspace/{{ trip.id }}/requirements">{{ '游玩设置' if trip.mode == 'city' else '旅行需求' }}</a>
+            {% if trip.mode == 'city' %}
+            <form action="/workspace/{{ trip.id }}/plan" method="post">
+              {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
+              <button type="submit">生成同城路线</button>
+            </form>
+            {% endif %}
             <form action="/workspace/{{ trip.id }}/messages/clear" method="post" onsubmit="return confirm('确定要清空这次旅行的全部聊天记录吗？清空后无法恢复。');">
               <button type="submit" class="clear-chat-button">清空聊天</button>
             </form>
@@ -103,7 +109,7 @@
         <button class="chat-new-replies" type="button" data-chat-new hidden>有新回复 ↓</button>
         <form class="composer" action="/workspace/{{ trip.id }}/messages" method="post" data-api-url="/api/trips/{{ trip.id }}/messages" data-current-name="{{ current_user.name }}" data-current-initials="{{ current_user.initials }}">
           {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
-          <textarea name="body" rows="1" aria-label="聊天消息" placeholder="写下你的旅行想法…" autocomplete="off" required>{{ request.query_params.get('draft', '') }}</textarea>
+          <textarea name="body" rows="1" aria-label="聊天消息" placeholder="{{ '想去哪儿逛逛？也可以直接说生成路线…' if trip.mode == 'city' else '写下你的旅行想法…' }}" autocomplete="off" required>{{ request.query_params.get('draft', '') }}</textarea>
           <button type="submit" aria-label="发送消息" title="发送消息"><span aria-hidden="true">↑</span></button>
         </form>
         <p class="chat-send-feedback" data-chat-send-feedback role="status" hidden></p>

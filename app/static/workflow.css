@@ -1,3 +1,17 @@
+.city-options { min-width: 0; border: 1px solid var(--line); border-radius: 16px; padding: 0 16px; }
+.city-options > summary { cursor: pointer; padding: 16px 0; font-weight: 650; }
+.city-options > summary span { display: block; margin-top: 5px; color: var(--muted); font-size: 12px; font-weight: 400; }
+.city-options fieldset { margin-bottom: 16px; }
+.city-outing-screen textarea { width: 100%; box-sizing: border-box; min-width: 0; resize: vertical; }
+.city-outing-screen select { min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; }
+.city-outing-screen select:focus-visible { outline: 2px solid var(--ocean); outline-offset: 2px; }
+.city-outing-screen small { color: var(--muted); line-height: 1.7; overflow-wrap: anywhere; }
+.lodging-choices { min-width: 0; border: 0; padding: 0; display: grid; gap: 12px; }
+.lodging-choices legend { margin-bottom: 12px; font-weight: 650; }
+.lodging-choice { display: flex !important; flex-direction: row; align-items: start; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; cursor: pointer; }
+.lodging-choice input { width: 18px; height: 18px; flex: 0 0 18px; margin: 3px 0 0; }
+.lodging-choice span { min-width: 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
+
 .trip-create-form fieldset { margin: 0; padding: 18px; border: 1px solid var(--line, #dbe2ef); border-radius: 16px; min-width: 0; display: grid; gap: 14px; }
 .trip-create-form legend { padding: 0 8px; font-weight: 700; color: #112d4e; }
 .create-field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }

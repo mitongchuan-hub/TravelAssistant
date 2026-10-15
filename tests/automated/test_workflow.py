@@ -15,53 +15,60 @@ from test_text_itinerary import web
 
 
 def creation_fields(city='杭州'):
-    return {'city':city,'start_date':'2026-11-14','end_date':'2026-11-15',
-        'arrival_time':'10:00','departure_time':'18:00','arrival_location':city+'站','departure_location':city+'站',
-        'travelers':'2','budget_amount':'2000','budget_scope':'total',
-        'budget_coverage':'含住宿餐饮当地交通和门票，不含往返车票'}
+    """Full-travel fixture retained for legacy lifecycle and display tests."""
+    return {'city': city, 'start_date': '2026-11-14', 'end_date': '2026-11-15',
+        'arrival_time': '10:00', 'departure_time': '18:00', 'arrival_location': city+'站',
+        'departure_location': city+'站', 'travelers': '2', 'budget_amount': '2000',
+        'budget_scope': 'total', 'budget_coverage': '含住宿餐饮当地交通和门票，不含往返车票'}
 
 
-@pytest.mark.parametrize('missing',list(creation_fields()))
-def test_creation_requires_all_five_groups(web,missing):
-    client,local,_=web;values=creation_fields();values.pop(missing)
-    before=len(local.trips)
-    page=client.post('/trips',data=values,follow_redirects=False)
-    assert page.status_code==400 and len(local.trips)==before
-    assert '五组' in page.text
+def city_creation_fields(city='杭州'):
+    return {'lodging_address': city+'湖滨酒店', 'city_hint': city}
 
 
-@pytest.mark.parametrize('changes',[{'end_date':'2026-11-13'},{'travelers':'0'},{'travelers':'1.5'},
-    {'budget_amount':'NaN'},{'budget_scope':'unspecified'},
-    {'end_date':'2026-11-14','arrival_time':'18:00','departure_time':'10:00'}])
-def test_creation_rejects_invalid_values_without_creating_trip(web,changes):
-    client,local,_=web;values={**creation_fields(),**changes};before=len(local.trips)
-    page=client.post('/trips',data=values,follow_redirects=False)
-    assert page.status_code==400 and len(local.trips)==before
-    assert 'value="杭州"' in page.text
+def test_creation_requires_lodging_address(web):
+    client, local, _ = web
+    before = len(local.trips)
+    page = client.post('/trips', data={'city_hint': '杭州'}, follow_redirects=False)
+    assert page.status_code == 400 and len(local.trips) == before
+    assert '住宿地址' in page.text
 
 
-def test_creation_saves_durable_requirements_and_five_fieldsets(web):
-    client,local,_=web
-    page=client.get('/trips/new')
-    assert page.text.count('<fieldset>')==5
-    for key in creation_fields():assert f'name="{key}"' in page.text
-    assert 'name="style"' not in page.text and 'name="note"' not in page.text
-    response=client.post('/trips',data=creation_fields(),follow_redirects=False)
-    assert response.status_code==303
-    tid=response.headers['location'].split('/')[2].split('?')[0]
-    p=local.trips[tid].requirements
-    assert p.city=='杭州' and p.travelers==2 and p.day_count==2 and p.budget_scope=='total'
-    assert p.budget_coverage=='含住宿餐饮当地交通和门票，不含往返车票'
-    welcome=local.messages[tid][0]
-    assert welcome.agent_card.kind=='requirement-summary' and not welcome.agent_card.bullets
-    chat=client.get(response.headers['location'])
-    assert chat.status_code==200
-    for value in (p.city,p.start_date,p.end_date,p.arrival_time,p.departure_time,
-                  p.arrival_location,p.departure_location,p.budget_amount,p.budget_coverage):
-        assert value in chat.text
-    assert '可以直接让我生成行程' in chat.text and '补充信息</summary>' not in chat.text
+@pytest.mark.parametrize('changes', [
+    {'day_count': '0'}, {'travelers': '0'}, {'travelers': '1.5'},
+    {'budget_amount': 'NaN'}, {'budget_amount': '10', 'budget_scope': 'unspecified'},
+    {'outing_start_time': '18:00', 'outing_end_time': '10:00'},
+])
+def test_creation_rejects_invalid_values_without_creating_trip(web, changes):
+    client, local, _ = web
+    values = {**city_creation_fields(), **changes}
+    before = len(local.trips)
+    page = client.post('/trips', data=values, follow_redirects=False)
+    assert page.status_code == 400 and len(local.trips) == before
+    assert '杭州湖滨酒店' in page.text
+
+
+def test_creation_saves_durable_lodging_and_optional_settings(web, monkeypatch):
+    client, local, _ = web
+    from test_city_outings import LODGING
+    monkeypatch.setattr('app.main.search_places', lambda args: {
+        'status': 'available', 'total_matched': 1, 'candidates': [LODGING]})
+    page = client.get('/trips/new')
+    assert 'name="lodging_address"' in page.text
+    assert 'name="arrival_location"' not in page.text
+    response = client.post('/trips', data=city_creation_fields(), follow_redirects=False)
+    assert response.status_code == 303
+    tid = response.headers['location'].split('/')[2].split('?')[0]
+    p = local.trips[tid].requirements
+    assert p.city == '杭州市' and p.travelers is None and p.day_count == 1
+    assert p.budget_amount == '' and p.budget_scope == 'unspecified'
+    welcome = local.messages[tid][0]
+    assert welcome.agent_card.kind == 'requirement-summary' and not welcome.agent_card.bullets
+    chat = client.get(response.headers['location'])
+    assert chat.status_code == 200 and '湖滨住处' in chat.text
+    assert '可以直接说' in chat.text and '生成路线' in chat.text
     local.clear_chat(tid)
-    assert local.trips[tid].requirements==p
+    assert local.trips[tid].requirements == p
 
 
 @pytest.mark.parametrize('entry', ['page', 'chat', 'replan'])

@@ -1,0 +1,691 @@
+{
+  "case": "CITY-003",
+  "title": "杭州住宿地址，真实高德和路线",
+  "tool_mode": "live",
+  "input": {
+    "id": "trip-100",
+    "destination": "杭州市同城游玩",
+    "date_range": "1天同城游 · 日期可选",
+    "budget": "预算待定",
+    "style": "风格待定",
+    "note": "",
+    "owner": {
+      "id": "u1",
+      "name": "林夏",
+      "initials": "林"
+    },
+    "status": "未生成",
+    "last_activity": "旅行已创建，开始和 Agent 对话",
+    "requirements": {
+      "start_date": "",
+      "end_date": "",
+      "arrival_time": "",
+      "departure_time": "",
+      "city": "杭州市",
+      "arrival_location": "",
+      "departure_location": "",
+      "day_count": 1,
+      "travelers": null,
+      "budget_amount": "",
+      "budget_scope": "unspecified",
+      "budget_coverage": "餐饮、市内交通和门票；不含住宿及跨城交通",
+      "must_visit": [],
+      "avoid": [],
+      "dietary": [],
+      "pace": "",
+      "lodging_address": "杭州西湖国宾馆",
+      "outing_start_time": "",
+      "outing_end_time": "",
+      "revision": 1
+    },
+    "workflow_state": {},
+    "mode": "city",
+    "lodging": {
+      "poi_id": "B023B09IGU",
+      "name": "杭州西湖国宾馆",
+      "address": "杨公堤18号",
+      "longitude": 120.133672,
+      "latitude": 30.235031,
+      "city": "杭州市",
+      "district": "",
+      "source": "高德地图 POI",
+      "fetched_at": "2026-10-15T02:01:55+00:00",
+      "place_type": "住宿服务;宾馆酒店;宾馆酒店"
+    }
+  },
+  "task": {
+    "id": "762149d33af64c7e9d71557a4392afa7",
+    "trip_id": "trip-100",
+    "kind": "plan",
+    "payload": {},
+    "request_id": "CITY-003",
+    "retry_of": "",
+    "status": "succeeded",
+    "message": "已完成",
+    "created_at": "2026-10-15T02:01:55+00:00",
+    "updated_at": "2026-10-15T02:02:56+00:00",
+    "message_id": "",
+    "thinking_id": "m-102",
+    "result_url": "/workspace/trip-100?tab=itinerary",
+    "plan_id": "empty",
+    "requirements_revision": 1,
+    "needs_input": false
+  },
+  "model_calls": [
+    {
+      "role": "planning",
+      "prompt_tokens": 3726,
+      "completion_tokens": 913,
+      "seconds": 21.243938999999955
+    },
+    {
+      "role": "planning",
+      "prompt_tokens": 7136,
+      "completion_tokens": 492,
+      "seconds": 11.694259299999885
+    },
+    {
+      "role": "planning",
+      "prompt_tokens": 8108,
+      "completion_tokens": 888,
+      "seconds": 20.129980400000022
+    }
+  ],
+  "tools": [
+    {
+      "name": "search_places",
+      "arguments": {
+        "keywords": "花港观鱼",
+        "city": "杭州"
+      },
+      "result": {
+        "status": "available",
+        "city": "杭州",
+        "keywords": "花港观鱼",
+        "candidates": [
+          {
+            "poi_id": "B023B023B2",
+            "name": "杭州西湖风景名胜区-花港观鱼",
+            "address": "西湖街道西山路5-1号",
+            "longitude": 120.139095,
+            "latitude": 30.230233,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:20+00:00",
+            "place_type": "风景名胜;风景名胜;风景名胜",
+            "opening_hours": "周一至周日 00:00-24:00"
+          },
+          {
+            "poi_id": "B0FFHL3WTC",
+            "name": "杭州西湖风景名胜区花港观鱼停车场",
+            "address": "杭州西湖风景名胜区内",
+            "longitude": 120.137058,
+            "latitude": 30.23029,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:20+00:00",
+            "place_type": "交通设施服务;停车场;公共停车场"
+          },
+          {
+            "poi_id": "B0FFHZRDUV",
+            "name": "杭州西湖风景名胜区花港观鱼地面停车场(出口)",
+            "address": "杭州西湖风景名胜区花港观鱼地面停车场",
+            "longitude": 120.13708,
+            "latitude": 30.230167,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:20+00:00",
+            "place_type": "交通设施服务;停车场;停车场出口"
+          },
+          {
+            "poi_id": "B023B18MLB",
+            "name": "三潭印月花港观鱼码头",
+            "address": "南山路南端与苏堤之间花港公园内",
+            "longitude": 120.143207,
+            "latitude": 30.231184,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:20+00:00",
+            "place_type": "风景名胜;风景名胜相关;旅游景点",
+            "opening_hours": "周一至周日 00:00-24:00"
+          }
+        ],
+        "source": "高德地图 POI",
+        "transport": "amap_mcp",
+        "total_matched": 20,
+        "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；opening_hours为查询时提供的参考营业资料，不保证指定日期开放，未提供则未知；票价与预约仍需核实。"
+      }
+    },
+    {
+      "name": "search_places",
+      "arguments": {
+        "keywords": "苏堤",
+        "city": "杭州"
+      },
+      "result": {
+        "status": "available",
+        "city": "杭州",
+        "keywords": "苏堤",
+        "candidates": [
+          {
+            "poi_id": "B0FFGQ6OHF",
+            "name": "苏堤",
+            "address": "西湖区",
+            "longitude": 120.135764,
+            "latitude": 30.251448,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:21+00:00",
+            "place_type": "地名地址信息;交通地名;道路名"
+          },
+          {
+            "poi_id": "B023B0AC72",
+            "name": "西湖风景区-苏堤",
+            "address": "龙井路1号杭州西湖风景名胜区内(东侧)",
+            "longitude": 120.139291,
+            "latitude": 30.240338,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:21+00:00",
+            "place_type": "风景名胜;风景名胜;风景名胜",
+            "opening_hours": "周一至周日 00:00-24:00"
+          },
+          {
+            "poi_id": "BV10182482",
+            "name": "苏堤(公交站)",
+            "address": "1314路(工作日);1314路(节假日);139路;4路;4路快线;510H;大红豆数字旅游专线",
+            "longitude": 120.141035,
+            "latitude": 30.227052,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:21+00:00",
+            "place_type": "交通设施服务;公交车站;公交车站相关"
+          }
+        ],
+        "source": "高德地图 POI",
+        "transport": "amap_mcp",
+        "total_matched": 20,
+        "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；opening_hours为查询时提供的参考营业资料，不保证指定日期开放，未提供则未知；票价与预约仍需核实。"
+      }
+    },
+    {
+      "name": "search_places",
+      "arguments": {
+        "keywords": "净慈寺",
+        "city": "杭州"
+      },
+      "result": {
+        "status": "available",
+        "city": "杭州",
+        "keywords": "净慈寺",
+        "candidates": [
+          {
+            "poi_id": "B0FFFAL9Q6",
+            "name": "净慈寺售票处",
+            "address": "南山路56号东侧",
+            "longitude": 120.148545,
+            "latitude": 30.229373,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:22+00:00",
+            "place_type": "生活服务;售票处;售票处",
+            "opening_hours": "周一至周日 08:00-17:30"
+          },
+          {
+            "poi_id": "B023B015DA",
+            "name": "杭州西湖风景名胜区-敕建净慈禅寺",
+            "address": "南山路56号",
+            "longitude": 120.149165,
+            "latitude": 30.228643,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:22+00:00",
+            "place_type": "风景名胜;风景名胜;寺庙道观",
+            "opening_hours": "周一至周日 06:30-17:00 最晚进入16:45"
+          },
+          {
+            "poi_id": "B023B17WUH",
+            "name": "敕建净慈禅寺-观音殿",
+            "address": "南山路56号杭州西湖风景名胜区-敕建净慈禅寺",
+            "longitude": 120.148753,
+            "latitude": 30.228514,
+            "city": "杭州市",
+            "district": "",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-10-15T02:02:22+00:00",
+            "place_type": "风景名胜;风景名胜;寺庙道观",
+            "opening_hours": "06:30-17:00 最晚进入16:45, 具体开放时间以现场公示为准"
+          }
+        ],
+        "source": "高德地图 POI",
+        "transport": "amap_mcp",
+        "total_matched": 17,
+        "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；opening_hours为查询时提供的参考营业资料，不保证指定日期开放，未提供则未知；票价与预约仍需核实。"
+      }
+    },
+    {
+      "name": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B09IGU",
+        "destination_poi_id": "B023B023B2",
+        "mode": "walking"
+      },
+      "result": {
+        "origin_poi_id": "B023B09IGU",
+        "origin_name": "杭州西湖国宾馆",
+        "destination_poi_id": "B023B023B2",
+        "destination_name": "杭州西湖风景名胜区-花港观鱼",
+        "mode": "walking",
+        "status": "available",
+        "duration_minutes": 17,
+        "distance_meters": 1210,
+        "source": "高德路线规划",
+        "fetched_at": "2026-10-15T02:02:33+00:00",
+        "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    },
+    {
+      "name": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B023B2",
+        "destination_poi_id": "B023B015DA",
+        "mode": "walking"
+      },
+      "result": {
+        "origin_poi_id": "B023B023B2",
+        "origin_name": "杭州西湖风景名胜区-花港观鱼",
+        "destination_poi_id": "B023B015DA",
+        "destination_name": "杭州西湖风景名胜区-敕建净慈禅寺",
+        "mode": "walking",
+        "status": "available",
+        "duration_minutes": 19,
+        "distance_meters": 1397,
+        "source": "高德路线规划",
+        "fetched_at": "2026-10-15T02:02:34+00:00",
+        "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    },
+    {
+      "name": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B015DA",
+        "destination_poi_id": "B023B0AC72",
+        "mode": "walking"
+      },
+      "result": {
+        "origin_poi_id": "B023B015DA",
+        "origin_name": "杭州西湖风景名胜区-敕建净慈禅寺",
+        "destination_poi_id": "B023B0AC72",
+        "destination_name": "西湖风景区-苏堤",
+        "mode": "walking",
+        "status": "available",
+        "duration_minutes": 26,
+        "distance_meters": 1900,
+        "source": "高德路线规划",
+        "fetched_at": "2026-10-15T02:02:35+00:00",
+        "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    },
+    {
+      "name": "query_route",
+      "arguments": {
+        "origin_poi_id": "B023B0AC72",
+        "destination_poi_id": "B023B09IGU",
+        "mode": "walking"
+      },
+      "result": {
+        "origin_poi_id": "B023B0AC72",
+        "origin_name": "西湖风景区-苏堤",
+        "destination_poi_id": "B023B09IGU",
+        "destination_name": "杭州西湖国宾馆",
+        "mode": "walking",
+        "status": "available",
+        "duration_minutes": 34,
+        "distance_meters": 2544,
+        "source": "高德路线规划",
+        "fetched_at": "2026-10-15T02:02:35+00:00",
+        "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+      }
+    }
+  ],
+  "seconds": 60.367953699999816,
+  "plan": {
+    "id": "plan-103",
+    "title": "杭州市行程",
+    "status": "草案",
+    "days": [],
+    "preparation": {
+      "clothing": [],
+      "accommodation": []
+    },
+    "overview": "",
+    "constraints_met": [],
+    "pending_items": [],
+    "risks": [],
+    "text": "建议用一天围绕西湖西南—南侧做一条紧凑散步线：从国宾馆步行到花港观鱼，顺路到净慈寺，再到苏堤东侧游览，最后步行返回住处。这样四点连成环线、不跨远区，适合步行和留餐；日期、人数与预算未定，所以只给通用节奏和费用构成，具体开放、票价与天气以当天核实为准。\n\n---\n\n**第1天：西湖西南—南侧步行线（返回国宾馆）**\n\n**上午：花港观鱼**\n- 建议上午从杭州西湖国宾馆出发，步行约17分钟到花港观鱼（西山路5-1号方向）。\n- 游览内容以鱼池、花木和湖景步道为主，节奏可慢；如遇雨天，可在园内找有遮蔽的步道、休息点或提前改室内替代。\n- 参考资料显示该景点开放为全天，但这是查询时参考，不保证当天实际开放。\n\n**中午：南山路/净慈寺周边简餐**\n- 午餐可安排在净慈寺附近南山路一带，选杭帮家常菜、面食或清淡套餐；如忌口明确，按“少辣、少油、可指定过敏原”的标准选店。\n- 预留约60分钟，避免影响下午净慈寺进入。\n\n**下午1：净慈寺**\n- 从花港观鱼步行到净慈禅寺约19分钟。\n- 参考开放资料为约06:30—17:00、最晚进入约16:45；建议把参观放在午后早些时段，避免接近关门。\n- 门票、香火、预约、实际开放时间以现场公示为准；是否适合雨天参观需看当天体感和现场条件。\n\n**下午2：苏堤东侧慢走**\n- 从净慈寺步行到西湖风景区-苏堤约26分钟。\n- 苏堤游览以堤岸步道为主，建议只走一段轻松路线，不必强行走完全堤；若体力一般，可在堤边停留看湖景。\n- 参考资料显示景点全天开放，但仍以当天现场为准；雨天路滑时缩短步道或改湖边有遮蔽处休息。\n\n**傍晚：返回国宾馆**\n- 从苏堤东侧步行返回杭州西湖国宾馆约34分钟。\n- 返回前可在南山路或湖边短停休息；若末站改成其他地点，需重新确认回住宿路线和耗时。\n\n**费用参考（未给人数和预算，只列构成）**\n- 默认游玩费用包括：餐饮、市内交通、门票；不含住宿和跨城交通。\n- 今天建议以步行为主，市内交通可能不产生费用；如改用公交/打车，以实际乘车为准。\n- 餐饮按午、晚两餐估算；晚餐可回到国宾馆附近选择清淡杭帮菜。\n- 花港观鱼、苏堤的门票信息未确认，净慈寺门票也未确认；如有门票，按现场价格计入。\n- 人数和预算未定，因此不计算全队总额，也不默认人均额度。\n\n**出发前确认**\n1. 确定出行日期后查看当日杭州天气，决定是否把净慈寺/苏堤段调整到更靠后或改室内。  \n2. 确认净慈寺实际开放、门票与是否需要预约。  \n3. 若当天体力或天气不佳，可将苏堤改为湖边短停，保留返回国宾馆时间。",
+    "evidence": [
+      {
+        "tool": "search_places",
+        "arguments": {
+          "keywords": "花港观鱼",
+          "city": "杭州"
+        },
+        "result": {
+          "status": "available",
+          "city": "杭州",
+          "keywords": "花港观鱼",
+          "candidates": [
+            {
+              "poi_id": "B023B023B2",
+              "name": "杭州西湖风景名胜区-花港观鱼",
+              "address": "西湖街道西山路5-1号",
+              "longitude": 120.139095,
+              "latitude": 30.230233,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:20+00:00",
+              "place_type": "风景名胜;风景名胜;风景名胜",
+              "opening_hours": "周一至周日 00:00-24:00"
+            },
+            {
+              "poi_id": "B0FFHL3WTC",
+              "name": "杭州西湖风景名胜区花港观鱼停车场",
+              "address": "杭州西湖风景名胜区内",
+              "longitude": 120.137058,
+              "latitude": 30.23029,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:20+00:00",
+              "place_type": "交通设施服务;停车场;公共停车场"
+            },
+            {
+              "poi_id": "B0FFHZRDUV",
+              "name": "杭州西湖风景名胜区花港观鱼地面停车场(出口)",
+              "address": "杭州西湖风景名胜区花港观鱼地面停车场",
+              "longitude": 120.13708,
+              "latitude": 30.230167,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:20+00:00",
+              "place_type": "交通设施服务;停车场;停车场出口"
+            },
+            {
+              "poi_id": "B023B18MLB",
+              "name": "三潭印月花港观鱼码头",
+              "address": "南山路南端与苏堤之间花港公园内",
+              "longitude": 120.143207,
+              "latitude": 30.231184,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:20+00:00",
+              "place_type": "风景名胜;风景名胜相关;旅游景点",
+              "opening_hours": "周一至周日 00:00-24:00"
+            }
+          ],
+          "source": "高德地图 POI",
+          "transport": "amap_mcp",
+          "total_matched": 20,
+          "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；opening_hours为查询时提供的参考营业资料，不保证指定日期开放，未提供则未知；票价与预约仍需核实。"
+        },
+        "queried_at": "2026-10-15T02:02:20+00:00",
+        "seconds": 1.923
+      },
+      {
+        "tool": "search_places",
+        "arguments": {
+          "keywords": "苏堤",
+          "city": "杭州"
+        },
+        "result": {
+          "status": "available",
+          "city": "杭州",
+          "keywords": "苏堤",
+          "candidates": [
+            {
+              "poi_id": "B0FFGQ6OHF",
+              "name": "苏堤",
+              "address": "西湖区",
+              "longitude": 120.135764,
+              "latitude": 30.251448,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:21+00:00",
+              "place_type": "地名地址信息;交通地名;道路名"
+            },
+            {
+              "poi_id": "B023B0AC72",
+              "name": "西湖风景区-苏堤",
+              "address": "龙井路1号杭州西湖风景名胜区内(东侧)",
+              "longitude": 120.139291,
+              "latitude": 30.240338,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:21+00:00",
+              "place_type": "风景名胜;风景名胜;风景名胜",
+              "opening_hours": "周一至周日 00:00-24:00"
+            },
+            {
+              "poi_id": "BV10182482",
+              "name": "苏堤(公交站)",
+              "address": "1314路(工作日);1314路(节假日);139路;4路;4路快线;510H;大红豆数字旅游专线",
+              "longitude": 120.141035,
+              "latitude": 30.227052,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:21+00:00",
+              "place_type": "交通设施服务;公交车站;公交车站相关"
+            }
+          ],
+          "source": "高德地图 POI",
+          "transport": "amap_mcp",
+          "total_matched": 20,
+          "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；opening_hours为查询时提供的参考营业资料，不保证指定日期开放，未提供则未知；票价与预约仍需核实。"
+        },
+        "queried_at": "2026-10-15T02:02:21+00:00",
+        "seconds": 1.265
+      },
+      {
+        "tool": "search_places",
+        "arguments": {
+          "keywords": "净慈寺",
+          "city": "杭州"
+        },
+        "result": {
+          "status": "available",
+          "city": "杭州",
+          "keywords": "净慈寺",
+          "candidates": [
+            {
+              "poi_id": "B0FFFAL9Q6",
+              "name": "净慈寺售票处",
+              "address": "南山路56号东侧",
+              "longitude": 120.148545,
+              "latitude": 30.229373,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:22+00:00",
+              "place_type": "生活服务;售票处;售票处",
+              "opening_hours": "周一至周日 08:00-17:30"
+            },
+            {
+              "poi_id": "B023B015DA",
+              "name": "杭州西湖风景名胜区-敕建净慈禅寺",
+              "address": "南山路56号",
+              "longitude": 120.149165,
+              "latitude": 30.228643,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:22+00:00",
+              "place_type": "风景名胜;风景名胜;寺庙道观",
+              "opening_hours": "周一至周日 06:30-17:00 最晚进入16:45"
+            },
+            {
+              "poi_id": "B023B17WUH",
+              "name": "敕建净慈禅寺-观音殿",
+              "address": "南山路56号杭州西湖风景名胜区-敕建净慈禅寺",
+              "longitude": 120.148753,
+              "latitude": 30.228514,
+              "city": "杭州市",
+              "district": "",
+              "source": "高德地图 POI",
+              "fetched_at": "2026-10-15T02:02:22+00:00",
+              "place_type": "风景名胜;风景名胜;寺庙道观",
+              "opening_hours": "06:30-17:00 最晚进入16:45, 具体开放时间以现场公示为准"
+            }
+          ],
+          "source": "高德地图 POI",
+          "transport": "amap_mcp",
+          "total_matched": 17,
+          "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；opening_hours为查询时提供的参考营业资料，不保证指定日期开放，未提供则未知；票价与预约仍需核实。"
+        },
+        "queried_at": "2026-10-15T02:02:22+00:00",
+        "seconds": 0.968
+      },
+      {
+        "tool": "query_route",
+        "arguments": {
+          "origin_poi_id": "B023B09IGU",
+          "destination_poi_id": "B023B023B2",
+          "mode": "walking"
+        },
+        "result": {
+          "origin_poi_id": "B023B09IGU",
+          "origin_name": "杭州西湖国宾馆",
+          "destination_poi_id": "B023B023B2",
+          "destination_name": "杭州西湖风景名胜区-花港观鱼",
+          "mode": "walking",
+          "status": "available",
+          "duration_minutes": 17,
+          "distance_meters": 1210,
+          "source": "高德路线规划",
+          "fetched_at": "2026-10-15T02:02:33+00:00",
+          "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+        },
+        "queried_at": "2026-10-15T02:02:34+00:00",
+        "seconds": 0.486
+      },
+      {
+        "tool": "query_route",
+        "arguments": {
+          "origin_poi_id": "B023B023B2",
+          "destination_poi_id": "B023B015DA",
+          "mode": "walking"
+        },
+        "result": {
+          "origin_poi_id": "B023B023B2",
+          "origin_name": "杭州西湖风景名胜区-花港观鱼",
+          "destination_poi_id": "B023B015DA",
+          "destination_name": "杭州西湖风景名胜区-敕建净慈禅寺",
+          "mode": "walking",
+          "status": "available",
+          "duration_minutes": 19,
+          "distance_meters": 1397,
+          "source": "高德路线规划",
+          "fetched_at": "2026-10-15T02:02:34+00:00",
+          "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+        },
+        "queried_at": "2026-10-15T02:02:35+00:00",
+        "seconds": 0.724
+      },
+      {
+        "tool": "query_route",
+        "arguments": {
+          "origin_poi_id": "B023B015DA",
+          "destination_poi_id": "B023B0AC72",
+          "mode": "walking"
+        },
+        "result": {
+          "origin_poi_id": "B023B015DA",
+          "origin_name": "杭州西湖风景名胜区-敕建净慈禅寺",
+          "destination_poi_id": "B023B0AC72",
+          "destination_name": "西湖风景区-苏堤",
+          "mode": "walking",
+          "status": "available",
+          "duration_minutes": 26,
+          "distance_meters": 1900,
+          "source": "高德路线规划",
+          "fetched_at": "2026-10-15T02:02:35+00:00",
+          "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+        },
+        "queried_at": "2026-10-15T02:02:35+00:00",
+        "seconds": 0.457
+      },
+      {
+        "tool": "query_route",
+        "arguments": {
+          "origin_poi_id": "B023B0AC72",
+          "destination_poi_id": "B023B09IGU",
+          "mode": "walking"
+        },
+        "result": {
+          "origin_poi_id": "B023B0AC72",
+          "origin_name": "西湖风景区-苏堤",
+          "destination_poi_id": "B023B09IGU",
+          "destination_name": "杭州西湖国宾馆",
+          "mode": "walking",
+          "status": "available",
+          "duration_minutes": 34,
+          "distance_meters": 2544,
+          "source": "高德路线规划",
+          "fetched_at": "2026-10-15T02:02:35+00:00",
+          "reason": "高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。"
+        },
+        "queried_at": "2026-10-15T02:02:35+00:00",
+        "seconds": 0.316
+      }
+    ],
+    "requirements_revision": 1,
+    "display": null,
+    "display_source_hash": "2cf85b8ef0b0716d3a78d6697d06488cf165a47fb7c349ec7a8433d8641f2718",
+    "display_status": "pending",
+    "requirements_snapshot": {
+      "start_date": "",
+      "end_date": "",
+      "arrival_time": "",
+      "departure_time": "",
+      "city": "杭州市",
+      "arrival_location": "",
+      "departure_location": "",
+      "day_count": 1,
+      "travelers": null,
+      "budget_amount": "",
+      "budget_scope": "unspecified",
+      "budget_coverage": "餐饮、市内交通和门票；不含住宿及跨城交通",
+      "must_visit": [],
+      "avoid": [],
+      "dietary": [],
+      "pace": "",
+      "lodging_address": "杭州西湖国宾馆",
+      "outing_start_time": "",
+      "outing_end_time": "",
+      "revision": 1
+    }
+  },
+  "last_message": "建议用一天围绕西湖西南—南侧做一条紧凑散步线：从国宾馆步行到花港观鱼，顺路到净慈寺，再到苏堤东侧游览，最后步行返回住处。这样四点连成环线、不跨远区，适合步行和留餐；日期、人数与预算未定，所以只给通用节奏和费用构成，具体开放、票价与天气以当天核实为准。\n\n---\n\n**第1天：西湖西南—南侧步行线（返回国宾馆）**\n\n**上午：花港观鱼**\n- 建议上午从杭州西湖国宾馆出发，步行约17分钟到花港观鱼（西山路5-1号方向）。\n- 游览内容以鱼池、花木和湖景步道为主，节奏可慢；如遇雨天，可在园内找有遮蔽的步道、休息点或提前改室内替代。\n- 参考资料显示该景点开放为全天，但这是查询时参考，不保证当天实际开放。\n\n**中午：南山路/净慈寺周边简餐**\n- 午餐可安排在净慈寺附近南山路一带，选杭帮家常菜、面食或清淡套餐；如忌口明确，按“少辣、少油、可指定过敏原”的标准选店。\n- 预留约60分钟，避免影响下午净慈寺进入。\n\n**下午1：净慈寺**\n- 从花港观鱼步行到净慈禅寺约19分钟。\n- 参考开放资料为约06:30—17:00、最晚进入约16:45；建议把参观放在午后早些时段，避免接近关门。\n- 门票、香火、预约、实际开放时间以现场公示为准；是否适合雨天参观需看当天体感和现场条件。\n\n**下午2：苏堤东侧慢走**\n- 从净慈寺步行到西湖风景区-苏堤约26分钟。\n- 苏堤游览以堤岸步道为主，建议只走一段轻松路线，不必强行走完全堤；若体力一般，可在堤边停留看湖景。\n- 参考资料显示景点全天开放，但仍以当天现场为准；雨天路滑时缩短步道或改湖边有遮蔽处休息。\n\n**傍晚：返回国宾馆**\n- 从苏堤东侧步行返回杭州西湖国宾馆约34分钟。\n- 返回前可在南山路或湖边短停休息；若末站改成其他地点，需重新确认回住宿路线和耗时。\n\n**费用参考（未给人数和预算，只列构成）**\n- 默认游玩费用包括：餐饮、市内交通、门票；不含住宿和跨城交通。\n- 今天建议以步行为主，市内交通可能不产生费用；如改用公交/打车，以实际乘车为准。\n- 餐饮按午、晚两餐估算；晚餐可回到国宾馆附近选择清淡杭帮菜。\n- 花港观鱼、苏堤的门票信息未确认，净慈寺门票也未确认；如有门票，按现场价格计入。\n- 人数和预算未定，因此不计算全队总额，也不默认人均额度。\n\n**出发前确认**\n1. 确定出行日期后查看当日杭州天气，决定是否把净慈寺/苏堤段调整到更靠后或改室内。  \n2. 确认净慈寺实际开放、门票与是否需要预约。  \n3. 若当天体力或天气不佳，可将苏堤改为湖边短停，保留返回国宾馆时间。",
+  "checks": {
+    "task_succeeded": true,
+    "text_saved": true,
+    "no_review_role": true,
+    "unknown_travelers_preserved": true,
+    "lodging_preserved": true
+  },
+  "content_quality": "pending_manual_review"
+}

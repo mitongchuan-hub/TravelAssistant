@@ -7,14 +7,14 @@
   <header class="page-header">
     <div>
       <p class="muted">我的旅行</p>
-      <h1>继续把下一次出行聊清楚</h1>
+      <h1>从住处出发，逛一逛这座城</h1>
     </div>
     <div class="user-chip">
       <span>{{ current_user.initials }}</span>
       <strong>{{ current_user.name }}</strong>
       <form action="/logout" method="post"><button type="submit">退出</button></form>
     </div>
-    <a class="icon-action" href="/trips/new" aria-label="创建旅行">+</a>
+    <a class="icon-action" href="/trips/new" aria-label="创建同城行程">+</a>
   </header>
 
   {% if error %}<p class="trip-notice trip-notice-error" role="alert">{{ error }}</p>{% endif %}
@@ -28,6 +28,7 @@
             <div class="trip-card-main">
               <strong>{{ trip.destination }}</strong>
               <div class="trip-meta-row" aria-label="旅行概况">
+                {% if trip.mode == 'city' %}<span>同城游玩</span>{% endif %}
                 <span>{{ trip.date_range }}</span>
                 <span>{{ trip.budget }}</span>
                 <span>{{ trip.style }}</span>
@@ -48,8 +49,8 @@
   {% else %}
     <div class="empty-state">
       <h2>还没有旅行</h2>
-      <p>先建一个旅行主题，再和 Agent 一步步聊出计划。</p>
-      <a class="primary-action compact" href="/trips/new">创建旅行</a>
+      <p>只填住宿地址，规划每天出发并返回住处的同城路线。</p>
+      <a class="primary-action compact" href="/trips/new">创建同城行程</a>
     </div>
   {% endif %}
 </section>

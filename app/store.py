@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -140,7 +141,7 @@ def _preparation_from_raw(raw: object) -> TravelPreparation:
 
 class DemoStore(TravelTasks, DisplayTasks):
     def __init__(self, db_path: str | None = None, persistence_enabled: bool | None = None, *, display_worker_enabled: bool | None = None) -> None:
-        self.db_path = db_path or os.getenv("TRAVEL_DB_PATH", ".cache/travelassistant.sqlite3")
+        self.db_path = db_path or os.getenv("CITY_DB_PATH", ".cache/cityassistant.sqlite3")
         self.persistence_enabled = self._resolve_persistence_enabled(persistence_enabled)
         self._lock = RLock()
         self._task_context = local()
@@ -266,7 +267,7 @@ class DemoStore(TravelTasks, DisplayTasks):
         }
 
     @_state_locked
-    def create_trip(self, destination: str, date_range: str, budget: str, style: str, note: str, owner: User | None = None, *, requirements: dict | None = None) -> Trip:
+    def create_trip(self, destination: str, date_range: str, budget: str, style: str, note: str, owner: User | None = None, *, requirements: dict | None = None, mode='travel', lodging=None) -> Trip:
         owner = owner or USERS["u1"]
         trip_id = f"trip-{next(_id_counter)}"
         trip = Trip(
@@ -280,9 +281,14 @@ class DemoStore(TravelTasks, DisplayTasks):
             status="未生成",
             last_activity="旅行已创建，开始和 Agent 对话",
             requirements=initial_requirements(budget, style),
+            mode=mode,
         )
+        if mode not in {'travel', 'city'}:
+            raise ValueError('不支持的行程类型')
         if requirements is not None:
             trip = update_requirements(trip, requirements)
+            if mode == 'city':
+                trip.lodging = self._validated_lodging(lodging, trip.requirements.city)
             from .planning import planning_brief
             _, question = planning_brief(trip, require_all=True)
             if question:
@@ -303,6 +309,29 @@ class DemoStore(TravelTasks, DisplayTasks):
         self.idea_cards[trip_id] = []
         self._persist()
         return trip
+
+    @staticmethod
+    def _validated_lodging(lodging, city):
+        from .places import collect_places
+        trusted = collect_places([{'role': 'tool', 'name': 'search_places', 'content':
+            json.dumps({'status': 'available', 'candidates': [lodging]}, ensure_ascii=False)}])
+        if not trusted or not city or lodging['city'] != city:
+            raise ValueError('请重新确认住宿的地图位置')
+        return deepcopy(next(iter(trusted.values())))
+
+    @_state_locked
+    def update_city_outing(self, trip_id, changes, expected_revision, lodging):
+        trip = self.trips[trip_id]
+        if trip.mode != 'city' or trip.requirements.revision != expected_revision:
+            raise ValueError('游玩设置已经更新，请刷新后重新保存')
+        updated = update_requirements(trip, changes)
+        updated.lodging = self._validated_lodging(lodging, updated.requirements.city)
+        if trip.destination == f'{trip.requirements.city}同城游玩':
+            updated.destination = f'{updated.requirements.city}同城游玩'
+        updated.last_activity = '游玩设置已更新'
+        self.trips[trip_id] = updated
+        self._persist()
+        return updated
 
     @_state_locked
     def update_trip_requirements(self, trip_id: str, changes: dict, expected_revision: int) -> Trip:

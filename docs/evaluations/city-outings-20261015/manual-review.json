@@ -1,0 +1,57 @@
+{
+  "scope": "Three generated itinerary texts; synthetic tools for first two, live AMap for third; no live-model display conversion.",
+  "workflow_passed": 3,
+  "workflow_total": 3,
+  "full_content_passed": 0,
+  "full_content_total": 3,
+  "rows": [
+    {
+      "case": "CITY-001",
+      "path": "first/CITY-001/plan.txt",
+      "workflow_passed": true,
+      "full_content_passed": false,
+      "positive": [
+        "Only lodging was sufficient; undated one-day plan saved",
+        "Unknown budget and travelers preserved",
+        "Three actual fixture route legs used with their own mode and duration"
+      ],
+      "issues": [
+        "No evidence for 常设展览 and 公共休息区",
+        "Claims evening restaurants are 步行可到 without matched restaurants/routes"
+      ]
+    },
+    {
+      "case": "CITY-002",
+      "path": "first/CITY-002/plan.txt",
+      "workflow_passed": true,
+      "full_content_passed": false,
+      "positive": [
+        "Correct two dates, 10:00/19:00 daily goals, known lodging and no invented commute minutes",
+        "Per-person allocations 200+80+120+100=500; unknown group size not guessed"
+      ],
+      "issues": [
+        "距离不远 despite all route attempts failing",
+        "Park suggested as 雨备 without shelter evidence",
+        "Dinners not explicitly arranged within two daily outing windows"
+      ]
+    },
+    {
+      "case": "CITY-003",
+      "path": "live-retest/CITY-003/plan.txt",
+      "workflow_passed": true,
+      "full_content_passed": false,
+      "positive": [
+        "Live accommodation matched to coordinates; all four queried walking legs used 17/19/26/34 minutes",
+        "Provider opening references included with date limitation; no invented budget or travelers",
+        "No dated weather query for undated outing"
+      ],
+      "issues": [
+        "Unverified covered paths/rest places used as rainy-weather suggestions",
+        "Generic Su Causeway POI route described as 苏堤东侧 without matching that exact starting point",
+        "紧凑/环线 descriptions have no explicit geometry verification"
+      ]
+    }
+  ],
+  "first_address_unresolved": "First harness compared exact POI name against 西湖国宾馆 while provider returned 杭州西湖国宾馆. It stopped before generation. Original result is retained. Retest compares against the supplied address and uses the unique exact main POI; application location flow always required user selection for multiple candidates.",
+  "source_note": "Archived model-run source bytes reconstructed from unchanged files and two later editor fixes, verified against every original manifest hash. Final regression and browser cover the final editor fixes."
+}

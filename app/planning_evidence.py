@@ -19,13 +19,18 @@ def critical_route_review(trip, catalog, evidence, remaining):
         return matches[0] if name.strip() and len(matches) == 1 else None
 
     core = [place for name in profile.must_visit if (place := anchor(name))]
+    if trip.mode == 'city':
+        lodging = catalog.get(trip.lodging.get('poi_id'))
+        core = core or [p for p in catalog.values() if p['poi_id'] != trip.lodging.get('poi_id')
+                       and p.get('city', '').removesuffix('市') == profile.city.removesuffix('市')]
+        legs = (('住宿去程', [lodging], core), ('返回住宿', core, [lodging]))
+    else:
+        legs = (('抵达接驳', [anchor(profile.arrival_location)], core),
+                ('返程接驳', core, [anchor(profile.departure_location)]))
     if not core:
         return []
     result = []
-    for purpose, origins, destinations in (
-        ('抵达接驳', [anchor(profile.arrival_location)], core),
-        ('返程接驳', core, [anchor(profile.departure_location)]),
-    ):
+    for purpose, origins, destinations in legs:
         origins = [place for place in origins if place]
         destinations = [place for place in destinations if place]
         if not origins or not destinations:

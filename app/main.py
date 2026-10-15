@@ -24,7 +24,9 @@ from .auth import (
 from urllib.parse import quote
 from uuid import uuid4
 from .tasks import TaskConflict
-from .tools.places import map_url, query_time_label
+from .tools.places import map_url, query_time_label, search_places
+from .places import collect_places
+from .city_outings import CITY_FORM_FIELDS, LodgingChoices, city_requirements
 from .models import AgentCard, Message, User
 from .requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
 from .chat_presentation import chat_reply_view, chat_time_break, chat_actions, chat_supplemental
@@ -41,12 +43,13 @@ async def lifespan(application):
         store.stop_display_worker()
 
 
-app = FastAPI(title="TravelAssistant Python H5", lifespan=lifespan)
+app = FastAPI(title="TravelAssistant 同城游玩", lifespan=lifespan)
+lodging_choices = LodgingChoices()
 auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20261013-chat-1"
+templates.env.globals["static_version"] = "20261015-city-1"
 templates.env.filters.update(day_date_label=day_date_label, timeline_time_parts=timeline_time_parts,
                              display_view=display_view, coverage_detail=coverage_detail,
                              chat_reply_view=chat_reply_view, chat_time_break=chat_time_break,
@@ -303,7 +306,68 @@ def new_trip(request: Request) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
-    return templates.TemplateResponse(request, "create_trip.html", {"current_user": user, "values": {}, "error": ""})
+    return _city_form_page(request, user, {})
+
+
+def _city_form_page(request, user, values, *, trip=None, error='', candidates=None, token='', status=200):
+    return templates.TemplateResponse(request, 'city_outing_form.html', {
+        'current_user': user, 'trip': trip, 'values': values, 'error': error,
+        'candidates': candidates or [], 'choice_token': token,
+        'saved': request.query_params.get('saved') == '1',
+    }, status_code=status)
+
+
+async def _save_city_form(request, user, data, trip=None):
+    values = {key: data.get(key, '') for key in CITY_FORM_FIELDS}
+    token = data.get('choice_token', '')
+    candidates = []
+    try:
+        if not isinstance(token, str):
+            raise ValueError('住宿位置选择格式不正确')
+        selected = None
+        if token:
+            draft = lodging_choices.get(token, user.id, trip.id if trip else '')
+            values, candidates = draft['values'], draft['candidates']
+            selected = next((p for p in candidates if p['poi_id'] == data.get('poi_id')), None)
+            if not selected:
+                raise ValueError('请选择一个住宿位置')
+        else:
+            city_requirements(values)
+            if (trip and trip.lodging and values['lodging_address'].strip() == trip.requirements.lodging_address
+                    and not values['city_hint'].strip()):
+                selected = deepcopy(trip.lodging)
+            else:
+                result = await run_in_threadpool(search_places, {
+                    'city': values['city_hint'].strip(), 'keywords': values['lodging_address'].strip()})
+                catalog = collect_places([{'role': 'tool', 'name': 'search_places',
+                    'content': json.dumps(result, ensure_ascii=False)}])
+                candidates = [p for p in catalog.values() if p.get('city')]
+                if not candidates:
+                    raise ValueError('暂未匹配到住宿位置，请补充城市、分店名或更详细地址后重试。地图暂不可用时可稍后重试。')
+                if len(candidates) == 1 and result.get('total_matched', 1) == 1:
+                    selected = candidates[0]
+                else:
+                    token = lodging_choices.add(user.id, values, candidates, trip.id if trip else '')
+                    return _city_form_page(request, user, values, trip=trip, candidates=candidates, token=token)
+        changes = city_requirements(values, selected['city'])
+        if trip:
+            # This form does not edit the user's custom fee coverage from chat.
+            changes['budget_coverage'] = trip.requirements.budget_coverage
+            revision = values.get('revision', '')
+            if not revision.isascii() or not revision.isdigit():
+                raise ValueError('请刷新游玩设置后再保存')
+            store.update_city_outing(trip.id, changes, int(revision), selected)
+            url = f'/workspace/{trip.id}/requirements?saved=1'
+        else:
+            trip = store.create_trip(f"{selected['city']}同城游玩", '', '', '', '', user,
+                requirements=changes, mode='city', lodging=selected)
+            url = f'/workspace/{trip.id}?tab=chat'
+        if token:
+            lodging_choices.discard(token)
+        return RedirectResponse(url=url, status_code=303)
+    except ValueError as exc:
+        return _city_form_page(request, user, values, trip=trip, error=str(exc),
+                               candidates=candidates if token else [], token=token, status=400)
 
 
 @app.post("/trips", response_class=HTMLResponse)
@@ -311,18 +375,7 @@ async def create_trip(request: Request) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
-    data = await request.form()
-    fields = {'city', 'start_date', 'end_date', 'arrival_time', 'departure_time', 'arrival_location',
-              'departure_location', 'travelers', 'budget_amount', 'budget_scope', 'budget_coverage'}
-    values = {key: data.get(key, '') for key in fields}
-    try:
-        if not all(isinstance(v, str) and v.strip() for v in values.values()):
-            raise ValueError('请填写完整的五组旅行信息')
-        trip = store.create_trip(values['city'], '', '', '', '', user, requirements=values)
-    except ValueError as exc:
-        return templates.TemplateResponse(request, "create_trip.html", {
-            "current_user": user, "values": values, "error": str(exc)}, status_code=400)
-    return RedirectResponse(url=f"/workspace/{trip.id}?tab=chat", status_code=303)
+    return await _save_city_form(request, user, await request.form())
 
 
 @app.post("/trips/{trip_id}/delete")
@@ -354,6 +407,8 @@ def _requirements_page(request: Request, trip, user: User, values: dict | None =
         for key in LIST_FIELDS:
             values[key] = "\n".join(values[key])
         values["revision"] = trip.requirements.revision
+    if trip.mode == 'city':
+        return _city_form_page(request, user, values, trip=trip, error=error, status=status_code)
     return templates.TemplateResponse(request, "requirements.html", {
         "trip": trip, "current_user": user, "values": values, "error": error,
         "saved": request.query_params.get("saved") == "1",
@@ -368,6 +423,8 @@ async def save_requirements(request: Request, trip_id: str) -> Response:
         return RedirectResponse(url="/", status_code=303)
     trip = get_owned_trip_or_404(trip_id, user)
     data = await request.form()
+    if trip.mode == 'city':
+        return await _save_city_form(request, user, data, trip)
     values = {key: data.get(key, "") for key in BASIC_FIELDS | PROFILE_FIELDS | {"revision"}}
     try:
         if not all(isinstance(value, str) for value in values.values()):

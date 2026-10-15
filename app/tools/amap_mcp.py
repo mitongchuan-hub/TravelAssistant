@@ -260,7 +260,10 @@ def search_pois(city, keywords, limit=5):
     """Search then obtain coordinates/details, capped at five candidates per query."""
     limit = max(1, min(int(limit), 5))
     with session() as tools:
-        payload = tools.call('maps_text_search', {'city': city, 'keywords': keywords, 'citylimit': True})
+        params = {'keywords': keywords, 'citylimit': bool(city)}
+        if city:
+            params['city'] = city
+        payload = tools.call('maps_text_search', params)
         pois = payload.get('pois')
         if not isinstance(pois, list):
             raise AmapMCPError('高德MCP地点列表无效')

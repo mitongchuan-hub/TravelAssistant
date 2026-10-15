@@ -17,11 +17,24 @@ tests/
 └── travel_dataset_support.py    夹具、受控资料与数据校验
 ```
 
+## 同城游玩
+
+`main` 的创建入口只有住宿地址必填。`automated/test_city_outings.py`覆盖可信位置选择、候选过期/越权、可选日期和预算、换住宿失效、费用范围保留、同城查询范围、无日期天气限制和原文/卡片保存；旧完整旅行的异步及五组需求夹具独立保留。
+
+```powershell
+python -m pytest tests/automated/test_city_outings.py -q
+python tests/browser/city_outing_fixture.py 9012
+node tests/browser/city_outing_browser.cjs http://127.0.0.1:9012 "$env:TEMP\city-browser-results"
+python tests/performance/check_city_outings.py "$env:TEMP\city-live-$(Get-Date -Format yyyyMMdd-HHmmss)"
+```
+
+浏览器使用隔离内存应用和合成模型/地图结果，覆盖320/390/430/1000px与重名位置选择；Node需能解析Playwright。真实模型脚本使用隔离内存Store，前两例为合成工具资料，第三例调用真实高德；可在输出目录后传 `CITY-001`、`CITY-002` 或 `CITY-003` 选择案例。输出目录必须新建且为空，保留首次失败；任务成功与机器检查不替代人工内容评审，不执行后台展示模型。两套业务数据库均只读取指纹，不写测试记录。
+
 ## 自动回归
 
 `automated/` 按功能划分的测试文件仍覆盖有效代码：角色权限、Loop、模型协议与错误恢复、需求校验、页面认证、任务并发、持久化迁移、正文/展示绑定、工具及测试集执行器。旧格式行程的地图、路线、时间线和旧库迁移仍在应用中使用，相关测试继续保留。
 
-`test_workflow.py`覆盖完整创建信息在欢迎消息中的确认，`test_agent_roles.py`验证意图识别与闲聊收到当前需求及备注，并覆盖长对话、清空聊天、重启后的读取和旅行之间的隔离。受控请求检查上下文传递与无工具权限，不能据此认定真实模型一定正确复述。
+`test_workflow.py`覆盖地址创建入口与旧完整旅行的生成前提，`test_agent_roles.py`验证意图识别与闲聊收到当前需求及备注，并覆盖长对话、清空聊天、重启后的读取和旅行之间的隔离。受控请求检查上下文传递与无工具权限，不能据此认定真实模型一定正确复述。
 
 ```powershell
 & E:\anaconda\envs\TravelAssistant\python.exe -m pytest -q

@@ -1,0 +1,24 @@
+{
+  "users": {
+    "count": 5,
+    "sha256": "a6d680f1ae24f98c050c8bcfa21ba74fd1744471946747be9bffa8c8ef349a15"
+  },
+  "trips": {
+    "count": 6,
+    "sha256": "f18e161a08e3b375c105b318c907d73ac9f4a36f5277fb23df686ff05e68198b"
+  },
+  "messages": {
+    "count": 41,
+    "sha256": "f5b6832a27cd830e75ef02563348d296af12cdc8180c3d2d323a0494797a2ea1"
+  },
+  "ideas": {
+    "count": 9,
+    "sha256": "01658a2450b68b0d0997beb9f1be32c8e17bd99b1a95d2046641969a5127e3c7"
+  },
+  "plans": {
+    "count": 6,
+    "sha256": "e06d6ac2ef0d6a3843761c408321f26925a3cfe99f323c550a2efbe6de44b4a6"
+  },
+  "active_tasks": [],
+  "active_display": []
+}

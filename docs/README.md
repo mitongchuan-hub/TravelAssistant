@@ -4,6 +4,9 @@
 
 ## 当前说明
 
+- [同城游玩](city-outings-20261015.md)：`main` 的住宿地址入口、可选设置、每日往返、分支与数据库隔离。
+- 2026-10-15之前的完整旅行规则和评测保留为兼容模式及历史证据，`travel-full` 分支保存改造前版本。
+
 - [产品边界](product-boundaries-v1.md)：已确认的首版范围，区分目标与已实现能力。
 - [当前架构](agent-architecture-current.md)与[角色实现](agent-role-implementation.md)：四意图、工具循环、当前行程保存和后台展示。
 - [思考强度配置](model-reasoning.md)、[高德MCP](amap-mcp-implementation.md)、[展示协议](travel-itinerary-display-schema.md)。

@@ -26,6 +26,9 @@ class TripRequirements:
     avoid: list[str] = field(default_factory=list)
     dietary: list[str] = field(default_factory=list)
     pace: str = ""
+    lodging_address: str = ""
+    outing_start_time: str = ""
+    outing_end_time: str = ""
     revision: int = 0
 
 
@@ -42,6 +45,8 @@ class Trip:
     last_activity: str
     requirements: TripRequirements = field(default_factory=TripRequirements)
     workflow_state: dict = field(default_factory=dict)
+    mode: str = "travel"
+    lodging: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -91,6 +96,8 @@ class PlaceDetails:
     source: str
     fetched_at: str
     selected_at: str = ""
+    place_type: str = ""
+    opening_hours: str = ""
 
 
 @dataclass(frozen=True)

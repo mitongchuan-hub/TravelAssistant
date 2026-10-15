@@ -1,0 +1,284 @@
+........................................................................ [ 11%]
+........................................................................ [ 23%]
+................FFFFFFFFFFFFFFFF........................................ [ 34%]
+........................................................................ [ 46%]
+........................................................................ [ 58%]
+........................................................................ [ 69%]
+........................................................................ [ 81%]
+........................................................................ [ 93%]
+..........................................                               [100%]
+================================== FAILURES ===================================
+______ test_primary_reply_is_saved_and_readable_while_display_is_blocked ______
+tests\automated\test_async_display.py:48: in test_primary_reply_is_saved_and_readable_while_display_is_blocked
+    local, tid = local_store(monkeypatch, db_path=tmp_path/'async.sqlite3', worker=True)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+_ test_late_display_cannot_overwrite_replaced_cleared_or_deleted_trip[replace] _
+tests\automated\test_async_display.py:86: in test_late_display_cannot_overwrite_replaced_cleared_or_deleted_trip
+    local, tid = local_store(monkeypatch, worker=True)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+_ test_late_display_cannot_overwrite_replaced_cleared_or_deleted_trip[clear] __
+tests\automated\test_async_display.py:86: in test_late_display_cannot_overwrite_replaced_cleared_or_deleted_trip
+    local, tid = local_store(monkeypatch, worker=True)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+_ test_late_display_cannot_overwrite_replaced_cleared_or_deleted_trip[delete] _
+tests\automated\test_async_display.py:86: in test_late_display_cannot_overwrite_replaced_cleared_or_deleted_trip
+    local, tid = local_store(monkeypatch, worker=True)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+_ test_display_waits_for_readonly_business_to_finish_without_snapshot_conflict _
+tests\automated\test_async_display.py:120: in test_display_waits_for_readonly_business_to_finish_without_snapshot_conflict
+    local, tid = local_store(monkeypatch, worker=True)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+__ test_new_revision_does_not_wait_for_old_cards_and_rejects_old_publication __
+tests\automated\test_async_display.py:159: in test_new_revision_does_not_wait_for_old_cards_and_rejects_old_publication
+    local, tid = local_store(monkeypatch, worker=True)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+__________ test_card_dates_use_saved_basis_and_preserve_confirmation __________
+tests\automated\test_async_display.py:187: in test_card_dates_use_saved_basis_and_preserve_confirmation
+    local,tid=local_store(monkeypatch)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+_____ test_display_failure_never_turns_primary_task_into_failure[timeout] _____
+tests\automated\test_async_display.py:205: in test_display_failure_never_turns_primary_task_into_failure
+    local,tid=local_store(monkeypatch)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+____ test_display_failure_never_turns_primary_task_into_failure[bad_hash] _____
+tests\automated\test_async_display.py:205: in test_display_failure_never_turns_primary_task_into_failure
+    local,tid=local_store(monkeypatch)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+____ test_display_failure_never_turns_primary_task_into_failure[bad_dates] ____
+tests\automated\test_async_display.py:205: in test_display_failure_never_turns_primary_task_into_failure
+    local,tid=local_store(monkeypatch)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+_______ test_display_retry_is_bound_to_current_source_and_deduplicates ________
+tests\automated\test_async_display.py:220: in test_display_retry_is_bound_to_current_source_and_deduplicates
+    local,tid=local_store(monkeypatch)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+______ test_interrupted_display_preserves_primary_success_after_restart _______
+tests\automated\test_async_display.py:236: in test_interrupted_display_preserves_primary_success_after_restart
+    local,tid=local_store(monkeypatch,db_path=path)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+____________ test_worker_scheduling_failure_preserves_saved_prose _____________
+tests\automated\test_async_display.py:251: in test_worker_scheduling_failure_preserves_saved_prose
+    local,tid=local_store(monkeypatch,worker=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+______________ test_disabled_display_never_blocks_or_calls_model ______________
+tests\automated\test_async_display.py:260: in test_disabled_display_never_blocks_or_calls_model
+    local,tid=local_store(monkeypatch,worker=True)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+________ test_display_interfaces_require_owner_and_reject_stale_source ________
+tests\automated\test_async_display.py:268: in test_display_interfaces_require_owner_and_reject_stale_source
+    local,tid=local_store(monkeypatch)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+_____________ test_display_budget_is_independent_and_has_no_tools _____________
+tests\automated\test_async_display.py:289: in test_display_budget_is_independent_and_has_no_tools
+    local,tid=local_store(monkeypatch)
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+tests\automated\test_async_display.py:36: in local_store
+    trip = local.create_trip('杭州', '', '', '', '', requirements=creation_fields())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:105: in wrapped
+    return method(self, *args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\store.py:289: in create_trip
+    trip = update_requirements(trip, requirements)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+app\requirements.py:58: in update_requirements
+    raise ValueError("需求字段不正确，请刷新后重试")
+E   ValueError: 需求字段不正确，请刷新后重试
+=========================== short test summary info ===========================
+FAILED tests/automated/test_async_display.py::test_primary_reply_is_saved_and_readable_while_display_is_blocked
+FAILED tests/automated/test_async_display.py::test_late_display_cannot_overwrite_replaced_cleared_or_deleted_trip[replace]
+FAILED tests/automated/test_async_display.py::test_late_display_cannot_overwrite_replaced_cleared_or_deleted_trip[clear]
+FAILED tests/automated/test_async_display.py::test_late_display_cannot_overwrite_replaced_cleared_or_deleted_trip[delete]
+FAILED tests/automated/test_async_display.py::test_display_waits_for_readonly_business_to_finish_without_snapshot_conflict
+FAILED tests/automated/test_async_display.py::test_new_revision_does_not_wait_for_old_cards_and_rejects_old_publication
+FAILED tests/automated/test_async_display.py::test_card_dates_use_saved_basis_and_preserve_confirmation
+FAILED tests/automated/test_async_display.py::test_display_failure_never_turns_primary_task_into_failure[timeout]
+FAILED tests/automated/test_async_display.py::test_display_failure_never_turns_primary_task_into_failure[bad_hash]
+FAILED tests/automated/test_async_display.py::test_display_failure_never_turns_primary_task_into_failure[bad_dates]
+FAILED tests/automated/test_async_display.py::test_display_retry_is_bound_to_current_source_and_deduplicates
+FAILED tests/automated/test_async_display.py::test_interrupted_display_preserves_primary_success_after_restart
+FAILED tests/automated/test_async_display.py::test_worker_scheduling_failure_preserves_saved_prose
+FAILED tests/automated/test_async_display.py::test_disabled_display_never_blocks_or_calls_model
+FAILED tests/automated/test_async_display.py::test_display_interfaces_require_owner_and_reject_stale_source
+FAILED tests/automated/test_async_display.py::test_display_budget_is_independent_and_has_no_tools
+16 failed, 602 passed in 56.75s

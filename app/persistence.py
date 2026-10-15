@@ -287,6 +287,8 @@ def _trip(raw: dict[str, Any], legacy: bool = False) -> Trip:
             else initial_requirements(str(raw["budget"]), str(raw["style"]))
         ),
         workflow_state=deepcopy(raw.get("workflow_state") or {}),
+        mode=str(raw.get('mode') or 'travel'),
+        lodging=deepcopy(raw.get('lodging') or {}),
     )
 
 

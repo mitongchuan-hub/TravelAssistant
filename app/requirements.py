@@ -11,7 +11,7 @@ BASIC_FIELDS = {"destination", "date_range", "style", "note"}
 PROFILE_FIELDS = {
     "start_date", "end_date", "arrival_time", "departure_time", "day_count", "travelers", "budget_amount",
     "city", "arrival_location", "departure_location",
-    "budget_scope", "budget_coverage", "pace", *LIST_FIELDS,
+    "budget_scope", "budget_coverage", "pace", "lodging_address", "outing_start_time", "outing_end_time", *LIST_FIELDS,
 }
 
 
@@ -69,7 +69,8 @@ def update_requirements(trip: Trip, changes: dict) -> Trip:
             if len(value.strip()) > (2000 if key == "note" else 300):
                 raise ValueError("需求文字过长，请缩短后保存")
             setattr(updated if key in BASIC_FIELDS else profile, key, value.strip())
-    for key, label in (("arrival_time", "抵达时间"), ("departure_time", "离开时间")):
+    for key, label in (("arrival_time", "抵达时间"), ("departure_time", "离开时间"),
+                       ("outing_start_time", "每天出门时间"), ("outing_end_time", "每天返回时间")):
         value = getattr(profile, key)
         if value and not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", value):
             raise ValueError(f"{label}请填写有效的 HH:MM 时间")
@@ -117,6 +118,17 @@ def update_requirements(trip: Trip, changes: dict) -> Trip:
         updated.style = profile.pace or "风格待定"
     elif "style" in changes:
         profile.pace = updated.style if updated.style != "风格待定" else ""
+    if updated.mode == 'city':
+        if profile.outing_start_time and profile.outing_end_time and profile.outing_end_time <= profile.outing_start_time:
+            raise ValueError('每天返回时间必须晚于出门时间；跨午夜游玩请分别安排')
+        if (profile.lodging_address != trip.requirements.lodging_address
+                or profile.city != trip.requirements.city):
+            updated.lodging = {}
+        if not profile.start_date:
+            profile.day_count = profile.day_count or 1
+            updated.date_range = f'{profile.day_count}天同城游 · 日期可选'
+        if profile.budget_amount and profile.budget_scope == 'unspecified':
+            raise ValueError('填写预算后请选择人均或总额口径')
     profile.revision = trip.requirements.revision + 1
     return updated
 

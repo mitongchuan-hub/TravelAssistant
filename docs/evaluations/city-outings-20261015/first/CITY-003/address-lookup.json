@@ -1,0 +1,48 @@
+{
+  "status": "available",
+  "city": "",
+  "keywords": "杭州西湖国宾馆",
+  "candidates": [
+    {
+      "poi_id": "B023B09IGU",
+      "name": "杭州西湖国宾馆",
+      "address": "杨公堤18号",
+      "longitude": 120.133672,
+      "latitude": 30.235031,
+      "city": "杭州市",
+      "district": "",
+      "source": "高德地图 POI",
+      "fetched_at": "2026-10-15T01:55:59+00:00",
+      "place_type": "住宿服务;宾馆酒店;宾馆酒店"
+    },
+    {
+      "poi_id": "B0J39CCLUS",
+      "name": "西湖国宾馆·红吧",
+      "address": "杨公堤18号",
+      "longitude": 120.133684,
+      "latitude": 30.234826,
+      "city": "杭州市",
+      "district": "",
+      "source": "高德地图 POI",
+      "fetched_at": "2026-10-15T01:55:59+00:00",
+      "place_type": "体育休闲服务;娱乐场所;酒吧",
+      "opening_hours": "周一至周日 10:00-22:00"
+    },
+    {
+      "poi_id": "B0IBAAAZ31",
+      "name": "杭州西湖国宾馆大堂",
+      "address": "杨公堤与龙井支路交叉口东南400米",
+      "longitude": 120.133641,
+      "latitude": 30.234985,
+      "city": "杭州市",
+      "district": "",
+      "source": "高德地图 POI",
+      "fetched_at": "2026-10-15T01:55:59+00:00",
+      "place_type": "住宿服务;宾馆酒店;宾馆酒店"
+    }
+  ],
+  "source": "高德地图 POI",
+  "transport": "amap_mcp",
+  "total_matched": 20,
+  "note": "Agent 按旅行语境匹配具体地点，无法区分时通过聊天确认。坐标来自高德MCP详情；opening_hours为查询时提供的参考营业资料，不保证指定日期开放，未提供则未知；票价与预约仍需核实。"
+}

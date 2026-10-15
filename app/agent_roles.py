@@ -1,4 +1,5 @@
 """Model nodes and three business agents sharing one bounded tool loop."""
+from copy import deepcopy
 from dataclasses import dataclass
 import os
 
@@ -96,19 +97,39 @@ def role_reasoning_effort(role, scope=''):
     return None if value == 'default' else value
 
 
-def roles():
-    rules = load_prompt('agents/travel_rules.txt')
+def roles(mode='travel'):
+    city = mode == 'city'
+    rules = load_prompt('agents/city_rules.txt' if city else 'agents/travel_rules.txt')
     read = (READ_CONTEXT,)
     facts = tuple(tool_specs())
-    requirements = (UPDATE_REQUIREMENTS, CHECK_REQUIREMENTS)
+    update = UPDATE_REQUIREMENTS
+    if city:
+        update = deepcopy(UPDATE_REQUIREMENTS)
+        function = update['function']
+        function['description'] = ('保存用户明确的新游玩设置，未知可选字段保持未知，不追问抵离车站、人数或预算。'
+            '完整回传city、lodging_address、start_date/end_date、day_count、outing_start_time/outing_end_time、'
+            'travelers、budget_amount/budget_scope/budget_coverage；沿用未改值。列表只用add/remove。'
+            'user_quote逐字引用完整最新原话。更换住宿地址后须在游玩设置重新确认地图位置。')
+        function['parameters']['properties']['changes']['required'] = [
+            'city', 'lodging_address', 'start_date', 'end_date', 'day_count', 'outing_start_time', 'outing_end_time',
+            'travelers', 'budget_amount', 'budget_scope', 'budget_coverage']
+        properties = function['parameters']['properties']['changes']['properties']
+        for key in ('arrival_time', 'departure_time', 'arrival_location', 'departure_location', 'date_range', 'style'):
+            properties.pop(key, None)
+        properties['start_date']['description'] = '可选的游玩开始日期，未知为空；不是到达城市日期。'
+        properties['end_date']['description'] = '可选的游玩结束日期，未知为空；不是离开城市日期。'
+        properties['lodging_address']['description'] = '用户提供的住宿地址；不是车站，不默认更换住宿。'
+        properties['outing_start_time']['description'] = '每天从住处出门的时刻，未知为空。'
+        properties['outing_end_time']['description'] = '每天返回住处的时刻，未知为空。'
+    requirements = (update, CHECK_REQUIREMENTS)
     return {
-        'main': AgentRole('main', load_prompt('agents/main.txt'), response_format={
+        'main': AgentRole('main', load_prompt('agents/main.txt') + ('\n当前为同城游玩：住宿是唯一起点，日期、人数和预算均可选。不要因这些可选信息未知而澄清或阻止明确的生成请求。' if city else ''), response_format={
             'type': 'json_schema', 'json_schema': {'name': 'travel_intent', 'strict': True, 'schema': INTENT_SCHEMA}}),
         'chat': AgentRole('chat', '你是旅行助手。用简体中文自然回应闲聊，也可回答当前已保存旅行需求的问题。requirements是当前保存状态，包含requirements字段和trip备注；它优先于conversation中的旧值、欢迎文案或缺项提示。已填写的信息直接使用，不重复索要；必去地点、忌口和节奏等可选偏好不作为回复前提。字段未记录时如实说明，不猜未知。没有工具，不声称查询、更新需求或保存行程；涉及新需求或生成、修改、外部资料查询的请求应由对应业务流程处理。'),
         'research': AgentRole('research', load_prompt('agents/research.txt') + '\n\n' + rules, read + facts, max_steps=6),
-        'planning': AgentRole('planning', load_prompt('agents/planning.txt') + '\n\n' + rules
-            + '\n\n' + load_prompt('agents/planning_examples.txt'), read + requirements + facts, max_steps=10, reasoning_effort='medium'),
-        'revision': AgentRole('revision', load_prompt('agents/revision.txt') + '\n\n' + rules,
+        'planning': AgentRole('planning', load_prompt('agents/city_planning.txt' if city else 'agents/planning.txt') + '\n\n' + rules
+            + '\n\n' + load_prompt('agents/city_examples.txt' if city else 'agents/planning_examples.txt'), read + requirements + facts, max_steps=10, reasoning_effort='medium'),
+        'revision': AgentRole('revision', load_prompt('agents/city_revision.txt' if city else 'agents/revision.txt') + '\n\n' + rules,
             read + requirements + (EDIT_PLAN_TEXT,) + facts, max_steps=10, reasoning_effort='medium'),
         'display': AgentRole('display', load_prompt('agents/display.txt')),
     }

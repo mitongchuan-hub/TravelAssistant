@@ -94,7 +94,9 @@ class TravelAgentRuntime:
         self.cache = cache if cache is not None else {}
         self.budget = self.cache.setdefault('_budget', TurnBudget(cancelled=self.snapshot.get('cancelled')))
         self.request = request
-        self.configs = roles()
+        self.configs = roles(self.trip.mode if self.trip else 'travel')
+        if self.trip and self.trip.mode == 'city' and self.trip.lodging:
+            self.catalog[self.trip.lodging['poi_id']] = deepcopy(self.trip.lodging)
         self.patch, self.changes, self.ideas = {}, {}, []
         self.evidence = []
         # Successful read-only results are reusable only inside this runtime.
@@ -347,7 +349,7 @@ class TravelAgentRuntime:
         basis = {'requirements_revision': self.trip.requirements.revision if self.trip else None, 'plan_id': self.plan.id if self.plan else None}
         if section == 'requirements':
             return {'basis': basis, 'requirements': asdict(self.trip.requirements) if self.trip else {},
-                'trip': {k: getattr(self.trip, k) for k in ('destination', 'date_range', 'budget', 'style', 'note')} if self.trip else {}}
+                'trip': {k: getattr(self.trip, k) for k in ('destination', 'date_range', 'budget', 'style', 'note', 'mode', 'lodging')} if self.trip else {}}
         if section == 'plan':
             return {'basis': basis, 'plan': asdict(self.plan) if self.plan else None}
         if section == 'evidence':
@@ -459,6 +461,20 @@ class TravelAgentRuntime:
             raise ValueError('当前动作不允许外部查询；修改前须审阅本轮需求')
         if name not in {s['function']['name'] for s in self.configs[role].tools}:
             raise ValueError('当前角色不允许使用此工具')
+        if (self.trip and self.trip.mode == 'city' and role in {'planning', 'revision'}
+                and self.action in {'generate', 'modify'}):
+            city = self.trip.requirements.city.removesuffix('市')
+            if name in {'search_places', 'search_food'}:
+                requested_city = args.get('city') or self.trip.requirements.city
+                if not isinstance(requested_city, str) or requested_city.removesuffix('市') != city:
+                    return {'status': 'unavailable', 'reason': '同城路线只在已确认住宿所在城市安排，请使用该城市查询。'}, None
+                args = dict(args, city=requested_city)
+            if name == 'query_route':
+                endpoints = [self.catalog.get(args.get(key)) for key in ('origin_poi_id', 'destination_poi_id')]
+                if any(p and p.get('city', '').removesuffix('市') != city for p in endpoints):
+                    return {'status': 'unavailable', 'reason': '该路段超出住宿所在城市，请选择同城活动。'}, None
+        if role == 'planning' and self.trip and self.trip.mode == 'city' and name == 'query_weather' and not self.trip.requirements.start_date:
+            return {'status': 'unavailable', 'reason': '游玩日期未定，不查询或套用今天的天气；请按通用路线安排。'}, None
         if self.route_review_enabled and name == 'search_food':
             pending = [row for row in self.planning_route_review() if row['status'] == 'not_attempted']
             if pending:

@@ -1,0 +1,2 @@
+{"event": "case_start", "case": "CITY-003"}
+{"case": "CITY-003", "seconds": 60.367953699999816, "checks": {"task_succeeded": true, "text_saved": true, "no_review_role": true, "unknown_travelers_preserved": true, "lodging_preserved": true}, "content_quality": "pending_manual_review"}

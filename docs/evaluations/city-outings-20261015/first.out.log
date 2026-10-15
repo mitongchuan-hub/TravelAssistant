@@ -1,0 +1,5 @@
+{"event": "case_start", "case": "CITY-001"}
+{"case": "CITY-001", "seconds": 30.915343299999677, "checks": {"task_succeeded": true, "text_saved": true, "no_review_role": true, "unknown_travelers_preserved": true, "lodging_preserved": true}, "content_quality": "pending_manual_review"}
+{"event": "case_start", "case": "CITY-002"}
+{"case": "CITY-002", "seconds": 29.5823233000001, "checks": {"task_succeeded": true, "text_saved": true, "no_review_role": true, "unknown_travelers_preserved": true, "lodging_preserved": true}, "content_quality": "pending_manual_review"}
+{"event": "case_start", "case": "CITY-003"}
