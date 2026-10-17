@@ -287,24 +287,6 @@ def clear_workflow(raw: Any, *, reason: str = "chat cleared") -> dict[str, Any]:
     return state
 
 
-def rollback_workflow(raw: Any, *, reason: str = "task execution rolled back") -> dict[str, Any]:
-    """Suspend unfinished v2 goals for legacy rollback; never create auto-generation state."""
-    state = normalize_workflow(raw)
-    for task in state["tasks"]:
-        if task["status"] in OPEN_TASK_STATES:
-            task["status"] = "suspended"
-            task["status_reason"] = reason[:1000]
-            task["updated_sequence"] = state["sequence"] + 1
-    state["active_question"] = None
-    state["focus_task_id"] = next(
-        (task["id"] for task in reversed(state["tasks"]) if task["status"] == "suspended"), None
-    )
-    state["epoch"] += 1
-    state["sequence"] += 1
-    state["revision"] += 1
-    return state
-
-
 def add_task(
     raw: Any,
     *,
@@ -642,5 +624,5 @@ __all__ = [
     "TRANSITIONS", "WORKFLOW_SCHEMA_VERSION", "WorkflowError", "add_task",
     "advance_request", "basis_matches", "bump_epoch", "clear_workflow",
     "consume_active_question", "empty_workflow", "normalize_workflow",
-    "rollback_workflow", "set_active_question", "transition_task",
+    "set_active_question", "transition_task",
 ]

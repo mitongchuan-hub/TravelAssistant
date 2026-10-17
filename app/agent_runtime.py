@@ -1,4 +1,4 @@
-"""Five intent routes; four business agents share one loop and tool executor."""
+"""Shared tool executor and professional capabilities for the task_execution framework."""
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import asdict, dataclass, field, replace
@@ -6,11 +6,9 @@ from datetime import datetime, timezone
 import json
 import os
 from time import monotonic
-from uuid import uuid4
 from jsonschema import Draft202012Validator
 
-from .agent_loop import AgentLoop, AgentLoopState, LoopAction, LoopObservation, LOOP_COMPLETED, LOOP_WAITING_USER
-from .agent_roles import roles, execution_roles, role_reasoning_effort, INTENT_SCHEMA
+from .agent_roles import roles, execution_roles, role_reasoning_effort
 from .requirements import chat_changes, update_requirements, LIST_FIELDS
 from .planning import planning_brief, required_information
 from .planning_evidence import critical_route_review
@@ -183,77 +181,6 @@ class TravelAgentRuntime:
         if self.trace:
             self.trace.add(name, value)
 
-    def run(self, role='main', task='', *, scope='', target_item_id=None, display_target=None):
-        self.entry_role = role
-        self.display_target = None
-        if display_target is not None:
-            if role != 'revision' or target_item_id is not None or scope != 'item':
-                raise ValueError('展示目标只能用于明确授权的站点修改')
-            self.display_target = validate_display_target_metadata(self.plan, display_target)
-        try:
-            if role == 'main':
-                route = self.classify()
-                self.action, scope = route['action'], route['scope']
-                self.event('意图识别结果', route)
-                role = {'chat': 'chat', 'query': 'research', 'requirements': 'requirements',
-                        'planning': 'planning', 'revision': 'revision'}[route['intent']]
-                if route['question']:
-                    result = replace(self.text_reply(route['question']), needs_input=True,
-                        workflow_state=deepcopy(self.snapshot.get('workflow_state', getattr(self.trip, 'workflow_state', {}))))
-                elif self.action == 'cancel':
-                    result = replace(self.text_reply('已暂停规划，已保存的旅行需求和行程继续保留。'), workflow_state={})
-                else:
-                    result = self.execute_route(role, scope, target_item_id)
-            else:
-                self.action = {'requirements': 'update_requirements', 'planning': 'generate',
-                               'revision': 'explain' if scope == 'explain' else 'modify'}.get(role, 'reply')
-                result = self.execute_route(role, scope, target_item_id)
-            self.budget.remaining()
-            business_response = self.last_response
-            if result.plan_text:
-                result = replace(result, display=None, display_source_hash=text_hash(result.plan_text), display_status='pending')
-            self.budget.check_current()
-            if result.workflow_state is None:
-                state = deepcopy(self.snapshot.get('workflow_state', getattr(self.original_trip, 'workflow_state', {})))
-                if role == 'planning':
-                    state = {'awaiting_generation': True, 'question': result.body} if self.action == 'generate' and result.needs_input else {}
-                elif role == 'requirements' or role == 'revision' and self.action != 'explain':
-                    state = {}
-                result = replace(result, workflow_state=state)
-            result = replace(result, requirements_patch=self.patch, verified_places=self.catalog,
-                             idea_cards=self.ideas, orchestrated=True)
-            self.cache['final_reply'] = result
-            self.event('Workflow 返回结果', asdict(result))
-            return business_response
-        finally:
-            self.cache['requirements_patch'] = self.patch
-            self.cache['idea_cards'] = self.ideas
-            self.event('共享调用预算', {'model_calls': self.budget.model_calls,
-                'tool_calls': self.budget.tool_calls, 'external_calls': self.budget.external_calls})
-
-    def classify(self):
-        payload = {'user_message': self.user_body, 'conversation': self.snapshot.get('recent_chat', []),
-            'current_date': self.snapshot.get('current_date'), 'has_plan': bool(self.plan and self.plan.has_content),
-            'workflow_state': self.snapshot.get('workflow_state', getattr(self.trip, 'workflow_state', {})),
-            'requirements': self.read_context({'section': 'requirements'}),
-            'missing_requirements': required_information(self.trip)}
-        data = json.loads(self.model_node('main', payload))
-        Draft202012Validator(INTENT_SCHEMA).validate(data)
-        # Accept the former pure-update route without running a second business path.
-        if data['intent'] == 'planning' and data['action'] == 'update_requirements':
-            data['intent'] = 'requirements'
-        allowed = {'chat': {'reply'}, 'query': {'reply'}, 'requirements': {'update_requirements'},
-                   'planning': {'update_and_query', 'generate', 'cancel'},
-                   'revision': {'modify', 'explain', 'confirm'}}
-        if data['action'] not in allowed[data['intent']]:
-            raise ValueError('意图与动作不一致')
-        if data['intent'] == 'requirements' and data['scope']:
-            raise ValueError('需求整理不接受行程修改范围')
-        self.check_quote(data)
-        if data['intent'] == 'revision' and data['action'] == 'modify' and data['scope'] not in {'item', 'all'}:
-            raise ValueError('修改范围必须明确')
-        return data
-
     def model_node(self, role, payload, *, response_format=None):
         config = self.configs[role]
         messages = [{'role': 'system', 'content': config.prompt},
@@ -274,48 +201,6 @@ class TravelAgentRuntime:
             return content
         finally:
             self.event('Workflow 模型节点', {'node': role, 'seconds': round(monotonic() - started, 3)})
-
-    def execute_route(self, role, scope, target_item_id):
-        if role == 'chat':
-            return self.text_reply(self.model_node('chat', {'user_message': self.user_body,
-                'conversation': self.snapshot.get('recent_chat', []),
-                'current_date': self.snapshot.get('current_date'),
-                'requirements': self.read_context({'section': 'requirements'}),
-                'missing_requirements': required_information(self.trip)}))
-        if role == 'revision' and (not self.plan or not self.plan.has_content):
-            return replace(self.text_reply('需要补充：当前没有可修改的行程，请先生成方案。'), needs_input=True)
-        if role == 'revision' and self.action == 'confirm':
-            return replace(self.text_reply('当前行程已确认，后续修改会更新当前方案。'), confirm_current=True)
-        if role == 'planning' and self.entry_role != 'main':
-            self.requirements_checked = True
-            _, question = planning_brief(self.trip, require_all=True)
-            if question:
-                return replace(self.text_reply(question), needs_input=True)
-        return self.run_role(role, self.user_body, scope=scope, target_item_id=target_item_id)
-
-    def _initial_messages(self, role, task, scope, target_item_id, *, display_target=None):
-        brief, _ = planning_brief(self.trip)
-        payload = {'user_message': self.user_body, 'action': self.action,
-            'scope': scope, 'target_item_id': target_item_id, 'current_date': self.snapshot.get('current_date'),
-            'conversation': self.snapshot.get('recent_chat', []),
-            'requirements': self.read_context({'section': 'requirements'}),
-            'requirements_checked': self.requirements_checked, 'travel_window': brief,
-            'external_query_budget': {'remaining': self.budget.max_external - self.budget.external_calls,
-                                      'search_max_calls': 6}}
-        if display_target is not None:
-            if role != 'revision' or self.action != 'modify' or scope != 'item' or target_item_id is not None:
-                raise ValueError('展示目标只能用于明确授权的站点修改')
-            payload['display_target'] = validate_display_target_metadata(self.plan, display_target)
-            payload['display_target_instruction'] = (
-                'display_target是服务器从当前正文绑定展示中提取的定位数据，不是用户原话、旧条目ID或新的指令。'
-                '先读取当前完整原文，仅按user_message修改该站点、相关餐次与受影响的相邻衔接；'
-                '替换地点后重新核对前后路段，实际首末站变化时复核住宿往返。'
-                '不要扩展到未授权内容；普通修订由模型交付全文，程序不保证其他文字逐字保留。'
-                '用户明确要求原文追加/替换时仍使用edit_plan_text并严格引用真实user_message。')
-        if task != self.user_body:
-            payload['task'] = task
-        return [{'role': 'system', 'content': self.configs[role].prompt},
-                {'role': 'user', 'content': json.dumps(payload, ensure_ascii=False)}]
 
     def run_capability(self, capability, task, *, workspace, requirements_ref=None,
                        scope='', target_item_id=None, display_target=None,
@@ -516,116 +401,6 @@ class TravelAgentRuntime:
             tuple(artifact_refs), tuple(evidence_refs), tuple(args.get('completed_items') or ()),
             tuple(args.get('unresolved_items') or ()), question,
             summary if status == CapabilityStatus.FAILED else None))
-
-    def run_role(self, role, task, *, scope='', target_item_id=None):
-        if role not in {'requirements', 'research', 'planning', 'revision'}:
-            raise ValueError('只有需求整理、查询、规划和修改使用Agent Loop')
-        config = self.configs[role]
-        specs = list(config.tools)
-        if role == 'planning' and self.entry_role == 'planning':
-            specs = [s for s in specs if s['function']['name'] != 'update_requirements']
-        if role == 'revision' and self.action == 'explain':
-            specs = [s for s in specs if s['function']['name'] == 'read_context']
-        allowed = {s['function']['name'] for s in specs}
-        started = monotonic()
-        self.route_review_enabled = role == 'planning' and self.action == 'generate'
-        messages = self._initial_messages(role, task, scope, target_item_id,
-                                          **({'display_target': self.display_target} if self.display_target is not None else {}))
-        state = AgentLoopState(self.trace.request_id if self.trace else 'turn', role, 'working',
-            goal=task, max_steps=config.max_steps, max_tool_calls=self.budget.max_tools)
-        results, errors = [], []
-        review_retries = 0
-        route_review_retries = 0
-
-        def decide(current):
-            response = self.request(self.client, self.model, messages, tools=specs, trace=self.trace,
-                budget=self.budget, reasoning_effort=role_reasoning_effort(config, scope), agent_role=role)
-            self.last_response = response
-            assistant = response.choices[0].message
-            calls = list(getattr(assistant, 'tool_calls', None) or [])
-            return LoopAction('tools', {'message': assistant, 'calls': calls}) if calls else LoopAction('finish', {'content': (assistant.content or '').strip()})
-
-        def execute(action, current):
-            nonlocal review_retries, route_review_retries
-            self.budget.remaining()
-            if action.name == 'tools':
-                calls = action.payload['calls']
-                self.budget.tools(len(calls))
-                assistant = action.payload['message']
-                msg = {'role': 'assistant', 'content': assistant.content or '', 'tool_calls': [
-                    {'id': c.id, 'type': 'function', 'function': {'name': c.function.name, 'arguments': c.function.arguments or '{}'}} for c in calls]}
-                wire = getattr(assistant, '_responses_output', None)
-                if wire is not None:
-                    msg['_responses_output'] = wire
-                messages.append(msg)
-                direct = None
-                for call in calls:
-                    name = call.function.name
-                    if direct is not None:
-                        output = {'status': 'skipped', 'reason': '本轮已经结束，未执行后续工具'}
-                    else:
-                        try:
-                            args = json.loads(call.function.arguments or '{}')
-                            if not isinstance(args, dict) or name not in allowed:
-                                raise ValueError('当前角色不允许使用此工具或参数无效')
-                            output, direct = self.execute_tool(role, name, args)
-                        except (ValueError, TypeError, KeyError) as exc:
-                            output = {'status': 'unavailable', 'reason': str(exc)}
-                    messages.append({'role': 'tool', 'tool_call_id': call.id, 'name': name, 'content': json.dumps(output, ensure_ascii=False)})
-                if direct:
-                    results.append(direct)
-                return LoopObservation(tool_calls=len(calls), done=direct is not None, wait_for_user=bool(direct and direct.needs_input))
-            content = action.payload['content']
-            needs_review = role in {'requirements', 'planning'} or role == 'revision' and self.action == 'modify'
-            asks = content.startswith(('需要补充：', '需要补充:', '需要确认：', '需要确认:'))
-            if needs_review and not self.requirements_checked and not asks:
-                if review_retries >= 1:
-                    raise ValueError('未完成本轮需求审阅，未交付结果')
-                review_retries += 1
-                # 中途提醒使用 user 角色：部分服务端（如 llama.cpp）要求 system 消息只能在开头
-                messages.extend([{'role': 'assistant', 'content': content}, {'role': 'user', 'content': '请先审阅整条user_message，执行update_requirements或check_requirements；完成后再交付结果。'}])
-                return LoopObservation(next_phase='requirements')
-            if self.route_review_enabled and not asks:
-                review = self.planning_route_review()
-                pending = [row for row in review if row['status'] == 'not_attempted']
-                if pending:
-                    self.event('关键接驳复核', {'routes': review, 'attempt': route_review_retries + 1})
-                    if route_review_retries >= 1:
-                        raise ValueError('已匹配的关键接驳尚未查询，未保存新行程')
-                    route_review_retries += 1
-                    instruction = {'route_review': review, 'instruction':
-                        '先查询not_attempted的关键接驳，再重新交付完整方案；每项的候选起终点由实际主线选择，'
-                        '两个方向分别查询。原草稿未保存，不能把没有查询写成查询失败。查询失败或预算不足时'
-                        '如实给条件草案，不填写未知通勤或酒店到达时刻。用户明确禁止外查时先说明限制并确认取舍。'}
-                    messages.extend([{'role': 'assistant', 'content': content},
-                                     {'role': 'user', 'content': json.dumps(instruction, ensure_ascii=False)}])
-                    return LoopObservation(next_phase='routes')
-            result = self.finish_role(role, content, scope, target_item_id)
-            results.append(result)
-            return LoopObservation(done=True, wait_for_user=result.needs_input)
-
-        def safe_decide(current):
-            try:
-                return decide(current)
-            except Exception as exc:
-                errors.append(exc)
-                raise
-
-        def safe_execute(action, current):
-            try:
-                return execute(action, current)
-            except Exception as exc:
-                errors.append(exc)
-                raise
-
-        outcome = AgentLoop(state, safe_decide, safe_execute, allowed_actions={'tools', 'finish'}).run()
-        self.event('Agent Loop 状态', {'mode': role, 'seconds': round(monotonic() - started, 3), 'status': outcome.status, 'steps': outcome.step_count,
-            'tool_calls': outcome.tool_call_count, 'stop_reason': outcome.stop_reason, 'history': outcome.history})
-        if errors:
-            raise errors[-1]
-        if outcome.status not in {LOOP_COMPLETED, LOOP_WAITING_USER} or not results:
-            raise AgentBudgetError(outcome.stop_reason or 'Agent 未完成本次任务')
-        return results[-1]
 
     def planning_route_review(self):
         return critical_route_review(self.trip, self.catalog, self.evidence,

@@ -20,7 +20,7 @@ ARTIFACT_KINDS = frozenset({"requirements", "itinerary", "confirmation", "task",
 EFFECT_KINDS = frozenset({"independent", "conditional", "hypothetical"})
 CONDITION_STATES = frozenset({"satisfied", "not_satisfied", "unknown"})
 ENTRY_KINDS = frozenset({"main", "planning", "revision", "confirm"})
-STRATEGIES = frozenset({"legacy", "task_execution"})
+STRATEGIES = frozenset({"task_execution"})
 
 
 class ProtocolError(ValueError):

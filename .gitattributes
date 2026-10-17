@@ -1,6 +1,0 @@
-# Accept CRLF source files while still checking other whitespace errors.
-* whitespace=cr-at-eol
-
-# Preserve archived evidence bytes and the original transcript whitespace.
-docs/evaluations/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
-docs/ui/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

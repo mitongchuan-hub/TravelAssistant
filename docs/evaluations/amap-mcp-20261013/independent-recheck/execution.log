@@ -1,4 +1,0 @@
-{"tool": "search_places", "status": "unavailable", "seconds": 20.037, "count": 0}
-{"tool": "search_places", "status": "unavailable", "seconds": 20.02, "count": 0}
-{"tool": "search_food", "status": "available", "seconds": 10.216, "count": 3}
-{"completed_steps": 3, "mcp_requests": 5, "available": 1}

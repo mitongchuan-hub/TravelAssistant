@@ -1,6 +1,0 @@
-{"event": "case_start", "case": "DEL-001"}
-{"case": "DEL-001", "machine_checks_pass": true, "model_calls": 9, "transport_failed": false}
-{"event": "case_start", "case": "DEL-002"}
-{"case": "DEL-002", "machine_checks_pass": true, "model_calls": 7, "transport_failed": false}
-{"event": "case_start", "case": "DEL-003"}
-{"case": "DEL-003", "machine_checks_pass": false, "model_calls": 8, "transport_failed": false}

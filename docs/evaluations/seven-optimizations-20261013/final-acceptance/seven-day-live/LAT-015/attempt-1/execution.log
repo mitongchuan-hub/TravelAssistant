@@ -1,9 +1,0 @@
-{"event": "span_start", "case": "LAT-015", "attempt": 1, "step": 1, "stage": "SDK请求：planning", "offset_seconds": 0.152}
-{"event": "span_start", "case": "LAT-015", "attempt": 1, "step": 1, "stage": "工具：read_context", "offset_seconds": 9.83}
-{"event": "span_start", "case": "LAT-015", "attempt": 1, "step": 1, "stage": "工具：read_context", "offset_seconds": 9.83}
-{"event": "span_start", "case": "LAT-015", "attempt": 1, "step": 1, "stage": "工具：query_weather", "offset_seconds": 9.83}
-{"event": "span_start", "case": "LAT-015", "attempt": 1, "step": 1, "stage": "服务获取与解析：weather", "offset_seconds": 9.83}
-{"event": "span_start", "case": "LAT-015", "attempt": 1, "step": 1, "stage": "服务获取与解析：weather", "offset_seconds": 12.553}
-{"event": "span_start", "case": "LAT-015", "attempt": 1, "step": 1, "stage": "SDK请求：planning", "offset_seconds": 14.928}
-{"event": "span_start", "case": "LAT-015", "attempt": 1, "step": 1, "stage": "SDK请求：display", "offset_seconds": 34.443}
-{"event": "step_finished", "case": "LAT-015", "attempt": 1, "step": 1, "outcome": "succeeded", "seconds": 104.327, "accounting_valid": true, "expectation_checks_pass": true}

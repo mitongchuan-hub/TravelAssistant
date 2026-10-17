@@ -1,314 +1,127 @@
 # TravelAssistant · 同城游玩
 
-TravelAssistant 是以住宿为起终点的同城游玩助手。创建时只需填写住宿地址或酒店名称；系统通过高德匹配地图位置，重名时选择候选，再在聊天或行程页生成路线。默认一天，支持可选日期、天数、每天出门/返回时间、人数、预算和偏好。日期未定时给通用逐日路线，人数与预算未知时不默认数值。
+以已确认的住宿为起终点，生成、阅读和调整同城游玩路线。使用 FastAPI、Jinja2、原生 JavaScript/CSS 和 SQLite，当前按单进程运行。
 
-`main` 开发同城版，`travel-full` 保留切换前完整旅行助手（快照提交 `79bcd28`，包含此前未提交的修复、少样本和原始评测）。两个分支使用独立数据库：同城版默认 `.cache/cityassistant.sqlite3`，完整版仍用 `.cache/travelassistant.sqlite3`。Git分支保存源码；环境密钥和业务数据库均留在本机，不进入提交。
+## 使用方式
 
-当前默认聊天链仍按闲聊、查询、纯需求整理、规划、修改五种意图分流，共用 Agent Loop、最新版行程保存和独立后台卡片。纯需求由独立 `requirements` Agent 处理，不自动重排；混合生成、修改和查询仍沿原流程。任务执行重构的 A–C 已实现并通过当前离线回归；task_execution 的 main 首包已增加确定性六块输入投影，legacy 不变，尚未默认启用；服务端策略统一为 `TRAVEL_AGENT_EXECUTION_STRATEGY=legacy|task_execution`，当前默认 `legacy`，并在提交 execution task 时固定，不能在同一执行中互相回退。阶段 D 已新增50条×3次的离线数据、Schema校验与评分格式，但未运行真实模型、未完成真实语义验收。已有完整版旅行保留原需求、聊天和行程，按原模式生成/修改，不被自动转成同城游。实施边界见[主任务执行实施记录](docs/task-execution-implementation-20261016.md)。
+1. 注册或登录，填写住宿地址或酒店名称，选择实际地图候选。
+2. 可选填写日期、天数、每日出门/返回时间、人数、预算与偏好；默认一天，未知信息不补成事实。
+3. 在聊天中说“生成路线”，或使用聊天菜单、想法页、行程页的生成入口。
+4. 先阅读完整文字，后台再整理按天卡片；卡片失败可单独重试，不丢失正文。
+5. 通过聊天或卡片“调整此项”修改当前方案。设置变化不会自动重排行程。
 
-项目使用 FastAPI 提供本地 Web 应用，使用 SQLite 保存旅行、对话、想法、当前行程和登录会话。
+默认聊天，底栏保持“想法／聊天／行程”；功能优化不重新排列既有页面。每日从同一住宿出发并返回，可信地点可打开高德导航，未知地点保持待核实。查询耗时只是查询时估算，不保证未来开放、班次、票价或现实可执行性。
 
-当前说明、实施验收与历史证据的入口见[文档索引](docs/README.md)。
+旧完整旅行仍保留原需求、聊天和行程，不自动转换为同城模式。每趟旅行只保留一份当前方案，没有方案历史恢复入口。
 
-同城版的产品行为、分支和验收见[同城游玩改造说明](docs/city-outings-20261015.md)。此前的[首版产品边界](docs/product-boundaries-v1.md)保留为完整旅行版背景，不能用其中的五组输入要求解释同城入口。
+## 环境与安装
 
-## 功能
+- Python 3.11 或更高版本，建议使用虚拟环境。
+- 可访问的 OpenAI 兼容模型服务及 API Key。
+- 高德地图 Web 服务 Key，用于住宿匹配、地点和路线查询。天气使用 Open-Meteo，无需额外 Key。
 
-- **游玩设置**：住宿地址唯一必填，地图确认后自动获得城市与坐标；日期、天数、每日出门/返回时间、人数、预算和偏好可选。清空聊天后保留。聊天菜单进入“游玩设置”修改住宿或偏好。
-- **旅行需求档案兼容**：已有完整旅行仍使用原需求编辑器和五组生成条件。
-- **旅行想法**：用想法卡片记录地点、预算、节奏和禁忌。所有想法完整保存，白板保留原布局并展示最近 8 条；需求页下方的“全部想法”可查看与删除更早的内容。
-- **Agent 聊天**：创建后的欢迎消息确认已保存信息，必填完整时可直接生成，只把必去地点、忌口和节奏作为可选补充。意图识别、闲聊和业务Agent均读取当前需求档案，长对话或清空聊天后仍可读取。通过对话提取旅行约束，模型不可用时保留消息并明确提示失败。
-- **原排版与可信导航**：按用户反馈恢复原“想法／聊天／行程”底栏、默认聊天和原行程概览、行前信息、日期导航、卡片排版。可信地点和交通放入卡片折叠详情，不额外重排首屏；只有真实查询证据与原文能严格唯一对应时才提供高德地图，连续可信端点可重新规划，历史耗时仍只是查询时估算。
-- **就地调整与恢复**：当前站点可直接填写调整意见，也可先选择“换一站”“少停留一些”；整体调整继续使用原行程页下方的意见表单。操作绑定页面看到的方案、原文和需求版本，过期请求被拒绝。生成/修改失败保留原方案并提供重试，卡片失败仍可阅读正文。设置变更会标记旧路线，未经操作不自动重排。
-- **创建同城行程**：填写住处，匹配地图，进入私人聊天。重名候选及表单保存在有期限的服务端草稿中，并绑定当前账号；客户端不能提交自报坐标。地图暂不可用时保留输入并提示重试。
-- **文字与卡片行程**：生成和修改直接保存完整原文并完成主任务，保存时核对当前需求与计划快照。聊天预览原文中的主线、预算判断和关键条件，完整行程可展开。独立后台 LLM 整理按天卡片；失败保留原文并可只重试卡片。原文、展示与依据绑定当前计划，旧卡片不会覆盖新方案。没有额外的模型复核或依据复核意见自动重写步骤；保存成功不保证全部事实与可执行性。
-- **按需查询**：Agent 使用天气、地点、美食和路线工具，根据旅行语境选择资料并说明来源与未知事项。工具不可用时明确待核实，不要求用户逐个手动查询。
-- **每日往返与费用**：每天从同一住宿出发并返回，查询实际首末站双向接驳。未给日期不默认今天或查询当天预报；预算留空给费用构成，默认游玩预算包含餐饮、市内交通与门票，不重复计住宿和跨城交通。更换住宿后原位置失效，需在设置中重新匹配。
-- **旧行程兼容**：已有时间线、旅行准备、地点地图和路线卡片继续展示；当前结构化行程仍能读取；修改后以新的文字方案替换当前行程。
-- **可恢复任务**：聊天、生成和调整保存任务状态，刷新后可查询结果；请求标识去重。思考中可以继续发送，新消息立即替代旧轮并发起独立请求，旧回复和变更作废；不等待旧网络请求结束。失败可重试，服务重启中断不自动重跑。
-- **只保留最新版**：每趟旅行保存一份当前行程，生成和修改直接替换。确认只改变当前状态，没有历史列表或恢复入口。
-- **模型失败保护**：支持主模型和限流时的备用模型；超时、空回复或需要用户补充时保留当前行程。保存时核对需求与计划快照，拒绝旧结果覆盖新编辑或确认。
-
-## 环境要求
-
-- Python 3.11 或更高版本
-- Anaconda 或其他虚拟环境
-- Node.js（只在运行浏览器回归测试时需要）
-- 可访问模型服务的 API Key
-
-## 安装
-
-创建并激活 Python 环境后安装依赖：
+在项目根目录运行：
 
 ```powershell
 python -m pip install -r requirements.txt
-```
-
-复制环境变量模板：
-
-```powershell
 Copy-Item .env.example .env
 ```
 
-然后编辑 `.env`：
+编辑 `.env`，至少填写有效的模型和地图凭证。以下是配置形状；服务地址与模型名按实际供应商修改，不表示所有供应商支持相同协议：
 
 ```env
 OPENAI_API_KEY=你的模型服务密钥
 OPENAI_BASE_URL=https://mirror.xinshu.ai/v1
-OPENAI_MODEL=gpt-5.6-sol
+OPENAI_MODEL=供应商支持的模型名
 OPENAI_FALLBACK_MODEL=
 OPENAI_WIRE_API=responses
 OPENAI_STORE_RESPONSES=false
-```
 
-`OPENAI_BASE_URL` 和 `OPENAI_MODEL` 可以配置为其他 OpenAI 兼容服务。`OPENAI_WIRE_API` 选择 `responses` 或 `chat_completions`（代码默认）；当前模板采用 Responses。`OPENAI_FALLBACK_MODEL` 留空关闭备用模型，显式填写后在主模型限流时最多切换一次。
-
-`OPENAI_STORE_RESPONSES=false` 为默认值，向服务发送 `store=false`。Responses 工具续轮使用本地消息与必要的加密推理条目，不发送 `previous_response_id`，不依赖服务端会话保存。加密条目只在本轮角色循环中使用，不写入聊天、需求或行程，也不记录到文字日志。未完成的 Responses 输出会被拒绝，避免保存截断方案。
-
-思考强度通过 `reasoning_effort` 配置：意图识别（main）、闲聊（chat）、需求整理（requirements）、查询（research）、展示转换（display）默认 `low`，规划与修改默认 `medium`，只读解释默认 `low`。可选的 `OPENAI_REASONING_EFFORT` 全局覆盖与 `OPENAI_REASONING_EFFORT_MAIN/REQUIREMENTS/RESEARCH/PLANNING/REVISION` 单角色覆盖见 `.env.example`；单角色优先。值为 `default` 时不传参数，使用服务端默认行为。显式全局或 REVISION 配置也覆盖解释模式的默认值。
-
-当前镜像 `gpt-5.6-sol` 通过 Responses 发送 `reasoning.effort`，兼容旧服务时通过 Chat Completions 发送 `reasoning_effort`。历史百炼 `kimi-k3` 的低/中档及非法枚举探测保留作为历史证据。不能仅据 HTTP 成功断言内部强度效果；服务明确拒绝思考参数时移除后重试一次，其他错误按原流程处理。请求日志记录角色、协议、实际参数、耗时和思考 token 数，不增加思考正文。证据、完整配置和验证见 [思考强度说明](docs/model-reasoning.md)。
-
-天气工具使用 Open-Meteo，不需要额外 Key。
-
-高德地点、餐厅和路线工具使用官方MCP服务（Streamable HTTP），不再直连高德REST业务接口。配置如下：
-
-```env
 AMAP_MAP_KEY=你的高德地图Web服务Key
 AMAP_MAPS_API_KEY=
 AMAP_MCP_URL=https://mcp.amap.com/mcp
 AMAP_MCP_TIMEOUT_SECONDS=20
-```
 
-`AMAP_MAPS_API_KEY`非空时优先，否则继续使用原`AMAP_MAP_KEY`。Key只由服务端附加到MCP连接地址，不进入模型参数和日志。无需Node.js服务，Python客户端完成初始化、工具发现和只读工具调用。
-
-地点搜索先通过`maps_text_search`取候选，再通过`maps_search_detail`取坐标与详情；每次最多5个详情。餐厅只对本次有评分的候选排序，缺少人均、电话或营业信息保持未知。路线调用MCP的步行/公交/驾车工具，仍只使用可信POI坐标和原有缓存。未配置Key或服务失败时返回待核实，不回退到直接REST或编造结果。天气仍使用Open-Meteo。
-
-每个应用工具的连接、发现和MCP调用共享20秒截止；额外详情`tools/call`也计入主业务32次外部查询预算。接入与验证见[高德MCP实施记录](docs/amap-mcp-implementation.md)。
-
-SQLite 默认保存在：
-
-```text
-.cache/cityassistant.sqlite3
-```
-
-可以通过环境变量修改：
-
-```env
 CITY_DB_PATH=.cache/cityassistant.sqlite3
 TRAVEL_PERSISTENCE=1
+TRAVEL_DISPLAY_ENABLED=1
+TRAVEL_DISPLAY_OUTPUT_FORMAT=yaml
 ```
 
-## 启动
+- `OPENAI_WIRE_API` 支持 `responses` 和 `chat_completions`；代码默认后者，环境模板选择前者。
+- `OPENAI_FALLBACK_MODEL` 留空关闭备用模型；配置后在主模型限流时最多切换一次。
+- `AMAP_MAPS_API_KEY` 非空时优先于 `AMAP_MAP_KEY`；凭证仅由服务端使用。
+- `TRAVEL_DISPLAY_ENABLED=0` 关闭后台卡片整理，正文仍可交付。
+- `TRAVEL_PERSISTENCE=0` 不持久保存状态，仅适合隔离调试；正常使用保持开启。
+- 其他配置项见 `.env.example`；实际参数处理以 `app/agent_roles.py`、`app/model_transport.py` 和 `app/tools/amap_mcp.py` 为准。
 
-在项目根目录运行：
+不要提交 `.env`、SQLite 数据库或包含用户对话的运行记录。
+
+## 启动
 
 ```powershell
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-然后打开：
+打开 <http://127.0.0.1:8000>，健康检查为 <http://127.0.0.1:8000/health>。当前不支持多 worker 或多进程部署，不要增加 `--workers`。
 
-```text
-http://127.0.0.1:8000
-```
+通过 HTTPS 代理部署时，应正确传递原始协议；需要强制安全 Cookie 时配置 `TRAVEL_COOKIE_SECURE=1`。这不替代 HTTPS、访问控制或数据库备份。
 
-健康检查接口：
+`main` 使用 `CITY_DB_PATH`，默认 `.cache/cityassistant.sqlite3`。改造前完整版源码保留在 `travel-full`，该分支使用自己的 `TRAVEL_DB_PATH` 和数据库。切换前停止服务，核对对应分支配置；Git 只保存源码，不备份或同步业务数据库。
 
-```text
-http://127.0.0.1:8000/health
-```
+## 执行与恢复
 
-首次使用时注册或登录账号，填写住宿地址创建同城行程，然后在聊天中说“生成路线”，也可从聊天菜单、想法页或行程页生成。原排版保留与功能保护说明见[当前体验与验收](docs/route-product-20261015.md)。
+执行策略固定为 `task_execution`：`main_execution` 在有界工具循环中组合需求、查询、生成、修改四个专业能力，候选经 `TurnWorkspace` 汇总后由 `TurnCommit` 一次性原子提交；旧意图分流框架已移除。策略在任务提交时固定，历史 `legacy` 任务在恢复时自动归一为 `task_execution`。
 
-## Agent 工作流程
+正文先保存，卡片独立派生。新消息会替代正在执行的旧轮；版本变化、清空聊天或新编辑使旧结果失效。失败保留已有方案和输入，可重试；服务重启不自动重跑写入任务。清空聊天保留需求和当前行程，但撤销待补充目标与未完成任务。
 
-以下是当前默认 `legacy` 策略。第一层由无工具 LLM 识别五类意图；闲聊使用无工具 LLM，需求整理、查询、规划、修改复用 `TravelAgentRuntime.run_role()` 与同一套 `AgentLoop`，配置各自提示词及工具权限。
+这些保护防止旧结果覆盖新状态，不保证生成内容完全正确。没有独立的第二模型复核步骤，保存成功或卡片就绪均不等于事实、预算或路线质量通过验收。
 
-新的 `task_execution` 策略按[设计](docs/agent-task-execution-design-20261016.md)让 main 在有界工具循环中组合受限能力；A–C 已实现并通过当前离线回归，在跨轮、集中提交、离线保护及真实模型验收完成前不作为默认策略。两种策略由 `TRAVEL_AGENT_EXECUTION_STRATEGY` 选择，默认 `legacy`，任务提交时固定。下图和本节后续细节在切换前仍描述 legacy，不表示新策略已经上线。
+## 任务接口
 
-```text
-用户消息 → 意图识别 LLM
-             ├─ 闲聊 → 无工具 LLM → 回复
-             ├─ 查询 → 查询 Agent Loop → 带依据的回答
-             ├─ 纯需求 → 需求 Agent Loop → 校验保存 / 必要澄清，不改行程
-             ├─ 规划 → 需求工具 → 住宿位置检查 → 规划 Agent Loop → 完整文字
-             │                   └─ 不足 → 提醒补充，记录等待目标
-             └─ 修改 → 修改 Agent Loop → 完整修改文字
-                                      ↓
-                          校验与提交原文 → 主任务完成、文字可读
-                                      ↓
-                          独立后台展示 → 校验、只补齐当前卡片
-                          转换失败 → 保留已交付原文，可重试卡片
-```
+以下接口要求登录并拥有对应旅行，具体参数校验以 `app/main.py` 为准：
 
-纯需求消息由 `requirements` 整理最新原话，通过受限需求工具提交候选变更，由程序校验并保存；回复不写成行程，不外查，也不自动重排。混合“更新并查询”、生成或修改仍由 planning/revision 使用原需求工具处理，没有额外前置需求调用。等待补充的生成目标独立保存，用户回答后仍由 planning 承接；明确只记录、先不生成时清除旧等待目标。同城页面生成只检查已确认住宿位置，可选信息缺失不会阻止生成；已有完整旅行继续检查原五组需求。
+| 接口 | 用途 |
+| --- | --- |
+| `POST /api/trips/{trip_id}/tasks` | 提交 `kind`（chat/plan/revision）、`payload` 和稳定的 `request_id`；新任务返回 202 |
+| `GET /api/trips/{trip_id}/tasks` | 查询近期任务及状态 |
+| `POST /api/trips/{trip_id}/tasks/{task_id}/retry` | 重试失败任务，使用新的 `request_id` |
+| `GET /api/trips/{trip_id}/plan-state` | 查询当前正文绑定与卡片状态 |
+| `POST /api/trips/{trip_id}/display` | 只重试当前正文的卡片，不重新规划 |
 
-意图识别和闲聊读取当前需求档案及近期聊天，意图识别同时承接等待状态；业务 Agent 获得完整需求，并通过 `read_context` 按需读取当前行程、全部想法、聊天与证据。查询只读，解释不改行程。确认属于修改路径，由程序绑定当前快照执行，不让模型选择版本ID。
+## 项目导航
 
-原文保存在 `TripPlan.text` 并先交付；独立展示任务按其保存的需求快照提取 JSON，保存到 `display`，共享期限只覆盖主业务。后台展示独立预算默认180秒，最多2次底层请求（包含协议兼容重试）；结构或日期校验失败时，在剩余至少60秒且无前台业务等待的条件下允许一次纠错。通过 `TRAVEL_DISPLAY_ENABLED=0` 可关闭后台转换，文字继续正常交付。程序校验 Schema、日期框架与原文指纹，保存当前行程依据的需求快照和实际工具记录。模型不能提交可信地点、坐标或证据。程序不声称完成逐句事实或逐活动时间核验。
+| 路径 | 用途 |
+| --- | --- |
+| [PRODUCT.md](PRODUCT.md) | 产品目标、当前业务规则、兼容与非目标 |
+| [DESIGN.md](DESIGN.md) | 既有视觉、排版及交互状态保护 |
+| `app/main.py` | Web 路由与任务接口 |
+| `app/store.py`、`app/persistence.py` | 业务状态与 SQLite 持久化 |
+| `app/prompts/agents/` | 当前角色提示词及合成示例 |
+| `app/templates/`、`app/static/` | 页面模板与前端资源 |
 
-legacy 低层仍检查需求修订号、计划 ID 与完整快照。新旧策略现共用 `app/turn_commit.py` 的集中提交服务：以排除异步 display 字段的业务 plan basis、workflow revision、请求 sequence/epoch 和 execution task 有效性校验，在私有 staging 状态中组装需求、行程、workflow、消息与回执，持久化成功后才发布。新消息替代旧轮、清空聊天或并发编辑后，旧回复和写入失效；清空聊天保留需求与行程，同时撤销待补充目标和未完成任务。
+历史实验、验收流水、旧方案和演示产物已退出当前文档目录，需要追溯时查 Git 历史，不沿用历史测试成绩作为当前验证。
 
-行程页提供按天卡片、原文折叠、查询依据、局部修改反馈、确认。旧 `days` 时间线与可信地图保持兼容；旧文字不批量转换。详情见[当前架构](docs/agent-architecture-current.md)与[展示字段](docs/travel-itinerary-display-schema.md)。
+## 当前测试入口
 
-提示词位于 `app/prompts/agents/`：main 为意图识别，requirements/research/planning/revision 为业务 Agent，display 为展示转换。完整旅行 planning 额外加载 `planning_examples.txt` 中的2个合成少样本，同城使用 `city_examples.txt`；纯需求使用独立的 `requirements.txt`。示例只指导方法，不提供本次旅行事实。闲聊提示在 `agent_roles.py` 中配置。
-
-## 工具
-
-工具注册表位于：
-
-```text
-app/tools/registry.py
-```
-
-天气工具：
-
-```text
-app/tools/weather.py
-```
-
-美食工具：
-
-```text
-app/tools/food.py
-```
-
-地点查询工具：
-
-```text
-app/tools/places.py
-```
-
-地点工具返回真实候选及其来源，Agent 根据旅行语境选择地点；重名无法区分时聊天询问。新文字行程保留 Agent 对来源与未知事项的说明；同城卡片由程序从保存的工具证据严格匹配完整地点名，唯一对应且原文有依据才提供地图与复制地址，不让展示模型生成坐标或导航链接。区域和歧义地点不导航。已有结构化地点卡片继续兼容。
-
-路线查询工具：
-
-```text
-app/tools/routes.py
-```
-
-工具仅接受可信地点目录中的 POI ID，不接受模型自报坐标。主业务角色共享最多 16 次模型请求、64 次工具调用、32 次外部查询和 240 秒检查点期限；展示独立预算默认180秒且无工具。同一请求按地点坐标与交通方式复用路线结果。Agent 显式查询需要的路段，新文字交付后不再由程序补查路线或自动触发重生成。
-
-工具调用有轮数限制。天气、美食、地点或路线服务不可用时，工具返回待确认结果，行程可以保留为带未核实事项的草案。不能把部分路线通过检查视为整份行程可执行。
-
-## 项目结构
-
-```text
-app/
-├── agent_client.py         模型访问、兼容入口、解析与错误回复
-├── agent_roles.py          无工具节点与四个业务 Agent 配置
-├── agent_runtime.py        意图分流、共用 Loop、需求工具与展示转换
-├── plan_display.py         展示 Schema 校验、原文指纹与协议转换
-├── agent_loop.py           有状态、有限预算的 Agent Loop 控制器
-├── auth.py                  登录、注册和会话
-├── main.py                  FastAPI 路由
-├── models.py                旅行、需求档案、行程和准备事项模型
-├── requirements.py          需求校验、预算口径和本轮聊天更新
-├── tasks.py                 任务去重、持久状态、执行与重启恢复
-├── plan_validation.py       旧格式行程的日期、时间与抵离校验
-├── persistence.py           SQLite 快照和关系表持久化
-├── store.py                 旅行状态和业务逻辑
-├── prompts/agents/         当前意图、需求整理、查询、规划、修改和展示提示词
-├── schemas/                当前行程展示 JSON Schema
-├── tools/
-│   ├── registry.py          工具注册和分发
-│   ├── weather.py           Open-Meteo 天气工具
-│   ├── food.py              高德地图美食工具
-│   ├── places.py            高德地图地点工具
-│   └── routes.py            高德地图路线工具
-├── templates/               Jinja2 页面模板
-└── static/                  CSS 和前端脚本
-
-tests/
-├── automated/              自动回归测试（Agent、Web、工具、持久化与测试集）
-├── browser/                Playwright 浏览器回归及隔离页面夹具
-├── evaluation/             主任务执行的离线优先runner与评分支持
-├── performance/            真实模型和外部服务的流程耗时测量
-├── datasets/               历史数据集及 main_execution_v1 合成场景
-├── run_travel_dataset.py    旧单案例评测入口（文件存在时）
-├── run_travel_dataset_batch.py  旧批量评测入口（文件存在时）
-└── travel_dataset_support.py    旧夹具与协议校验（文件存在时）
-
-pytest.ini                  自动测试发现范围与项目导入路径
-```
-
-## 测试
-
-2026-10-16 纯需求 Agent 拆分新增独立离线测试：`python -m pytest -q tests/automated/test_requirements_agent_split.py`。任务执行阶段 D 另新增 `tests/datasets/main_execution_v1/` 的50条合成场景（每条固定3次）及 `tests/evaluation/run_main_execution.py`；runner 默认/`--validate-only` 只校验数据与评分合同，不加载 `.env`、生产数据库、worker、网络或模型。真实隔离 adapter 使用临时 Store、真实 main/专业 capability/统一提交并冻结外部工具；`--live` 必须显式给出模型请求次数上限与总 token 累计停止阈值（最后一个已发请求可能越过 token 阈值），任一环节失败都不伪造成功。本次未运行 live，也没有真实语义验收成绩。当前工作区的旧测试文件已被删除，本次不恢复；下方旧测试集链接和命令保留为历史入口，须先确认文件存在。新专项测试通过不等于历史全量回归或真实模型语义质量通过。
-
-当前同城与恢复后的原排版另有[同城测试集 v1](tests/datasets/city_outings_v1/README.md)，共28个业务、展示与系统场景。运行 `python tests/run_city_dataset.py --profile current --output <新空目录>` 做离线受控执行，保留源码/数据快照及逐场景证据；不调用真实模型或高德，不能当作自然语言质量通过。详细入口见[测试目录](tests/README.md)。
-
-当前模型业务评测使用[旅行 Agent 测试集 v2](tests/datasets/travel_agent_v2/README.md)：36条业务流程、10条展示转换、16条受控系统回归，另列8条待实现产品目标。支持冒烟、当前全量、展示、系统与目标档案；真实模型结果需人工评审。执行器默认串行，保留各角色、工具、展示耗时和 token 用量。
+当前保留的离线专项测试：
 
 ```powershell
-& E:\anaconda\envs\TravelAssistant\python.exe tests/run_travel_dataset_batch.py --profile current --list
-& E:\anaconda\envs\TravelAssistant\python.exe tests/run_travel_dataset_batch.py --profile smoke --output "$env:TEMP\travel-v2-smoke-$(Get-Date -Format yyyyMMdd-HHmmss)"
+python -m pytest -q tests/automated/test_main_input_projection.py tests/automated/test_main_observations.py
 ```
 
-另有[Agent 场景耗时测试集](tests/datasets/agent_latency_v1/README.md)，覆盖26种回复、规划、修改、展示与缓存场景，生成逐调用时间线、CSV和离线交互报告，区分文字生成、保存与服务器响应就绪。
+覆盖 main 输入投影及工具观察合同，不是完整 Web、地图或路线质量回归。`python -m pytest -q` 只运行当前实际存在且符合 `pytest.ini` 发现规则的测试。旧浏览器脚本、数据集及批量 runner 已不在当前工作区，不再列为可用命令。
 
-运行全部 Python 测试（目录与其他入口见[测试目录说明](tests/README.md)）：
-
-```powershell
-python -m pytest -q
-```
-
-运行 Python 编译检查：
-
-```powershell
-python -m compileall -q app
-```
-
-检查 Git diff 空白字符：
+文档及代码变更可检查：
 
 ```powershell
 git diff --check
 ```
 
-浏览器聊天回归测试需要安装 Playwright，并且本机需要有 Chrome：
+## 数据与安全边界
 
-```powershell
-npm install playwright
-$env:TRAVEL_TEST_PYTHON = 'E:\anaconda\envs\TravelAssistant\python.exe'
-node tests/browser/chat_browser.cjs
-node tests/browser/requirements_browser.cjs
-node tests/browser/tasks_browser.cjs
-node tests/browser/places_browser.cjs
-node tests/browser/text_itinerary_browser.cjs
-```
-
-需求浏览器测试会启动独立临时端口，使用内存数据和关闭的模型服务，不连接 8000 服务或业务数据库。
-
-## 数据和安全
-
-- API Key 只从环境变量读取，不写入日志。
-- 标准应用日志仅记录异常类型和状态码；每轮 Agent 运行（用户输入、中间过程、模型输出、耗时、模型与 token 用量）会写入业务库 `agent_runs` 表，可查询历史与异常原因。该表属于本地运行数据，保留周期尚待完善。
-- 用户消息在模型失败时仍会保存。
-- 无论行程是否已确认，模型失败均不会覆盖当前行程。
-- 意图识别 LLM 选择五条业务路径；业务 Agent 在各自权限内使用同一套工具 Loop。路由语义依赖模型和上下文，不使用关键词强制生成。
-- 修改 Agent 依据用户原话和定位信息返回完整文字，未指定部分应保持不变；目标不明或快照变化时保留现状。
-- 意图节点只读取相关聊天和等待状态；业务 Agent 始终获得完整有效需求，可读取计划、分页聊天与全部想法。清空聊天不删除需求与行程。
-- 规划/修改调用需求工具更新候选，列表显式添加/移除，保存时检查需求修订号；展示 LLM 不能更新需求、生成证据或重新规划。
-- 手动编辑和模型回复检查需求修订号，旧页面或处理中产生的旧结果不能覆盖较新的需求。
-- 需求档案保存在 SQLite 快照和旅行表的 `requirements_json` 中。旧数据迁移保留原有对话、行程和想法，不推断没有提供的人数、日期和偏好。
-- `.cache/` 下的 SQLite 数据和运行日志属于本地运行数据，不应提交到远程仓库。
-
-## 任务接口与运行方式
-
-- `POST /api/trips/{trip_id}/tasks`：提交 `kind`（chat/plan/revision）、`payload` 和稳定的 `request_id`；先返回 202 和任务状态。
-- `GET /api/trips/{trip_id}/tasks`：返回当前账号旅行的最近 20 个任务，状态为 queued/running/succeeded/failed。
-- `POST /api/trips/{trip_id}/tasks/{task_id}/retry`：使用新的 `request_id` 重试失败任务，同一失败任务的重试请求会找回同一个子任务；再次失败需重试最新失败任务。
-- `GET /api/trips/{trip_id}/plan-state`：查询当前原文绑定与卡片状态。
-- `POST /api/trips/{trip_id}/display`：只重试当前原文的卡片，不重新规划。
-- `/api/trips/{trip_id}/messages` 保留兼容，发送时附带 `request_id`，仍返回消息和任务。无 JavaScript 的表单也会提交后台任务并跳转到状态页。
-
-任务与旅行一起保存到 SQLite 快照，后台执行采用 FastAPI BackgroundTasks。同一进程内有去重和执行保护，当前仍要求单进程运行；尚未改造跨进程一致性或引入外部队列。进度仅显示真实的等待、处理中和完成/失败，不展示虚构百分比。单次模型超时取 `OPENAI_TIMEOUT_SECONDS` 与本轮剩余工作时间的较小值；运行时有240秒共享期限。天气与高德MCP请求会把网络超时裁剪到共享剩余时间，返回后再次检查取消/期限；进行中的底层网络调用仍不能保证瞬时中止。execution task 可被新消息标记 superseded；持久会话目标不会因此自动取消，服务重启不自动恢复写入执行。
-
-## 当前边界
-
-- 景点、酒店等地点由 Agent 查询和匹配，查到 POI 不代表已核实开放、营业或预约。地图链接使用高德坐标；路线耗时来自高德步行、公交或驾车查询，是查询时估算，未来路况、班次及额外候车安检仍需核实。
-- 天气预报受 Open-Meteo 可查询范围限制，较远日期只能显示待确认。
-- 美食门店信息依赖高德地图 Key 和接口可用性。
-- 具体餐厅是否营业、是否排队或是否需要预约，生成后仍建议出发前再次确认。
-- 模型服务的响应速度和限流策略由上游服务决定；本项目提供限流时的备用模型，但不能消除上游限流。
+- 登录账号的旅行、消息、想法、需求、当前方案和任务状态保存到 SQLite；备份由使用者管理。
+- 标准异常日志避免输出凭证；Agent 运行记录可能包含用户输入、模型输出、工具过程和用量，保存在业务库 `agent_runs`，应视为敏感数据，保留周期尚待完善。
+- 模型输入会发送到所配置的模型服务；地点、天气和路线查询会访问相应外部服务。不要把本地运行理解为全部数据离线。
+- 地点匹配不证明营业、预约、遮雨或门票；天气受预报可查询范围限制。日期未定时不默认今天或查询当天预报。
+- 地图或模型不可用时保留输入和当前方案，明确失败或待核实；不能依靠模型补造事实来绕过服务失败。

@@ -1,3 +1,0 @@
-{"event": "case_start", "case": "LAT-015", "attempt": 1}
-{"event": "case_finished", "case": "LAT-015", "attempt": 1, "returncode": 0, "outcomes": ["succeeded"]}
-{"finished": true, "samples": 1, "errors": 0, "business_db_unchanged": true, "report": "C:\\Users\\16156\\AppData\\Local\\Temp\\travel-seven-optimizations-20261013-103516\\final-acceptance\\seven-day-live\\report.html"}

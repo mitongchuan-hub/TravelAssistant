@@ -357,8 +357,9 @@ def _restore_tasks(raw_tasks: Any, trips: dict[str, Trip]) -> dict[str, dict[str
         if trip_id not in trips or raw.get('id') != task_id:
             continue
         task = deepcopy(raw)
-        strategy = task.get('execution_strategy', 'legacy')
-        task['execution_strategy'] = strategy if strategy in {'legacy', 'task_execution'} else 'legacy'
+        # The legacy strategy was removed; historical records migrate to the
+        # single task_execution framework.
+        task['execution_strategy'] = 'task_execution'
         status = task.get('status')
         if status not in {'queued', 'running', 'succeeded', 'failed', 'superseded'}:
             task['status'] = 'failed'

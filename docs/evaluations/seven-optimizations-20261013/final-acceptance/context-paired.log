@@ -1,6 +1,0 @@
-{"attempt": 1, "strategy": "duplicate", "status": "returned", "seconds": 5.584619799999928}
-{"attempt": 1, "strategy": "compact", "status": "returned", "seconds": 4.736031800001001}
-{"attempt": 2, "strategy": "compact", "status": "returned", "seconds": 3.242437000000791}
-{"attempt": 2, "strategy": "duplicate", "status": "returned", "seconds": 4.501914200000101}
-{"attempt": 3, "strategy": "duplicate", "status": "returned", "seconds": 3.750921199998629}
-{"attempt": 3, "strategy": "compact", "status": "returned", "seconds": 4.323165499999959}

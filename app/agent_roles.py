@@ -70,14 +70,6 @@ EDIT_PLAN_TEXT = tool('edit_plan_text', '执行用户明确指定文字的精确
     'context': {'type': ['string', 'null'], 'description': '替换文字重复时，提供在当前原文中唯一出现且只含一次old_text的上下文；上下文其他文字保持不变。'},
     'new_text': {'type': 'string'},
 }, ['user_quote', 'operation', 'old_text', 'new_text'])
-INTENT_SCHEMA = {'type': 'object', 'additionalProperties': False,
-    'properties': {
-        'intent': {'type': 'string', 'enum': ['chat', 'query', 'requirements', 'planning', 'revision']},
-        'action': {'type': 'string', 'enum': ['reply', 'update_requirements', 'update_and_query', 'generate', 'modify', 'explain', 'confirm', 'cancel']},
-        'scope': {'type': 'string', 'enum': ['', 'item', 'all', 'explain']},
-        'user_quote': {'type': 'string'},
-        'question': {'type': ['string', 'null']},
-    }, 'required': ['intent', 'action', 'scope', 'user_quote', 'question']}
 
 
 # The execution strategy deliberately has nine tools.  These schemas are copied
@@ -204,7 +196,7 @@ def role_reasoning_effort(role, scope=''):
     if not value and role.name.endswith('_capability'):
         base = role.name.removesuffix('_capability')
         value = os.getenv(f'OPENAI_REASONING_EFFORT_{base.upper()}', '').strip().lower()
-    if not value and role.name in {'chat', 'intent', 'main_execution'}:
+    if not value and role.name == 'main_execution':
         value = os.getenv('OPENAI_REASONING_EFFORT_MAIN', '').strip().lower()
     value = value or os.getenv('OPENAI_REASONING_EFFORT', '').strip().lower()
     value = value or ('low' if role.name == 'revision' and scope == 'explain' else role.reasoning_effort)
@@ -237,7 +229,7 @@ def _mode_requirements_tools(city):
 
 
 def execution_roles(mode='travel'):
-    """Execution-only role bundle; legacy prompts and contracts remain untouched."""
+    """The single task_execution framework's role bundle."""
     city = mode == 'city'
     rules = load_prompt('agents/city_rules.txt' if city else 'agents/travel_rules.txt')
     requirements = _mode_requirements_tools(city)
@@ -275,9 +267,6 @@ def roles(mode='travel'):
     facts = tuple(tool_specs())
     requirements = _mode_requirements_tools(city)
     return {
-        'main': AgentRole('main', load_prompt('agents/main.txt') + ('\n当前为同城游玩：住宿是唯一起点，日期、人数和预算均可选。不要因这些可选信息未知而澄清或阻止明确的生成请求。' if city else ''), response_format={
-            'type': 'json_schema', 'json_schema': {'name': 'travel_intent', 'strict': True, 'schema': INTENT_SCHEMA}}),
-        'chat': AgentRole('chat', '你是旅行助手。用简体中文自然回应闲聊，也可回答当前已保存旅行需求的问题。requirements是当前保存状态，包含requirements字段和trip备注；它优先于conversation中的旧值、欢迎文案或缺项提示。已填写的信息直接使用，不重复索要；必去地点、忌口和节奏等可选偏好不作为回复前提。字段未记录时如实说明，不猜未知。没有工具，不声称查询、更新需求或保存行程；涉及新需求或生成、修改、外部资料查询的请求应由对应业务流程处理。'),
         'requirements': AgentRole('requirements', load_prompt('agents/requirements.txt'), read + requirements, max_steps=6),
         'research': AgentRole('research', load_prompt('agents/research.txt') + '\n\n' + rules, read + facts, max_steps=6),
         'planning': AgentRole('planning', load_prompt('agents/city_planning.txt' if city else 'agents/planning.txt') + '\n\n' + rules

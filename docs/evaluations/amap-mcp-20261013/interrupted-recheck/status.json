@@ -1,8 +1,0 @@
-{
-  "status": "interrupted",
-  "completed_steps": 1,
-  "planned_steps": 7,
-  "reason": "execution_tool_40_second_timeout",
-  "interrupted_step": "second_place_query",
-  "note": "Only first unavailable result completed; in-flight request is not a completed failure."
-}

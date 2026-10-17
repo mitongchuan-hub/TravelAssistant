@@ -1,8 +1,0 @@
-{
-  "samples": 12,
-  "sdk_requests": 12,
-  "clothing_present": 12,
-  "weather_present": 12,
-  "multiday_accommodation_present": 6,
-  "note": "Nonempty field observation only; use semantic-review for fidelity."
-}

@@ -10,7 +10,7 @@ from .task_context import advance_request, normalize_workflow
 
 ACTIVE = {'queued', 'running'}
 BASIS_FIELDS = {'expected_plan_id', 'source_hash', 'expected_requirements_revision'}
-EXECUTION_STRATEGIES = {'legacy', 'task_execution'}
+EXECUTION_STRATEGIES = {'task_execution'}
 
 
 def now():
@@ -103,13 +103,8 @@ def _operation_body(kind, payload):
 
 
 def _configured_strategy(store):
-    strategy = getattr(store, 'execution_strategy', None)
-    if strategy is None:
-        strategy = os.getenv('TRAVEL_AGENT_EXECUTION_STRATEGY', 'legacy')
-    strategy = strategy.strip() if isinstance(strategy, str) else ''
-    if strategy not in EXECUTION_STRATEGIES:
-        raise ValueError('Agent执行策略必须是 legacy 或 task_execution')
-    return strategy
+    # task_execution is the only execution framework; the legacy loop was removed.
+    return 'task_execution'
 
 
 def _restore_tasks(current, before):

@@ -42,7 +42,7 @@ class TurnCommit:
                 request_id=request_id or (task['request_id'] if task else uuid4().hex),
                 message_id=message_id or (task.get('message_id') if task else None) or 'operation-' + uuid4().hex,
                 body=source or '', entry=entry,
-                strategy=task.get('execution_strategy', 'legacy') if task else 'task_execution',
+                strategy=task.get('execution_strategy', 'task_execution'),
                 requirements_revision=task['requirements_revision'] if task else trip.requirements.revision,
                 plan_basis=PlanBasis.from_value(task['plan_basis']) if task and task.get('plan_basis') else plan_basis(self.plans[trip_id]),
                 workflow_revision=task.get('workflow_revision', workflow['revision']) if task else workflow['revision'],
@@ -59,7 +59,7 @@ class TurnCommit:
         task = self.tasks.get(context.execution_task_id)
         if task and (task['status'] != 'running' or task['trip_id'] != context.trip_id
                      or task['request_id'] != context.request_id
-                     or task.get('execution_strategy', 'legacy') != context.strategy
+                     or task.get('execution_strategy', 'task_execution') != context.strategy
                      or task.get('message_id') != context.message_id
                      or task.get('requirements_revision') != context.requirements_revision
                      or task.get('workflow_revision') != context.workflow_revision
@@ -105,7 +105,6 @@ class TurnCommit:
 
     def execute_turn(self, task_id):
         from . import agent_client
-        from .agent_protocol import thaw
         from .task_runtime import TaskExecutionContext
         with self._lock:
             task = self.tasks[task_id]
@@ -124,22 +123,10 @@ class TurnCommit:
         if conflict:
             return self.fail_execution(task_id, ValueError(conflict))
         cancelled = lambda: not self._execution_current(context)
-        if context.strategy == 'task_execution':
-            execution = TaskExecutionContext(**snapshot, current_date=datetime.now().date().isoformat(),
-                entry=context.entry, scope='item' if task['payload'].get('item_id') or display_target else '',
-                target_item_id=task['payload'].get('item_id'), display_target=display_target)
-            proposal = agent_client.generate_task_proposal(context, execution, cancelled=cancelled)
-        else:
-            # The decision baseline remains old; its effects use the same commit service.
-            from .store import generate_agent_reply
-            snapshot['trip'].workflow_state = self._legacy_workflow_view(snapshot['trip'].workflow_state)
-            instruction = context.body or '请根据当前有效需求生成完整文字行程。'
-            reply = generate_agent_reply(user_body=instruction, **snapshot,
-                planning_mode=task['kind'] != 'chat',
-                **({'agent_role': 'revision'} if task['kind'] == 'revision' else {}),
-                **({'target_item_id': task['payload'].get('item_id')} if task['payload'].get('item_id') else {}),
-                **({'display_target': display_target} if display_target else {}), cancelled=cancelled)
-            proposal = self._legacy_proposal(context, reply)
+        execution = TaskExecutionContext(**snapshot, current_date=datetime.now().date().isoformat(),
+            entry=context.entry, scope='item' if task['payload'].get('item_id') or display_target else '',
+            target_item_id=task['payload'].get('item_id'), display_target=display_target)
+        proposal = agent_client.generate_task_proposal(context, execution, cancelled=cancelled)
         receipt = self.commit_turn(context, proposal)
         if not receipt.committed and self.tasks.get(task_id, {}).get('status') == 'running':
             return self.fail_execution(task_id, ValueError(receipt.reason))
@@ -149,42 +136,6 @@ class TurnCommit:
         with self._lock:
             task = self.tasks.get(context.execution_task_id)
             return bool(task and task['status'] == 'running' and not self._turn_conflict(context))
-
-    @staticmethod
-    def _legacy_workflow_view(raw):
-        from .task_context import normalize_workflow
-        state = normalize_workflow(raw)
-        active = state.get('active_question')
-        if active and active['answer_target']['namespace'] == 'legacy.generation':
-            return {'awaiting_generation': True, 'question': active['text']}
-        return {}
-
-    def set_execution_strategy(self, strategy):
-        """Explicit rollout/rollback affects future tasks; no in-flight strategy fallback."""
-        from .agent_protocol import STRATEGIES
-        from .task_context import rollback_workflow
-        if strategy not in STRATEGIES:
-            raise ValueError('未知Agent执行策略')
-        from .store import USERS
-        with self._lock:
-            stage = copy(self)
-            for name in ('trips', 'plans', 'messages', 'idea_cards', 'tasks', 'display_jobs'):
-                setattr(stage, name, deepcopy(getattr(self, name)))
-            for trip_id in self.trips:
-                for task in stage.tasks.values():
-                    if task['trip_id'] == trip_id and task['status'] in {'queued', 'running'}:
-                        task.update(status='superseded', message='执行策略已切换，请基于当前状态重新提交', updated_at=now(), result_url='')
-                        stage.messages[trip_id] = [row for row in stage.messages[trip_id] if row.id != task.get('thinking_id')]
-                if strategy == 'legacy':
-                    stage.trips[trip_id].workflow_state = rollback_workflow(stage.trips[trip_id].workflow_state)
-            try:
-                if self.persistence_enabled:
-                    save_snapshot(self.db_path, serialize_state(stage, USERS), initialize=False)
-            except Exception as exc:
-                raise TurnPersistenceError('策略切换未保存，当前执行策略和业务状态未改变。') from exc
-            for trip_id in self.trips:
-                self._publish_turn(stage, trip_id)
-            self.execution_strategy = strategy
 
     def confirm_current_turn(self, trip_id):
         from .task_context import normalize_workflow
@@ -200,65 +151,6 @@ class TurnCommit:
                 source_capability='confirm_itinerary')
             proposal = workspace.finish(selected_artifact_ids=[artifact.id], workflow_state=workflow)
         return self.commit_turn(context, proposal)
-
-    def _legacy_proposal(self, context, reply):
-        from .agent_protocol import TerminalQuestion
-        from .task_context import add_task, normalize_workflow, set_active_question, transition_task
-        from .turn_workspace import TurnWorkspace
-        with self._lock:
-            trip = deepcopy(self.trips[context.trip_id])
-            state = normalize_workflow(trip.workflow_state, trip=trip,
-                messages=self.messages[context.trip_id], plan=self.plans[context.trip_id])
-            messages = [row.id for row in self.messages[context.trip_id]]
-        workspace = TurnWorkspace(context, workflow_state=state,
-            authorized_message_ids=messages, visible_task_ids=[row['id'] for row in state['tasks']])
-        if reply is None:
-            return workspace.fail_closed('模型服务当前不可用，本次未生成或修改行程。')
-        if reply.plan:
-            return workspace.fail_closed('旧结构化方案输出不适用于当前文字行程协议，本轮未写入。')
-        adopted = []
-        if reply.requirements_patch:
-            changes = chat_changes(reply.requirements_patch, context.body, trip)
-            if changes:
-                update_requirements(trip, changes)
-                artifact = workspace.register_artifact('requirements',
-                    {'normalized_changes': changes, 'raw_patch': reply.requirements_patch},
-                    source_capability='prepare_requirements')
-                adopted.append(artifact.id)
-        if not reply.failed and not reply.needs_input and reply.plan_text:
-            artifact = workspace.register_artifact('itinerary',
-                {'text': reply.plan_text, 'evidence': reply.evidence or [], 'preserve_plan_basis': reply.preserve_plan_basis},
-                source_capability='revise_itinerary' if context.entry == 'revision' else 'draft_itinerary', depends_on=adopted)
-            adopted.append(artifact.id)
-        elif not reply.failed and not reply.needs_input and reply.confirm_current:
-            artifact = workspace.register_artifact('confirmation', {'plan_basis': context.plan_basis.to_dict()},
-                source_capability='confirm_itinerary')
-            adopted.append(artifact.id)
-        question = None
-        if reply.workflow_state is not None:
-            previous = state.get('active_question')
-            if previous and previous['answer_target']['namespace'] == 'legacy.generation' and not reply.workflow_state.get('awaiting_generation'):
-                state = transition_task(state, previous['task_id'], 'suspended', reason='legacy conversation changed')
-                task_artifact = workspace.register_artifact('task',
-                    {'operation': 'suspend', 'task_ref': previous['task_id'], 'effect_refs': []},
-                    source_capability='manage_task', conversation_task_id=previous['task_id'])
-                adopted.append(task_artifact.id)
-        if reply.needs_input:
-            conversation_task_id = workspace.reserve_task_id()
-            state, conversation_task_id = add_task(state, goal=context.body or '根据页面操作生成行程',
-                source_message_ids=[context.message_id], authorization_refs=[context.message_id], task_id=conversation_task_id,
-                basis={'requirements_revision': context.requirements_revision, 'plan_basis': context.plan_basis.to_dict() if context.plan_basis.has_content else None})
-            workspace.set_workflow_candidate(state)
-            workspace.allow_task(conversation_task_id)
-            namespace = 'legacy.generation' if reply.workflow_state and reply.workflow_state.get('awaiting_generation') else 'legacy.clarification'
-            state, raw_question = set_active_question(state, task_id=conversation_task_id, text=reply.body,
-                answer_target={'namespace': namespace, 'field': 'missing_information'},
-                assistant_message_id=workspace.reserve_message_id(), source_message_ids=[context.message_id])
-            question = TerminalQuestion(raw_question['id'], conversation_task_id, reply.body,
-                raw_question['answer_target'], (context.message_id,))
-        return workspace.finish('' if reply.plan_text or question else reply.body,
-            selected_artifact_ids=adopted, workflow_state=state, question=question,
-            failed=reply.failed, reason=reply.body if reply.failed else '')
 
     def fail_execution(self, task_id, exc):
         from .task_context import normalize_workflow

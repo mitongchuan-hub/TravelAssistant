@@ -1,3 +1,0 @@
-{"event": "start", "case": "LAT-012", "attempt": 1, "strategy": "whole"}
-{"event": "finished", "case": "LAT-012", "attempt": 1, "strategy": "whole", "seconds": 33.106, "status": "ready", "error_type": null, "sdk_requests": 1}
-{"event": "start", "case": "LAT-012", "attempt": 1, "strategy": "split"}
