@@ -1,4 +1,4 @@
-"""Model nodes and three business agents sharing one bounded tool loop."""
+"""Model nodes and four business agents sharing one bounded tool loop."""
 from copy import deepcopy
 from dataclasses import dataclass
 import os
@@ -12,6 +12,13 @@ def tool(name, description, properties, required=()):
     return {'type': 'function', 'function': {'name': name, 'description': description,
         'parameters': {'type': 'object', 'properties': properties, 'required': list(required),
                        'additionalProperties': False}}}
+
+
+def strict_tool(name, description, properties, required=()):
+    """A provider hint plus a schema that is still validated locally before use."""
+    spec = tool(name, description, properties, required)
+    spec['function']['strict'] = True
+    return spec
 
 
 READ_CONTEXT = tool('read_context', '读取本旅行需求、聊天、想法、当前行程或真实查询依据。', {
@@ -65,12 +72,118 @@ EDIT_PLAN_TEXT = tool('edit_plan_text', '执行用户明确指定文字的精确
 }, ['user_quote', 'operation', 'old_text', 'new_text'])
 INTENT_SCHEMA = {'type': 'object', 'additionalProperties': False,
     'properties': {
-        'intent': {'type': 'string', 'enum': ['chat', 'query', 'planning', 'revision']},
+        'intent': {'type': 'string', 'enum': ['chat', 'query', 'requirements', 'planning', 'revision']},
         'action': {'type': 'string', 'enum': ['reply', 'update_requirements', 'update_and_query', 'generate', 'modify', 'explain', 'confirm', 'cancel']},
         'scope': {'type': 'string', 'enum': ['', 'item', 'all', 'explain']},
         'user_quote': {'type': 'string'},
         'question': {'type': ['string', 'null']},
     }, 'required': ['intent', 'action', 'scope', 'user_quote', 'question']}
+
+
+# The execution strategy deliberately has nine tools.  These schemas are copied
+# into each request in deterministic order and validated again by TaskExecutionRuntime.
+EXECUTION_READ_CONTEXT = strict_tool('read_context', '按需读取当前旅行的需求、任务、行程或证据。', {
+    'section': {'type': 'string', 'enum': ['requirements', 'messages', 'ideas', 'plan', 'evidence', 'tasks']},
+    'query': {'type': 'string'}, 'offset': {'type': 'integer', 'minimum': 0},
+    'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
+}, ['section'])
+EXECUTION_MANAGE_TASK = strict_tool('manage_task', '跟踪复杂事项、状态和跨轮追问；完成取消或挂起须显式采用候选。', {
+    'operation': {'type': 'string', 'enum': ['create', 'complete', 'suspend', 'resume', 'cancel', 'adopt']},
+    'task_ref': {'type': ['string', 'null']}, 'goal': {'type': 'string'},
+    'effect_kind': {'type': 'string', 'enum': ['read', 'requirements', 'itinerary', 'confirmation', 'mixed']},
+    'item': {'type': 'string'}, 'effect_refs': {'type': 'array', 'items': {'type': 'string'}},
+    'unresolved_items': {'type': 'array', 'items': {'type': 'string'}},
+}, ['operation', 'effect_kind'])
+EXECUTION_PREPARE_REQUIREMENTS = strict_tool('prepare_requirements', '提出正式需求候选；活动追问答案仍只按 answer_target 使用。', {
+    'task_ref': {'type': ['string', 'null']}, 'message_ref': {'type': 'string'},
+    'answer_question_ref': {'type': ['string', 'null']},
+    'effect': {'type': 'string', 'enum': ['independent', 'conditional', 'hypothetical']},
+    'condition': {'type': 'string', 'enum': ['satisfied', 'not_satisfied', 'unknown']},
+    'condition_evidence_refs': {'type': 'array', 'items': {'type': 'string'}},
+    'condition_predicate': {'anyOf': [
+        {'type': 'null'},
+        {'type': 'object', 'properties': {
+            'kind': {'type': 'string', 'enum': ['weather_precipitation_at_least']},
+            'city': {'type': 'string'}, 'date': {'type': 'string'},
+            'threshold': {'type': 'integer', 'minimum': 0, 'maximum': 100},
+        }, 'required': ['kind', 'city', 'date', 'threshold'], 'additionalProperties': False},
+    ]},
+}, ['message_ref', 'effect', 'condition'])
+EXECUTION_RESEARCH = strict_tool('research', '查询具体问题，返回可支持下一步的证据；不写正式需求或行程。', {
+    'task_ref': {'type': ['string', 'null']}, 'question': {'type': 'string'},
+    'answer_question_ref': {'type': ['string', 'null']},
+    'context_refs': {'type': 'array', 'items': {'type': 'string'}},
+    'hypothetical': {'type': 'boolean'},
+    'evidence_kind': {'type': 'string', 'enum': ['weather', 'place', 'food', 'route', 'other']},
+}, ['question', 'hypothetical', 'evidence_kind'])
+EXECUTION_DRAFT_ITINERARY = strict_tool('draft_itinerary', '生成完整文字行程候选；使用有效需求引用和条件证据。', {
+    'task_ref': {'type': ['string', 'null']}, 'requirements_ref': {'type': ['string', 'null']},
+    'constraints': {'type': 'string'},
+    'effect': {'type': 'string', 'enum': ['independent', 'conditional', 'hypothetical']},
+    'condition': {'type': 'string', 'enum': ['satisfied', 'not_satisfied', 'unknown']},
+    'condition_predicate': {'anyOf': [
+        {'type': 'null'},
+        {'type': 'object', 'properties': {
+            'kind': {'type': 'string', 'enum': ['weather_precipitation_at_least']},
+            'city': {'type': 'string'}, 'date': {'type': 'string'},
+            'threshold': {'type': 'integer', 'minimum': 0, 'maximum': 100},
+        }, 'required': ['kind', 'city', 'date', 'threshold'], 'additionalProperties': False},
+    ]},
+    'condition_evidence_refs': {'type': 'array', 'items': {'type': 'string'}},
+}, [])
+EXECUTION_REVISE_ITINERARY = strict_tool('revise_itinerary', '按当前行程引用和授权范围生成修改候选；支持精确编辑和条件证据。', {
+    'task_ref': {'type': ['string', 'null']}, 'plan_ref': {'type': 'string'},
+    'requirements_ref': {'type': ['string', 'null']},
+    'scope': {'type': 'string', 'enum': ['item', 'all']}, 'instruction': {'type': 'string'},
+    'target_item_id': {'type': ['string', 'null']},
+    'effect': {'type': 'string', 'enum': ['independent', 'conditional', 'hypothetical']},
+    'condition': {'type': 'string', 'enum': ['satisfied', 'not_satisfied', 'unknown']},
+    'condition_predicate': {'anyOf': [
+        {'type': 'null'},
+        {'type': 'object', 'properties': {
+            'kind': {'type': 'string', 'enum': ['weather_precipitation_at_least']},
+            'city': {'type': 'string'}, 'date': {'type': 'string'},
+            'threshold': {'type': 'integer', 'minimum': 0, 'maximum': 100},
+        }, 'required': ['kind', 'city', 'date', 'threshold'], 'additionalProperties': False},
+    ]},
+    'condition_evidence_refs': {'type': 'array', 'items': {'type': 'string'}},
+}, ['plan_ref', 'scope', 'instruction', 'effect', 'condition', 'condition_predicate'])
+EXECUTION_CONFIRM_ITINERARY = strict_tool('confirm_itinerary', '确认用户已看到且依据未变的当前行程。', {
+    'plan_ref': {'type': 'string'},
+}, ['plan_ref'])
+EXECUTION_ASK_USER = strict_tool('ask_user', '提出一个关键问题；可同时采用不依赖答案的候选。', {
+    'task_ref': {'type': ['string', 'null']}, 'question': {'type': 'string'},
+    'answer_target': {'type': 'object', 'properties': {
+        'namespace': {'type': 'string'}, 'field': {'type': 'string'},
+    }, 'required': ['namespace', 'field'], 'additionalProperties': False},
+    'adopt_refs': {'type': 'array', 'items': {'type': 'string'}},
+    'completed_items': {'type': 'array', 'items': {'type': 'string'}},
+    'unresolved_items': {'type': 'array', 'items': {'type': 'string'}},
+}, ['question', 'answer_target'])
+EXECUTION_FINISH_TURN = strict_tool('finish_turn', '结构化结束本轮，只采用显式候选引用。', {
+    'reply': {'type': 'string'},
+    'adopt_refs': {'type': 'array', 'items': {'type': 'string'}},
+    'completed_items': {'type': 'array', 'items': {'type': 'string'}},
+    'unresolved_items': {'type': 'array', 'items': {'type': 'string'}},
+}, ['reply'])
+COMPLETE_CAPABILITY = strict_tool('complete_capability', '专业能力的结构化终止合同，返回候选摘要或结构化缺项。', {
+    'status': {'type': 'string', 'enum': ['ok', 'needs_input', 'needs_requirements', 'conflict', 'unavailable', 'failed']},
+    'summary': {'type': 'string'},
+    'artifact_text': {'type': ['string', 'null']},
+    'question': {'type': ['string', 'null']},
+    'answer_target': {'anyOf': [
+        {'type': 'null'},
+        {'type': 'object', 'properties': {
+            'namespace': {'type': 'string'}, 'field': {'type': 'string'},
+        }, 'required': ['namespace', 'field'], 'additionalProperties': False},
+    ]},
+    'completed_items': {'type': 'array', 'items': {'type': 'string'}},
+    'unresolved_items': {'type': 'array', 'items': {'type': 'string'}},
+}, ['status', 'summary', 'artifact_text', 'question', 'answer_target', 'completed_items', 'unresolved_items'])
+EXECUTION_TOOLS = (EXECUTION_READ_CONTEXT, EXECUTION_MANAGE_TASK, EXECUTION_PREPARE_REQUIREMENTS,
+                   EXECUTION_RESEARCH, EXECUTION_DRAFT_ITINERARY,
+                   EXECUTION_REVISE_ITINERARY, EXECUTION_CONFIRM_ITINERARY, EXECUTION_ASK_USER,
+                   EXECUTION_FINISH_TURN)
 
 
 @dataclass(frozen=True)
@@ -88,7 +201,10 @@ REASONING_EFFORTS = {'default', 'none', 'minimal', 'low', 'medium', 'high', 'xhi
 
 def role_reasoning_effort(role, scope=''):
     value = os.getenv(f'OPENAI_REASONING_EFFORT_{role.name.upper()}', '').strip().lower()
-    if not value and role.name in {'chat', 'intent'}:
+    if not value and role.name.endswith('_capability'):
+        base = role.name.removesuffix('_capability')
+        value = os.getenv(f'OPENAI_REASONING_EFFORT_{base.upper()}', '').strip().lower()
+    if not value and role.name in {'chat', 'intent', 'main_execution'}:
         value = os.getenv('OPENAI_REASONING_EFFORT_MAIN', '').strip().lower()
     value = value or os.getenv('OPENAI_REASONING_EFFORT', '').strip().lower()
     value = value or ('low' if role.name == 'revision' and scope == 'explain' else role.reasoning_effort)
@@ -97,11 +213,7 @@ def role_reasoning_effort(role, scope=''):
     return None if value == 'default' else value
 
 
-def roles(mode='travel'):
-    city = mode == 'city'
-    rules = load_prompt('agents/city_rules.txt' if city else 'agents/travel_rules.txt')
-    read = (READ_CONTEXT,)
-    facts = tuple(tool_specs())
+def _mode_requirements_tools(city):
     update = UPDATE_REQUIREMENTS
     if city:
         update = deepcopy(UPDATE_REQUIREMENTS)
@@ -121,11 +233,52 @@ def roles(mode='travel'):
         properties['lodging_address']['description'] = '用户提供的住宿地址；不是车站，不默认更换住宿。'
         properties['outing_start_time']['description'] = '每天从住处出门的时刻，未知为空。'
         properties['outing_end_time']['description'] = '每天返回住处的时刻，未知为空。'
-    requirements = (update, CHECK_REQUIREMENTS)
+    return update, CHECK_REQUIREMENTS
+
+
+def execution_roles(mode='travel'):
+    """Execution-only role bundle; legacy prompts and contracts remain untouched."""
+    city = mode == 'city'
+    rules = load_prompt('agents/city_rules.txt' if city else 'agents/travel_rules.txt')
+    requirements = _mode_requirements_tools(city)
+    suffix = ('\n当前为同城游玩：住宿是唯一起点；日期、人数和预算均可选，未知时不要为此阻止生成。'
+              if city else '')
+    return {
+        'main_execution': AgentRole('main_execution', load_prompt('agents/main_execution.txt') + suffix,
+                                    EXECUTION_TOOLS, max_steps=12, reasoning_effort='low'),
+        'requirements_capability': AgentRole('requirements_capability',
+            load_prompt('agents/execution_requirements.txt'), (READ_CONTEXT,) + requirements + (COMPLETE_CAPABILITY,),
+            max_steps=6),
+        'research_capability': AgentRole('research_capability',
+            load_prompt('agents/execution_research.txt') + '\n\n' + rules,
+            (READ_CONTEXT,) + tuple(tool_specs()) + (COMPLETE_CAPABILITY,), max_steps=6),
+        'planning_capability': AgentRole('planning_capability',
+            load_prompt('agents/city_planning.txt' if city else 'agents/planning.txt') + '\n\n' + rules
+            + '\n\n' + load_prompt('agents/city_examples.txt' if city else 'agents/planning_examples.txt')
+            + '\n\n以下旧action、需求写入、直接输出正文和“已保存”措辞仅是旅行质量背景，不是当前执行协议；不得照其结束或写需求。\n\n'
+            + load_prompt('agents/execution_planning.txt'),
+            (READ_CONTEXT, requirements[1]) + tuple(tool_specs()) + (COMPLETE_CAPABILITY,),
+            max_steps=10, reasoning_effort='medium'),
+        'revision_capability': AgentRole('revision_capability',
+            load_prompt('agents/city_revision.txt' if city else 'agents/revision.txt') + '\n\n' + rules
+            + '\n\n以上旧action、需求写入、直接输出正文和“已保存”措辞仅是修改质量背景，不是当前执行协议；不得照其结束或写需求。\n\n'
+            + load_prompt('agents/execution_revision.txt'),
+            (READ_CONTEXT, requirements[1], EDIT_PLAN_TEXT) + tuple(tool_specs()) + (COMPLETE_CAPABILITY,),
+            max_steps=10, reasoning_effort='medium'),
+    }
+
+
+def roles(mode='travel'):
+    city = mode == 'city'
+    rules = load_prompt('agents/city_rules.txt' if city else 'agents/travel_rules.txt')
+    read = (READ_CONTEXT,)
+    facts = tuple(tool_specs())
+    requirements = _mode_requirements_tools(city)
     return {
         'main': AgentRole('main', load_prompt('agents/main.txt') + ('\n当前为同城游玩：住宿是唯一起点，日期、人数和预算均可选。不要因这些可选信息未知而澄清或阻止明确的生成请求。' if city else ''), response_format={
             'type': 'json_schema', 'json_schema': {'name': 'travel_intent', 'strict': True, 'schema': INTENT_SCHEMA}}),
         'chat': AgentRole('chat', '你是旅行助手。用简体中文自然回应闲聊，也可回答当前已保存旅行需求的问题。requirements是当前保存状态，包含requirements字段和trip备注；它优先于conversation中的旧值、欢迎文案或缺项提示。已填写的信息直接使用，不重复索要；必去地点、忌口和节奏等可选偏好不作为回复前提。字段未记录时如实说明，不猜未知。没有工具，不声称查询、更新需求或保存行程；涉及新需求或生成、修改、外部资料查询的请求应由对应业务流程处理。'),
+        'requirements': AgentRole('requirements', load_prompt('agents/requirements.txt'), read + requirements, max_steps=6),
         'research': AgentRole('research', load_prompt('agents/research.txt') + '\n\n' + rules, read + facts, max_steps=6),
         'planning': AgentRole('planning', load_prompt('agents/city_planning.txt' if city else 'agents/planning.txt') + '\n\n' + rules
             + '\n\n' + load_prompt('agents/city_examples.txt' if city else 'agents/planning_examples.txt'), read + requirements + facts, max_steps=10, reasoning_effort='medium'),

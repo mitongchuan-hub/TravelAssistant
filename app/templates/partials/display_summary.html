@@ -20,6 +20,7 @@
       {% if display and display.budget_note %}<p>{{ display.budget_note }}</p>{% endif %}
       {% set coverage = (display.budget_note if display else none) | coverage_detail(basis.budget_coverage) %}
       {% if coverage %}<details class="display-basis-detail"><summary>计划费用范围</summary><p>{{ coverage }}</p></details>{% endif %}
+      {% if route_view is defined and route_view.is_city %}<details class="display-basis-detail" data-plan-lodging><summary>本方案住宿依据</summary>{% if route_view.lodging %}<p>{{ route_view.lodging.name }} · {{ route_view.lodging.copy_address }}</p><a href="{{ route_view.lodging.map_url }}" target="_blank" rel="noopener noreferrer">在高德查看住处</a>{% else %}<p>旧方案未保存住宿坐标，不使用当前住宿补齐原路线。</p>{% endif %}</details>{% endif %}
     </div>
   </details>{% endif %}
 </section>

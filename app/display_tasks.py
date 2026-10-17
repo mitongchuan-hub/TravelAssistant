@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from .plan_display import text_hash, validate_display, dates_from_snapshot
 from .tasks import ACTIVE, now
+from .route_view import plan_basis
 
 DISPLAY_ACTIVE = {'queued', 'running', 'waiting_publish'}
 logger = logging.getLogger(__name__)
@@ -93,10 +94,14 @@ class DisplayTasks:
             source_hash = text_hash(plan.text)
             job = next((j for j in self.display_jobs.values() if j['trip_id'] == trip_id
                         and j['plan_id'] == plan.id and j['source_hash'] == source_hash), None)
+            trip = self.trips[trip_id]
+            basis = plan_basis(trip, plan)
             version = ':'.join([plan.id, source_hash, plan.display_status,
-                                job['id'] if job else '', job['updated_at'] if job else ''])
+                                job['id'] if job else '', job['updated_at'] if job else '',
+                                str(trip.requirements.revision), basis['basis_status']])
             return {'plan_id': plan.id, 'source_hash': source_hash, 'display_status': plan.display_status,
                     'version': version, 'enabled': self.display_enabled(), 'has_text': bool(plan.text),
+                    'requirements_revision': trip.requirements.revision, **basis,
                     'busy': self._foreground_active(trip_id)}
 
     def retry_display(self, trip_id, plan_id, source_hash):

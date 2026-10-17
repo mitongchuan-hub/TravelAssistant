@@ -23,7 +23,7 @@ from .auth import (
 )
 from urllib.parse import quote
 from uuid import uuid4
-from .tasks import TaskConflict
+from .tasks import TaskConflict, validate_task_basis
 from .tools.places import map_url, query_time_label, search_places
 from .places import collect_places
 from .city_outings import CITY_FORM_FIELDS, LodgingChoices, city_requirements
@@ -32,6 +32,7 @@ from .requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
 from .chat_presentation import chat_reply_view, chat_time_break, chat_actions, chat_supplemental
 from .presentation import day_date_label, timeline_time_parts
 from .display_presentation import display_view, coverage_detail
+from .route_view import build_route_view
 from .store import IDEA_WALL_LIMIT, USERS, store
 
 @asynccontextmanager
@@ -49,7 +50,7 @@ auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20261015-city-1"
+templates.env.globals["static_version"] = "20261015-layout-restored-3"
 templates.env.filters.update(day_date_label=day_date_label, timeline_time_parts=timeline_time_parts,
                              display_view=display_view, coverage_detail=coverage_detail,
                              chat_reply_view=chat_reply_view, chat_time_break=chat_time_break,
@@ -441,28 +442,25 @@ async def save_requirements(request: Request, trip_id: str) -> Response:
 
 
 @app.get("/workspace/{trip_id}", response_class=HTMLResponse)
-def workspace(request: Request, trip_id: str, tab: str = "chat") -> Response:
+def workspace(request: Request, trip_id: str, tab: str = "") -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
-    trip = get_owned_trip_or_404(trip_id, user)
-    active_tab = tab if tab in {"chat", "board", "itinerary"} else "chat"
-    return templates.TemplateResponse(
-        request,
-        "workspace.html",
-        {
-            "trip": trip,
-            "tab": active_tab,
-            "messages": store.messages[trip_id],
-            "idea_cards": store.idea_cards[trip_id],
-            "wall_cards": store.idea_cards[trip_id][-IDEA_WALL_LIMIT:],
-            "plan": store.plans[trip_id],
-            "metrics": store.trip_metrics(trip_id),
-            "current_user": user,
+    with store._lock:
+        trip = deepcopy(get_owned_trip_or_404(trip_id, user))
+        active_tab = tab if tab in {"chat", "board", "itinerary"} else 'chat'
+        plan = deepcopy(store.plans[trip_id])
+        context = {
+            "trip": trip, "tab": active_tab, "plan": plan,
+            "messages": deepcopy(store.messages[trip_id]),
+            "idea_cards": deepcopy(store.idea_cards[trip_id]),
+            "wall_cards": deepcopy(store.idea_cards[trip_id][-IDEA_WALL_LIMIT:]),
+            "metrics": store.trip_metrics(trip_id), "current_user": user,
             "travel_tasks": store.list_tasks(trip_id),
             "display_state": store.get_display_state(trip_id),
-        },
-    )
+        }
+    context['route_view'] = build_route_view(trip, plan)
+    return templates.TemplateResponse(request, 'workspace.html', context)
 
 
 @app.get('/api/trips/{trip_id}/plan-state')
@@ -501,8 +499,10 @@ def display_partial(request: Request, trip_id: str, plan_id: str = '', source_ha
         if state['plan_id'] != plan_id or state['source_hash'] != source_hash:
             return Response(status_code=409)
         plan = deepcopy(store.plans[trip_id])
+        trip = deepcopy(store.trips[trip_id])
     return templates.TemplateResponse(request, 'partials/display_panel.html',
-        {'plan': plan, 'display_state': state}, headers={'Cache-Control': 'no-store'})
+        {'trip': trip, 'plan': plan, 'display_state': state, 'route_view': build_route_view(trip, plan)},
+        headers={'Cache-Control': 'no-store'})
 
 
 @app.get("/api/trips/{trip_id}/tasks")
@@ -540,14 +540,21 @@ async def api_submit_task(request: Request, trip_id: str, background_tasks: Back
         payload = data.get("payload", {})
         if not isinstance(payload, dict):
             raise ValueError()
+        binding = {key: payload[key] for key in ('expected_plan_id', 'source_hash', 'expected_requirements_revision') if key in payload}
         if kind == "plan":
-            payload = {}
+            if 'display_target' in payload:
+                raise ValueError()
+            payload = binding
         elif kind == "revision":
             if not isinstance(payload.get("feedback"), str) or not 1 <= len(payload["feedback"].strip()) <= 2000:
                 raise ValueError()
             if payload.get("item_id") is not None and not isinstance(payload["item_id"], str):
                 raise ValueError()
-            payload = {"feedback": payload["feedback"].strip(), "item_id": payload.get("item_id")}
+            target = {'display_target': payload['display_target']} if 'display_target' in payload else {}
+            item = {'item_id': payload.get('item_id')} if not target else {}
+            if target and 'item_id' in payload:
+                raise ValueError()
+            payload = {"feedback": payload["feedback"].strip(), **item, **binding, **target}
         elif kind == "chat":
             if not isinstance(payload.get("body"), str):
                 raise ValueError()
@@ -565,7 +572,7 @@ async def api_retry_task(request: Request, trip_id: str, task_id: str, backgroun
     if not user:
         return JSONResponse({"error": "请先登录"}, status_code=401)
     get_owned_trip_or_404(trip_id, user)
-    original = next((task for task in store.list_tasks(trip_id) if task["id"] == task_id), None)
+    original = store.get_task(task_id, trip_id=trip_id)
     if not original:
         return JSONResponse({"error": "任务不存在"}, status_code=404)
     try:
@@ -679,14 +686,32 @@ def delete_idea(request: Request, trip_id: str, idea_id: str = Form("")) -> Redi
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=board", status_code=303)
 
 
+def form_task_binding(plan_id, source_hash, revision, day_index='', item_index=''):
+    binding = {}
+    if plan_id or source_hash or revision:
+        if not revision.isascii() or not revision.isdigit():
+            raise ValueError('页面版本不正确，请刷新路线后再试')
+        binding = {'expected_plan_id': plan_id, 'source_hash': source_hash,
+                   'expected_requirements_revision': int(revision)}
+    if day_index or item_index:
+        if not all(value.isascii() and value.isdigit() for value in (day_index, item_index)):
+            raise ValueError('目标安排不正确，请刷新路线后再试')
+        binding['display_target'] = {'day_index': int(day_index), 'item_index': int(item_index)}
+    return binding
+
+
 @app.post("/workspace/{trip_id}/revision")
-def request_revision(request: Request, trip_id: str, background_tasks: BackgroundTasks, item_id: str | None = Form(None), feedback: str = Form(""), request_id: str = Form("")) -> Response:
+def request_revision(request: Request, trip_id: str, background_tasks: BackgroundTasks, item_id: str | None = Form(None), feedback: str = Form(""), request_id: str = Form(""), expected_plan_id: str = Form(""), source_hash: str = Form(""), expected_requirements_revision: str = Form(""), day_index: str = Form(""), item_index: str = Form("")) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
     try:
-        task, created = store.submit_task(trip_id, "revision", {"item_id": item_id, "feedback": feedback.strip()}, request_id or uuid4().hex)
+        binding = form_task_binding(expected_plan_id, source_hash, expected_requirements_revision, day_index, item_index)
+        if 'display_target' in binding and item_id:
+            raise ValueError('不能同时调整两个目标，请刷新路线')
+        target = {} if 'display_target' in binding else {'item_id': item_id}
+        task, created = store.submit_task(trip_id, "revision", {**target, "feedback": feedback.strip(), **binding}, request_id or uuid4().hex)
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=409 if isinstance(exc, TaskConflict) else 400)
     if created:
@@ -695,13 +720,14 @@ def request_revision(request: Request, trip_id: str, background_tasks: Backgroun
 
 
 @app.post("/workspace/{trip_id}/plan")
-def generate_plan(request: Request, trip_id: str, background_tasks: BackgroundTasks, request_id: str = Form("")) -> Response:
+def generate_plan(request: Request, trip_id: str, background_tasks: BackgroundTasks, request_id: str = Form(""), expected_plan_id: str = Form(""), source_hash: str = Form(""), expected_requirements_revision: str = Form("")) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
     try:
-        task, created = store.submit_task(trip_id, "plan", {}, request_id or uuid4().hex)
+        binding = form_task_binding(expected_plan_id, source_hash, expected_requirements_revision)
+        task, created = store.submit_task(trip_id, "plan", binding, request_id or uuid4().hex)
     except ValueError as exc:
         return JSONResponse({"error": str(exc)}, status_code=409 if isinstance(exc, TaskConflict) else 400)
     if created:
@@ -710,10 +736,19 @@ def generate_plan(request: Request, trip_id: str, background_tasks: BackgroundTa
 
 
 @app.post("/workspace/{trip_id}/plan/confirm")
-def confirm_plan(request: Request, trip_id: str) -> RedirectResponse:
+def confirm_plan(request: Request, trip_id: str, expected_plan_id: str = Form(""), source_hash: str = Form(""), expected_requirements_revision: str = Form("")) -> Response:
     user = current_user(request)
     if not user:
         return RedirectResponse(url="/", status_code=303)
     get_owned_trip_or_404(trip_id, user)
-    store.confirm_plan(trip_id)
+    try:
+        binding = form_task_binding(expected_plan_id, source_hash, expected_requirements_revision)
+        with store._lock:
+            if not validate_task_basis(store.plans[trip_id], store.trips[trip_id].requirements.revision, binding):
+                raise TaskConflict('确认当前行程需要完整页面版本，请刷新后重试')
+            receipt = store.confirm_current_turn(trip_id)
+            if receipt is None or not receipt.committed:
+                raise TaskConflict(receipt.reason if receipt is not None else '当前没有可确认的行程')
+    except ValueError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=409 if isinstance(exc, TaskConflict) else 400)
     return RedirectResponse(url=f"/workspace/{trip_id}?tab=itinerary", status_code=303)

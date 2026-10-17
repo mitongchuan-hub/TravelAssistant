@@ -1,0 +1,49 @@
+{% set has_route = plan.has_content %}
+{% set home = route_view.lodging if has_route else route_view.current_lodging %}
+<section class="route-home{{ ' route-home--saved' if has_route else '' }}" aria-label="路线起终点">
+  <div class="route-home-heading">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v11h-6v-7H9v7H3Z"/></svg>
+    <span>{{ '本方案的出发与返回住处' if has_route else '每天从这里出发，也回到这里' }}</span>
+  </div>
+  {% if home %}
+    <h2>{{ home.name }}</h2>
+    {% if has_route %}<details class="route-home-details"><summary>住处地址与地图</summary>{% endif %}
+    <p class="route-address">{{ home.city }} {{ home.district }} {{ home.address }}</p>
+    <div class="route-home-actions"><a href="{{ home.map_url }}" target="_blank" rel="noopener noreferrer">在高德查看住处</a><button type="button" data-copy-address="{{ home.copy_address }}">复制地址</button></div>
+    {% if has_route %}</details>{% endif %}
+  {% elif has_route %}
+    <h2>{{ plan.requirements_snapshot.lodging_address or '原方案住宿待核实' }}</h2>
+    <p class="route-subtle">旧方案未保存住宿坐标，暂不提供起终点导航。按当前设置更新路线后补齐。</p>
+  {% else %}
+    <h2>先确认你的住处</h2><p class="route-subtle">住宿位置需要重新匹配，确认后才能安排往返路线。</p>
+    <a class="primary-action compact" href="/workspace/{{ trip.id }}/requirements">匹配住宿位置</a>
+  {% endif %}
+  {% if has_route and route_view.basis_status != 'fresh' %}
+    <div class="route-basis-notice" role="status" data-route-basis>
+      <strong>{{ '设置已更新，路线尚未更新' if route_view.basis_status == 'stale' else '旧方案的依据不完整' }}</strong>
+      <p>{{ route_view.basis_message }}</p>
+      {% if plan.text %}<button type="button" data-route-quick="请按当前保存的游玩设置更新这条路线，重新核对住宿往返、受影响的活动、餐次与交通。">按新设置调整</button>{% endif %}
+    </div>
+  {% endif %}
+</section>
+{% if not has_route and route_view.current_lodging %}
+<section class="route-first-plan" aria-label="生成第一条路线">
+  <h2>住处定了，接下来怎么逛？</h2>
+  <p>为你安排{{ trip.requirements.day_count or 1 }}天同城路线，串起游玩、用餐和回程。日期、人数和预算留空，也能开始。</p>
+  <dl class="route-saved-settings">
+    <div><dt>日期</dt><dd>{{ trip.requirements.start_date or '未定日期 · 按第几天安排' }}</dd></div>
+    <div><dt>每天</dt><dd>{{ trip.requirements.outing_start_time or '建议时段出门' }} — {{ trip.requirements.outing_end_time or '安排返回住处' }}</dd></div>
+    {% if trip.requirements.pace %}<div><dt>节奏</dt><dd>{{ trip.requirements.pace }}</dd></div>{% endif %}
+    {% if trip.requirements.budget_amount %}<div><dt>{{ '总预算' if trip.requirements.budget_scope == 'total' else '人均预算' }}</dt><dd>{{ trip.requirements.budget_amount }}元 · 不是已核实费用</dd></div>{% endif %}
+    {% if trip.requirements.dietary %}<div><dt>饮食</dt><dd>{{ trip.requirements.dietary | join('、') }}</dd></div>{% endif %}
+  </dl>
+  <form action="/workspace/{{ trip.id }}/plan" method="post">
+    <input type="hidden" name="request_id" value="{{ task_request_id() }}" />{{ task_binding() }}
+    <button class="primary-action" type="submit">生成我的路线</button>
+  </form>
+  <p class="route-subtle">生成可能需要一些时间，离开页面后也可以回来查看。不会替你预约或购买门票。</p>
+  <a class="route-text-link" href="/workspace/{{ trip.id }}?tab=chat">有必去或不想去的地方？聊一聊</a>
+</section>
+{% elif plan.text and not plan.display %}
+{% include 'partials/route_quick_actions.html' %}
+{% endif %}

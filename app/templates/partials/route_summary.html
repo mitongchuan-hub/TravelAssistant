@@ -1,0 +1,15 @@
+{% set basis = plan.requirements_snapshot %}
+<section class="route-summary" aria-label="路线说明">
+  <div class="route-summary-heading"><h2>{{ display.title if display else plan.title }}</h2><span>{{ '日期未定' if not basis.start_date else basis.start_date }}</span></div>
+  {% if display and (display.overview or display.budget_note) or basis.budget_coverage %}
+  <details class="display-budget" data-display-budget>
+    <summary><span>路线思路与费用说明</span><span class="display-disclosure-label" aria-hidden="true"></span><span class="display-chevron" aria-hidden="true"></span></summary>
+    <div class="display-disclosure-body">
+      {% if display and display.overview %}<p>{{ display.overview }}</p>{% endif %}
+      {% if basis.budget_amount %}<p>{{ '同行总预算' if basis.budget_scope == 'total' else '人均预算' }}：{{ basis.budget_amount }}元。预算额度不代表已核实的实际费用。</p>{% else %}<p>未设置预算，具体费用以有依据的价格和实际消费为准，不默认人数或总额。</p>{% endif %}
+      {% if display and display.budget_note %}<p>{{ display.budget_note }}</p>{% endif %}
+      {% set coverage = (display.budget_note if display else none) | coverage_detail(basis.budget_coverage) %}
+      {% if coverage %}<p>{{ coverage }}</p>{% endif %}
+    </div>
+  </details>{% endif %}
+</section>

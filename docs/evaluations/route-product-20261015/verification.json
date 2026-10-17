@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-15",
+  "scope": "Route-first city outing UX, offline evidence projection, version-bound actions and synthetic browser acceptance",
+  "source_state": "uncommitted working tree based on 5b6bae5; no commits or pushes",
+  "automatic_regression": {
+    "initial": {"passed": 769, "failed": 1, "seconds": 63.14, "failure": "Latency harness could no longer parse TASK_POLL constant names after JS refactor; constants restored without changing intervals"},
+    "post_backend_integration": {"passed": 841, "failed": 0, "seconds": 62.55},
+    "final_ui_batch": {"passed": 841, "failed": 0, "seconds": 63.22},
+    "old_process_template_compatibility_followup": {"passed": 9, "failed": 0, "seconds": 6.35, "scope": "Route web suite including one newly added old-context compatibility case; all-suite count becomes 842, not re-run as one batch after this compatibility-only addition"},
+    "isolation": "dotenv loader disabled before importing app; TRAVEL_PERSISTENCE=0; LLM disabled; model and map keys empty; test-owned temporary SQLite only"
+  },
+  "dependency_check": "No broken requirements found",
+  "git_diff_check": "passed; only Windows LF/CRLF normalization notices",
+  "mechanical_ui_check": {"findings": [], "runs": 1},
+  "browser": {
+    "synthetic": true,
+    "base": "http://127.0.0.1:9012",
+    "database": "memory only; no production writes",
+    "viewports": [320, 390, 430, 1000],
+    "shell_max_width": 430,
+    "first": {
+      "main_cases_passed": 5,
+      "state_cases_passed": 6,
+      "javascript_errors": 0,
+      "reports": [".cache/route-product-20261015/browser-first/report.json", ".cache/route-product-20261015/states-first/report.json"]
+    },
+    "final": {
+      "main_cases_passed": 5,
+      "state_cases_passed": 6,
+      "javascript_errors": 0,
+      "reports": [".cache/route-product-20261015/browser-final/report.json", ".cache/route-product-20261015/states-final/report.json"]
+    },
+    "checks": ["create to route-first empty state", "settings and ambiguous lodging choices", "bound plan task and prose/cards", "trusted POI marker and directional navigation parameters", "station context and draft retention", "generation and revision failures/retry", "card failure/readable prose/card-only retry", "stale page and old settings rejected with 409", "historical lodging not replaced by new address", "unknown meal interrupts adjacency"],
+    "limits": ["No live models or map API", "External links inspected, not opened", "No physical phone testing", "Chromium only", "Synthetic routes are not real-world travel validation"]
+  },
+  "independent_visual_review": {
+    "first_disposition": "fix",
+    "fixed_items": ["ready first viewport density", "station-local map and edit actions", "explicit unknown costs", "visible failure state without stale submitting copy"],
+    "final_disposition": "ship",
+    "remaining": "clear within bounded review scope"
+  },
+  "production_service": "Existing port 8000 left running; no process replaced or restarted. Its backend still reports old static version 20261015-city-1 and needs explicit restart to load new Python code. Production database may change through user's own usage; no freeze or unchanged-data claim is made.",
+  "not_claimed": ["Mature market fit", "Live model itinerary quality passed", "Entire route feasibility verified", "All POIs or card facts verified", "Online AMap navigation actually opened"]
+}

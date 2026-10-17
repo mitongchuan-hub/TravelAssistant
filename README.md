@@ -1,10 +1,10 @@
 # TravelAssistant · 同城游玩
 
-TravelAssistant 是以住宿为起终点的同城游玩助手。创建时只需填写住宿地址或酒店名称；系统通过高德匹配地图位置，重名时选择候选，再在聊天里生成路线。默认一天，支持可选日期、天数、每天出门/返回时间、人数、预算和偏好。日期未定时给通用逐日路线，人数与预算未知时不默认数值。
+TravelAssistant 是以住宿为起终点的同城游玩助手。创建时只需填写住宿地址或酒店名称；系统通过高德匹配地图位置，重名时选择候选，再在聊天或行程页生成路线。默认一天，支持可选日期、天数、每天出门/返回时间、人数、预算和偏好。日期未定时给通用逐日路线，人数与预算未知时不默认数值。
 
 `main` 开发同城版，`travel-full` 保留切换前完整旅行助手（快照提交 `79bcd28`，包含此前未提交的修复、少样本和原始评测）。两个分支使用独立数据库：同城版默认 `.cache/cityassistant.sqlite3`，完整版仍用 `.cache/travelassistant.sqlite3`。Git分支保存源码；环境密钥和业务数据库均留在本机，不进入提交。
 
-四意图聊天、Agent Loop、最新版行程保存和独立后台卡片继续复用。已有完整版旅行保留原需求、聊天和行程，按原模式生成/修改，不被自动转成同城游。
+当前默认聊天链仍按闲聊、查询、纯需求整理、规划、修改五种意图分流，共用 Agent Loop、最新版行程保存和独立后台卡片。纯需求由独立 `requirements` Agent 处理，不自动重排；混合生成、修改和查询仍沿原流程。任务执行重构的 A–C 已实现并通过当前离线回归；task_execution 的 main 首包已增加确定性六块输入投影，legacy 不变，尚未默认启用；服务端策略统一为 `TRAVEL_AGENT_EXECUTION_STRATEGY=legacy|task_execution`，当前默认 `legacy`，并在提交 execution task 时固定，不能在同一执行中互相回退。阶段 D 已新增50条×3次的离线数据、Schema校验与评分格式，但未运行真实模型、未完成真实语义验收。已有完整版旅行保留原需求、聊天和行程，按原模式生成/修改，不被自动转成同城游。实施边界见[主任务执行实施记录](docs/task-execution-implementation-20261016.md)。
 
 项目使用 FastAPI 提供本地 Web 应用，使用 SQLite 保存旅行、对话、想法、当前行程和登录会话。
 
@@ -18,6 +18,8 @@ TravelAssistant 是以住宿为起终点的同城游玩助手。创建时只需�
 - **旅行需求档案兼容**：已有完整旅行仍使用原需求编辑器和五组生成条件。
 - **旅行想法**：用想法卡片记录地点、预算、节奏和禁忌。所有想法完整保存，白板保留原布局并展示最近 8 条；需求页下方的“全部想法”可查看与删除更早的内容。
 - **Agent 聊天**：创建后的欢迎消息确认已保存信息，必填完整时可直接生成，只把必去地点、忌口和节奏作为可选补充。意图识别、闲聊和业务Agent均读取当前需求档案，长对话或清空聊天后仍可读取。通过对话提取旅行约束，模型不可用时保留消息并明确提示失败。
+- **原排版与可信导航**：按用户反馈恢复原“想法／聊天／行程”底栏、默认聊天和原行程概览、行前信息、日期导航、卡片排版。可信地点和交通放入卡片折叠详情，不额外重排首屏；只有真实查询证据与原文能严格唯一对应时才提供高德地图，连续可信端点可重新规划，历史耗时仍只是查询时估算。
+- **就地调整与恢复**：当前站点可直接填写调整意见，也可先选择“换一站”“少停留一些”；整体调整继续使用原行程页下方的意见表单。操作绑定页面看到的方案、原文和需求版本，过期请求被拒绝。生成/修改失败保留原方案并提供重试，卡片失败仍可阅读正文。设置变更会标记旧路线，未经操作不自动重排。
 - **创建同城行程**：填写住处，匹配地图，进入私人聊天。重名候选及表单保存在有期限的服务端草稿中，并绑定当前账号；客户端不能提交自报坐标。地图暂不可用时保留输入并提示重试。
 - **文字与卡片行程**：生成和修改直接保存完整原文并完成主任务，保存时核对当前需求与计划快照。聊天预览原文中的主线、预算判断和关键条件，完整行程可展开。独立后台 LLM 整理按天卡片；失败保留原文并可只重试卡片。原文、展示与依据绑定当前计划，旧卡片不会覆盖新方案。没有额外的模型复核或依据复核意见自动重写步骤；保存成功不保证全部事实与可执行性。
 - **按需查询**：Agent 使用天气、地点、美食和路线工具，根据旅行语境选择资料并说明来源与未知事项。工具不可用时明确待核实，不要求用户逐个手动查询。
@@ -63,7 +65,7 @@ OPENAI_STORE_RESPONSES=false
 
 `OPENAI_STORE_RESPONSES=false` 为默认值，向服务发送 `store=false`。Responses 工具续轮使用本地消息与必要的加密推理条目，不发送 `previous_response_id`，不依赖服务端会话保存。加密条目只在本轮角色循环中使用，不写入聊天、需求或行程，也不记录到文字日志。未完成的 Responses 输出会被拒绝，避免保存截断方案。
 
-思考强度通过 `reasoning_effort` 配置：意图识别（main）、闲聊（chat）、查询（research）、展示转换（display）默认 `low`，规划与修改默认 `medium`，只读解释默认 `low`。可选的 `OPENAI_REASONING_EFFORT` 全局覆盖与 `OPENAI_REASONING_EFFORT_MAIN/REQUIREMENTS/RESEARCH/PLANNING/REVISION` 单角色覆盖见 `.env.example`；单角色优先。值为 `default` 时不传参数，使用服务端默认行为。显式全局或 REVISION 配置也覆盖解释模式的默认值。
+思考强度通过 `reasoning_effort` 配置：意图识别（main）、闲聊（chat）、需求整理（requirements）、查询（research）、展示转换（display）默认 `low`，规划与修改默认 `medium`，只读解释默认 `low`。可选的 `OPENAI_REASONING_EFFORT` 全局覆盖与 `OPENAI_REASONING_EFFORT_MAIN/REQUIREMENTS/RESEARCH/PLANNING/REVISION` 单角色覆盖见 `.env.example`；单角色优先。值为 `default` 时不传参数，使用服务端默认行为。显式全局或 REVISION 配置也覆盖解释模式的默认值。
 
 当前镜像 `gpt-5.6-sol` 通过 Responses 发送 `reasoning.effort`，兼容旧服务时通过 Chat Completions 发送 `reasoning_effort`。历史百炼 `kimi-k3` 的低/中档及非法枚举探测保留作为历史证据。不能仅据 HTTP 成功断言内部强度效果；服务明确拒绝思考参数时移除后重试一次，其他错误按原流程处理。请求日志记录角色、协议、实际参数、耗时和思考 token 数，不增加思考正文。证据、完整配置和验证见 [思考强度说明](docs/model-reasoning.md)。
 
@@ -117,16 +119,19 @@ http://127.0.0.1:8000
 http://127.0.0.1:8000/health
 ```
 
-首次使用时注册或登录账号，填写住宿地址创建同城行程，然后在聊天中说“生成路线”，也可从聊天菜单或想法页生成。
+首次使用时注册或登录账号，填写住宿地址创建同城行程，然后在聊天中说“生成路线”，也可从聊天菜单、想法页或行程页生成。原排版保留与功能保护说明见[当前体验与验收](docs/route-product-20261015.md)。
 
 ## Agent 工作流程
 
-第一层由无工具 LLM 识别四类意图。闲聊使用无工具 LLM；查询、规划、修改复用 `TravelAgentRuntime.run_role()` 与同一套 `AgentLoop`，配置各自提示词及工具权限。
+以下是当前默认 `legacy` 策略。第一层由无工具 LLM 识别五类意图；闲聊使用无工具 LLM，需求整理、查询、规划、修改复用 `TravelAgentRuntime.run_role()` 与同一套 `AgentLoop`，配置各自提示词及工具权限。
+
+新的 `task_execution` 策略按[设计](docs/agent-task-execution-design-20261016.md)让 main 在有界工具循环中组合受限能力；A–C 已实现并通过当前离线回归，在跨轮、集中提交、离线保护及真实模型验收完成前不作为默认策略。两种策略由 `TRAVEL_AGENT_EXECUTION_STRATEGY` 选择，默认 `legacy`，任务提交时固定。下图和本节后续细节在切换前仍描述 legacy，不表示新策略已经上线。
 
 ```text
 用户消息 → 意图识别 LLM
              ├─ 闲聊 → 无工具 LLM → 回复
              ├─ 查询 → 查询 Agent Loop → 带依据的回答
+             ├─ 纯需求 → 需求 Agent Loop → 校验保存 / 必要澄清，不改行程
              ├─ 规划 → 需求工具 → 住宿位置检查 → 规划 Agent Loop → 完整文字
              │                   └─ 不足 → 提醒补充，记录等待目标
              └─ 修改 → 修改 Agent Loop → 完整修改文字
@@ -137,17 +142,17 @@ http://127.0.0.1:8000/health
                           转换失败 → 保留已交付原文，可重试卡片
 ```
 
-需求收集属于规划内部。规划和修改通过 `update_requirements` 整理最新整条原话，程序校验候选；不再委派独立需求 Agent。只更新需求不授权重排；等待补充的生成目标独立保存，用户回答后可以承接。同城页面生成只检查已确认住宿位置，可选信息缺失不会阻止生成；已有完整旅行继续检查原五组需求。
+纯需求消息由 `requirements` 整理最新原话，通过受限需求工具提交候选变更，由程序校验并保存；回复不写成行程，不外查，也不自动重排。混合“更新并查询”、生成或修改仍由 planning/revision 使用原需求工具处理，没有额外前置需求调用。等待补充的生成目标独立保存，用户回答后仍由 planning 承接；明确只记录、先不生成时清除旧等待目标。同城页面生成只检查已确认住宿位置，可选信息缺失不会阻止生成；已有完整旅行继续检查原五组需求。
 
 意图识别和闲聊读取当前需求档案及近期聊天，意图识别同时承接等待状态；业务 Agent 获得完整需求，并通过 `read_context` 按需读取当前行程、全部想法、聊天与证据。查询只读，解释不改行程。确认属于修改路径，由程序绑定当前快照执行，不让模型选择版本ID。
 
 原文保存在 `TripPlan.text` 并先交付；独立展示任务按其保存的需求快照提取 JSON，保存到 `display`，共享期限只覆盖主业务。后台展示独立预算默认180秒，最多2次底层请求（包含协议兼容重试）；结构或日期校验失败时，在剩余至少60秒且无前台业务等待的条件下允许一次纠错。通过 `TRAVEL_DISPLAY_ENABLED=0` 可关闭后台转换，文字继续正常交付。程序校验 Schema、日期框架与原文指纹，保存当前行程依据的需求快照和实际工具记录。模型不能提交可信地点、坐标或证据。程序不声称完成逐句事实或逐活动时间核验。
 
-聊天、生成和修改共用 Store 的最终保存边界，检查需求修订号、计划 ID 与完整快照。新消息替代旧轮、清空聊天或并发编辑后，旧回复和写入失效。清空聊天保留需求与行程，同时撤销待补充目标和未完成任务。
+legacy 低层仍检查需求修订号、计划 ID 与完整快照。新旧策略现共用 `app/turn_commit.py` 的集中提交服务：以排除异步 display 字段的业务 plan basis、workflow revision、请求 sequence/epoch 和 execution task 有效性校验，在私有 staging 状态中组装需求、行程、workflow、消息与回执，持久化成功后才发布。新消息替代旧轮、清空聊天或并发编辑后，旧回复和写入失效；清空聊天保留需求与行程，同时撤销待补充目标和未完成任务。
 
 行程页提供按天卡片、原文折叠、查询依据、局部修改反馈、确认。旧 `days` 时间线与可信地图保持兼容；旧文字不批量转换。详情见[当前架构](docs/agent-architecture-current.md)与[展示字段](docs/travel-itinerary-display-schema.md)。
 
-提示词位于 `app/prompts/agents/`：main 为意图识别，research/planning/revision 为业务 Agent，display 为展示转换。planning额外加载`planning_examples.txt`中的3个合成少样本；示例只指导方法，不提供本次旅行事实。闲聊提示在 `agent_roles.py` 中配置。
+提示词位于 `app/prompts/agents/`：main 为意图识别，requirements/research/planning/revision 为业务 Agent，display 为展示转换。完整旅行 planning 额外加载 `planning_examples.txt` 中的2个合成少样本，同城使用 `city_examples.txt`；纯需求使用独立的 `requirements.txt`。示例只指导方法，不提供本次旅行事实。闲聊提示在 `agent_roles.py` 中配置。
 
 ## 工具
 
@@ -175,7 +180,7 @@ app/tools/food.py
 app/tools/places.py
 ```
 
-地点工具返回真实候选及其来源，Agent 根据旅行语境选择地点；重名无法区分时聊天询问。新文字行程保留 Agent 对来源与未知事项的说明，不提取 POI ID 制作地图卡片。已有地点卡片继续从原计划的可信资料展示。
+地点工具返回真实候选及其来源，Agent 根据旅行语境选择地点；重名无法区分时聊天询问。新文字行程保留 Agent 对来源与未知事项的说明；同城卡片由程序从保存的工具证据严格匹配完整地点名，唯一对应且原文有依据才提供地图与复制地址，不让展示模型生成坐标或导航链接。区域和歧义地点不导航。已有结构化地点卡片继续兼容。
 
 路线查询工具：
 
@@ -192,7 +197,7 @@ app/tools/routes.py
 ```text
 app/
 ├── agent_client.py         模型访问、兼容入口、解析与错误回复
-├── agent_roles.py          无工具节点与三个业务 Agent 配置
+├── agent_roles.py          无工具节点与四个业务 Agent 配置
 ├── agent_runtime.py        意图分流、共用 Loop、需求工具与展示转换
 ├── plan_display.py         展示 Schema 校验、原文指纹与协议转换
 ├── agent_loop.py           有状态、有限预算的 Agent Loop 控制器
@@ -204,7 +209,7 @@ app/
 ├── plan_validation.py       旧格式行程的日期、时间与抵离校验
 ├── persistence.py           SQLite 快照和关系表持久化
 ├── store.py                 旅行状态和业务逻辑
-├── prompts/agents/         当前意图、查询、规划、修改和展示提示词
+├── prompts/agents/         当前意图、需求整理、查询、规划、修改和展示提示词
 ├── schemas/                当前行程展示 JSON Schema
 ├── tools/
 │   ├── registry.py          工具注册和分发
@@ -218,16 +223,21 @@ app/
 tests/
 ├── automated/              自动回归测试（Agent、Web、工具、持久化与测试集）
 ├── browser/                Playwright 浏览器回归及隔离页面夹具
+├── evaluation/             主任务执行的离线优先runner与评分支持
 ├── performance/            真实模型和外部服务的流程耗时测量
-├── datasets/               v1 历史协议与 v2 当前测试集
-├── run_travel_dataset.py    单案例评测入口
-├── run_travel_dataset_batch.py  批量评测入口
-└── travel_dataset_support.py    夹具、合成证据与协议校验
+├── datasets/               历史数据集及 main_execution_v1 合成场景
+├── run_travel_dataset.py    旧单案例评测入口（文件存在时）
+├── run_travel_dataset_batch.py  旧批量评测入口（文件存在时）
+└── travel_dataset_support.py    旧夹具与协议校验（文件存在时）
 
 pytest.ini                  自动测试发现范围与项目导入路径
 ```
 
 ## 测试
+
+2026-10-16 纯需求 Agent 拆分新增独立离线测试：`python -m pytest -q tests/automated/test_requirements_agent_split.py`。任务执行阶段 D 另新增 `tests/datasets/main_execution_v1/` 的50条合成场景（每条固定3次）及 `tests/evaluation/run_main_execution.py`；runner 默认/`--validate-only` 只校验数据与评分合同，不加载 `.env`、生产数据库、worker、网络或模型。真实隔离 adapter 使用临时 Store、真实 main/专业 capability/统一提交并冻结外部工具；`--live` 必须显式给出模型请求次数上限与总 token 累计停止阈值（最后一个已发请求可能越过 token 阈值），任一环节失败都不伪造成功。本次未运行 live，也没有真实语义验收成绩。当前工作区的旧测试文件已被删除，本次不恢复；下方旧测试集链接和命令保留为历史入口，须先确认文件存在。新专项测试通过不等于历史全量回归或真实模型语义质量通过。
+
+当前同城与恢复后的原排版另有[同城测试集 v1](tests/datasets/city_outings_v1/README.md)，共28个业务、展示与系统场景。运行 `python tests/run_city_dataset.py --profile current --output <新空目录>` 做离线受控执行，保留源码/数据快照及逐场景证据；不调用真实模型或高德，不能当作自然语言质量通过。详细入口见[测试目录](tests/README.md)。
 
 当前模型业务评测使用[旅行 Agent 测试集 v2](tests/datasets/travel_agent_v2/README.md)：36条业务流程、10条展示转换、16条受控系统回归，另列8条待实现产品目标。支持冒烟、当前全量、展示、系统与目标档案；真实模型结果需人工评审。执行器默认串行，保留各角色、工具、展示耗时和 token 用量。
 
@@ -273,10 +283,10 @@ node tests/browser/text_itinerary_browser.cjs
 ## 数据和安全
 
 - API Key 只从环境变量读取，不写入日志。
-- 标准应用日志仅记录异常类型和状态码；当前完整对话调试记录会写入 `.cache/llm_logs`，包含上下文、工具结果和模型回复。它们属于本地运行数据，日志开关和保留周期尚待完善。
+- 标准应用日志仅记录异常类型和状态码；每轮 Agent 运行（用户输入、中间过程、模型输出、耗时、模型与 token 用量）会写入业务库 `agent_runs` 表，可查询历史与异常原因。该表属于本地运行数据，保留周期尚待完善。
 - 用户消息在模型失败时仍会保存。
 - 无论行程是否已确认，模型失败均不会覆盖当前行程。
-- 意图识别 LLM 选择四条业务路径；业务 Agent 在各自权限内使用同一套工具 Loop。路由语义依赖模型和上下文，不使用关键词强制生成。
+- 意图识别 LLM 选择五条业务路径；业务 Agent 在各自权限内使用同一套工具 Loop。路由语义依赖模型和上下文，不使用关键词强制生成。
 - 修改 Agent 依据用户原话和定位信息返回完整文字，未指定部分应保持不变；目标不明或快照变化时保留现状。
 - 意图节点只读取相关聊天和等待状态；业务 Agent 始终获得完整有效需求，可读取计划、分页聊天与全部想法。清空聊天不删除需求与行程。
 - 规划/修改调用需求工具更新候选，列表显式添加/移除，保存时检查需求修订号；展示 LLM 不能更新需求、生成证据或重新规划。
@@ -293,7 +303,7 @@ node tests/browser/text_itinerary_browser.cjs
 - `POST /api/trips/{trip_id}/display`：只重试当前原文的卡片，不重新规划。
 - `/api/trips/{trip_id}/messages` 保留兼容，发送时附带 `request_id`，仍返回消息和任务。无 JavaScript 的表单也会提交后台任务并跳转到状态页。
 
-任务与旅行一起保存到 SQLite 快照，后台执行采用 FastAPI BackgroundTasks。同一进程内有去重和执行保护，当前仍要求单进程运行；尚未改造跨进程一致性或引入外部队列。进度仅显示真实的等待、处理中和完成/失败，不展示虚构百分比。单次模型超时取 OPENAI_TIMEOUT_SECONDS 与本轮剩余工作时间的较小值；运行时有 240 秒共享期限，外部查询进行中仍使用工具自身网络超时，返回后会再次检查期限。尚无任务取消或持久化子任务恢复。
+任务与旅行一起保存到 SQLite 快照，后台执行采用 FastAPI BackgroundTasks。同一进程内有去重和执行保护，当前仍要求单进程运行；尚未改造跨进程一致性或引入外部队列。进度仅显示真实的等待、处理中和完成/失败，不展示虚构百分比。单次模型超时取 `OPENAI_TIMEOUT_SECONDS` 与本轮剩余工作时间的较小值；运行时有240秒共享期限。天气与高德MCP请求会把网络超时裁剪到共享剩余时间，返回后再次检查取消/期限；进行中的底层网络调用仍不能保证瞬时中止。execution task 可被新消息标记 superseded；持久会话目标不会因此自动取消，服务重启不自动恢复写入执行。
 
 ## 当前边界
 

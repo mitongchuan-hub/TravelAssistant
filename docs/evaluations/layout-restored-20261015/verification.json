@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-15",
+  "reason": "User rejected the route-first layout and requested the previous composition",
+  "visual_baseline": "5b6bae5",
+  "restored": ["Default chat entry and create redirect", "Original board/chat/itinerary bottom navigation and glyphs", "Original creation form and list links", "Original page heading and plan summary", "Preflight/weather before day navigation", "Day navigation including single-day plans", "Original bordered activity cards, spacing and edit footer"],
+  "retained": ["Trusted offline POI and route evidence projection", "Historical lodging snapshot", "Version-bound plan/revision actions", "Contextual station revision and drafts", "Failed task recovery and prose-first display"],
+  "placement": "POI maps and route estimates moved into collapsed station details; lodging basis inside the existing budget disclosure; no route-home, route outline, quick-action strip or global card style overrides",
+  "tests": {
+    "targeted": {"passed": 101, "failed": 0, "seconds": 18.40},
+    "full": {"passed": 844, "failed": 0, "seconds": 64.00},
+    "isolation": "dotenv loader disabled, default persistence disabled, external keys empty and real LLM disabled",
+    "local_style_check": {"runs": 1, "findings": []},
+    "browser": {"main_cases_passed": 5, "state_cases_passed": 6, "javascript_errors": 0, "viewports": [320, 390, 430, 1000], "reports": [".cache/layout-restored-20261015/browser/report.json", ".cache/layout-restored-20261015/states/report.json"], "synthetic": true}
+  },
+  "limits": ["Synthetic browser fixtures do not validate live model quality or physical travel feasibility", "No live model or AMap API calls", "No business data used for test writes"],
+  "static_version": "20261015-layout-restored-3"
+}

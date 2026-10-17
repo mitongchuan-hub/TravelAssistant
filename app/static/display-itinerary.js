@@ -54,21 +54,62 @@ function initializeDisplayNavigation() {
 }
 initializeDisplayNavigation();
 
-document.addEventListener('click', (event) => {
-  const button = event.target.closest('[data-display-edit]');
-  if (!button) return;
-  const feedback = document.querySelector('#text-revision-feedback');
-  if (!feedback) return;
-  feedback.value = `调整${button.dataset.day}的“${button.dataset.title}”，其他安排保留：`;
-    feedback.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-  feedback.focus({ preventScroll: true });
-  feedback.setSelectionRange(feedback.value.length, feedback.value.length);
-});
+(() => {
+  const sheet = document.querySelector('[data-route-adjust]');
+  const form = sheet?.querySelector('[data-route-adjust-form]');
+  const field = form?.querySelector('[name=feedback]');
+  const workspace = document.querySelector('[data-travel-tasks-url]');
+  const storageKey = `travelassistant:route-drafts:${location.pathname}:${workspace?.dataset.planId || ''}`;
+  let drafts = {}, target = '', returnFocus = null;
+  try { drafts = JSON.parse(sessionStorage.getItem(storageKey) || '{}') || {}; } catch { /* Keep a local draft. */ }
+  function save() {
+    if (!field || !target) return;
+    drafts[target] = field.value;
+    try { sessionStorage.setItem(storageKey, JSON.stringify(drafts)); } catch { /* The open field stays readable. */ }
+  }
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-display-edit], [data-route-quick]');
+    if (!button || button.disabled) return;
+    if (sheet instanceof HTMLDialogElement && form && field) {
+      save();
+      const item = button.hasAttribute('data-display-edit');
+      target = item ? `${button.dataset.dayIndex}:${button.dataset.itemIndex}` : `all:${button.dataset.routeQuick}`;
+      form.elements.day_index.value = item ? button.dataset.dayIndex : '';
+      form.elements.item_index.value = item ? button.dataset.itemIndex : '';
+      sheet.querySelector('[data-route-adjust-context]').textContent = item
+        ? [button.dataset.day, button.dataset.title, button.dataset.time, button.dataset.location].filter(Boolean).join(' · ')
+        : '针对当前整条路线调整。提交前可以修改下面的要求。';
+      sheet.querySelector('[data-route-adjust-presets]').hidden = !item;
+      field.value = drafts[target] || (item ? '' : button.dataset.routeQuick);
+      form.querySelector('[data-revision-feedback]').hidden = true;
+      returnFocus = button;
+      sheet.showModal();
+      field.focus({preventScroll: true});
+      return;
+    }
+    const feedback = document.querySelector('#text-revision-feedback');
+    if (!feedback) return;
+    feedback.value = `调整${button.dataset.day}的“${button.dataset.title}”，其他安排保留：`;
+    feedback.scrollIntoView({block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth'});
+    feedback.focus({preventScroll: true});
+    feedback.setSelectionRange(feedback.value.length, feedback.value.length);
+  });
+  if (!sheet || !form || !field) return;
+  field.addEventListener('input', save);
+  sheet.addEventListener('click', event => {
+    const preset = event.target.closest('[data-route-adjust-preset]');
+    if (preset) { field.value = preset.dataset.routeAdjustPreset; save(); field.focus(); }
+    if (event.target.closest('[data-route-adjust-close]')) sheet.close();
+  });
+  sheet.addEventListener('close', () => { save(); returnFocus?.focus({preventScroll: true}); });
+  sheet.addEventListener('cancel', save);
+})();
 
 (() => {
   const controller = document.querySelector('[data-display-controller]');
   if (!controller) return;
   const planId = controller.dataset.planId, sourceHash = controller.dataset.sourceHash;
+  const requirementsRevision = controller.dataset.requirementsRevision;
   let panel = controller.querySelector('[data-display-panel]');
   let version = panel?.dataset.version || '', status = panel?.dataset.displayStatus;
   let busy = panel?.dataset.businessBusy === 'true';
@@ -77,7 +118,7 @@ document.addEventListener('click', (event) => {
     && controller.dataset.sourceHash === sourceHash;
   function schedule() {
     clearTimeout(timer);
-    if (!stopped && current() && !document.hidden && (status === 'pending' || busy)) timer = setTimeout(poll, 2000);
+    if (!stopped && current() && !document.hidden) timer = setTimeout(poll, status === 'pending' || busy ? 2000 : 10000);
   }
   function notice(text) {
     let element = controller.querySelector('[data-display-notice]');
@@ -98,9 +139,12 @@ document.addEventListener('click', (event) => {
   }
   async function update(state) {
     if (!current()) return;
-    if (state.plan_id !== planId || state.source_hash !== sourceHash) {
+    if (state.plan_id !== planId || state.source_hash !== sourceHash
+        || (requirementsRevision !== undefined && state.requirements_revision !== undefined
+          && String(state.requirements_revision) !== requirementsRevision)) {
       stopped = true;
-      notice('当前行程已更新，请刷新后查看新方案。');
+      notice('路线或设置已经更新，当前输入已保留。请查看最新路线后再调整。');
+      document.dispatchEvent(new CustomEvent('travel-route-outdated'));
       return;
     }
     const previousStatus = status;
@@ -109,6 +153,7 @@ document.addEventListener('click', (event) => {
     const retry = controller.querySelector('[data-display-retry]');
     if (retry) retry.disabled = !!state.busy || retrying;
     if (state.version === version || (status === 'pending' && previousStatus === 'pending')) return;
+    if (document.querySelector('[data-route-adjust][open]')) return;
     const url = new URL(controller.dataset.partialUrl, location.origin);
     url.searchParams.set('plan_id', planId);
     url.searchParams.set('source_hash', sourceHash);
@@ -170,8 +215,9 @@ document.addEventListener('click', (event) => {
   });
   document.addEventListener('visibilitychange', () => {
     clearTimeout(timer);
-    if (!document.hidden && !stopped && (status === 'pending' || busy)) poll();
+    if (!document.hidden && !stopped) poll();
   });
   document.addEventListener('travel-task-update', () => { if (!stopped) poll(); });
   if (status === 'pending' || busy) poll();
+  else schedule();
 })();

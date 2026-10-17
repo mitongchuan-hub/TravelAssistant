@@ -1,4 +1,9 @@
+{% from 'partials/route_leg.html' import route_leg with context %}
 {% set basis = plan.requirements_snapshot %}
+{% set city_route = route_view is defined and route_view.is_city %}
+{% macro edit_item(day, item, day_index, item_index) -%}
+<button class="display-edit" type="button" data-display-edit data-day="{{ day.label }}" data-title="{{ item.title }}" data-day-index="{{ day_index }}" data-item-index="{{ item_index }}" data-time="{{ item.time_text or '' }}" data-location="{{ item.location or '' }}" aria-label="调整{{ day.label }}的{{ item.title }}">{{ icon('edit') }}调整此项</button>
+{%- endmacro %}
 {% macro icon(name) -%}
 <svg class="display-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 {% if name == 'pin' %}<path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2.5"/>
@@ -61,6 +66,8 @@
   {% set categories = {'activity':'游览','meal':'用餐','transport':'交通','accommodation':'住宿','rest':'休息','other':'安排'} %}
   <div class="display-days">
     {% for day in display.days %}
+    {% set day_index = loop.index0 %}
+    {% set route_day = route_view.days[day_index] if city_route and route_view.days | length > day_index else none %}
     <section class="display-day" id="display-day-{{ loop.index }}" aria-labelledby="display-day-title-{{ loop.index }}">
       <header class="display-day-heading">
         <span class="display-day-number" aria-hidden="true">{{ '%02d' | format(loop.index) }}</span>
@@ -69,23 +76,35 @@
       </header>
       <div class="display-timeline">
         {% for item in day['items'] %}
-        <article class="display-item display-item--{{ item.category }}">
+        {% set route_item = route_day['items'][loop.index0] if route_day else none %}
+        <article class="display-item display-item--{{ item.category }}" id="display-item-{{ day_index }}-{{ loop.index0 }}">
           <div class="display-item-time"><span class="display-time-dot" aria-hidden="true"></span>{{ item.time_text or '时间待明确' }}</div>
           <div class="display-item-content">
             <div class="display-item-heading"><span class="display-category">{{ categories.get(item.category, '安排') }}</span><h4>{{ item.title }}</h4></div>
             {% if item.description %}<p class="display-description">{{ item.description }}</p>{% endif %}
-            {% if item.location or item.duration_text or item.cost_text %}
+            {% if item.location or item.duration_text or item.cost_text or city_route and item.category in ['activity', 'meal', 'transport', 'accommodation'] %}
             <dl class="display-item-facts">
               {% if item.location %}<div class="display-location"><dt>{{ icon('pin') }}<span>地点</span></dt><dd>{{ item.location }}</dd></div>{% endif %}
               {% if item.duration_text %}<div class="display-duration"><dt>{{ icon('clock') }}<span>时长</span></dt><dd>{{ item.duration_text }}</dd></div>{% endif %}
-              {% if item.cost_text %}<div class="display-cost"><dt>{{ icon('wallet') }}<span>费用</span></dt><dd>{{ item.cost_text }}</dd></div>{% endif %}
+              {% if item.cost_text %}<div class="display-cost"><dt>{{ icon('wallet') }}<span>费用</span></dt><dd>{{ item.cost_text }}</dd></div>{% elif city_route and item.category in ['activity', 'meal', 'transport', 'accommodation'] %}<div class="display-cost"><dt>{{ icon('wallet') }}<span>费用</span></dt><dd>费用未提供，不代表免费</dd></div>{% endif %}
             </dl>{% endif %}
+            {% if route_item and route_item.place_status != 'not_applicable' %}
+            <details class="route-place"><summary>地点与交通</summary>
+              {% if route_item.place %}
+                <strong>{{ route_item.place.name }}</strong><p>{{ route_item.place.city }} {{ route_item.place.district }} {{ route_item.place.address }}</p>
+                <div class="place-actions"><a href="{{ route_item.place.map_url }}" target="_blank" rel="noopener noreferrer">在高德查看</a><button type="button" data-copy-address="{{ route_item.place.copy_address }}">复制地址</button></div>
+                <small>地点已匹配 · {{ route_item.place.source }}。开放、门票和预约仍需核实。</small>
+                {% if route_item.place.opening_hours %}<p>上游营业参考：{{ route_item.place.opening_hours }}，不代表出行当日开放。</p>{% endif %}
+              {% else %}<small>{{ route_item.message }}</small>{% endif %}
+              {{ route_leg(route_item.incoming, '前往这一站') }}
+            </details>{% endif %}
             {% if item.notes %}<div class="display-item-reminder"><p>{{ icon('note') }}留意</p><ul class="display-item-notes">{% for note in item.notes %}<li>{{ note }}</li>{% endfor %}</ul></div>{% endif %}
-            <div class="display-item-footer"><button class="display-edit" type="button" data-display-edit data-day="{{ day.label }}" data-title="{{ item.title }}" aria-label="调整{{ day.label }}的{{ item.title }}">{{ icon('edit') }}调整此项</button></div>
+            <div class="display-item-footer">{{ edit_item(day, item, day_index, loop.index0) }}</div>
           </div>
         </article>
         {% else %}<p class="display-empty-day">当天具体安排待明确，可查看完整原文。</p>{% endfor %}
       </div>
+      {% if route_day and route_day.return_leg %}<details class="route-place"><summary>返回住处的交通参考</summary>{{ route_leg(route_day.return_leg, '返回住处') }}</details>{% endif %}
     </section>{% endfor %}
   </div>
   {% if display.pending_items or display.risks %}

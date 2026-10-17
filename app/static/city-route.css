@@ -1,0 +1,33 @@
+/* Functional additions only; the original itinerary layout stays in workflow.css. */
+.route-place { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.route-place > summary { min-height: 40px; padding: 8px 0; cursor: pointer; color: var(--ocean); }
+.route-place p { margin: 8px 0; }
+.route-place small { display: block; line-height: 1.8; }
+.route-place .place-actions { margin: 8px 0; }
+.route-leg { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.8; color: var(--muted); }
+.route-leg > div { display: flex; flex-wrap: wrap; gap: 4px 10px; }
+.route-leg strong { color: var(--ink); font-weight: 600; }
+.route-leg p { margin: 5px 0; }
+.route-leg small { display: block; font-size: 11px; }
+.route-leg a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ocean); }
+.route-leg-evidence > summary { cursor: pointer; min-height: 36px; padding: 8px 0; }
+.route-task-status[hidden], .route-task-actions [hidden] { display: none; }
+.route-task-status p { margin: 8px 0 0; line-height: 1.8; }
+.route-task-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.route-task-actions button, .route-task-actions a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 0; border: 0; color: var(--ocean); background: transparent; font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+.route-adjust-sheet { width: min(calc(100% - 24px), 406px); max-height: calc(100dvh - 32px); padding: 22px; border: 0; border-radius: 16px; background: var(--bg); color: var(--ink); overflow-y: auto; box-shadow: var(--shadow-card); }
+.route-adjust-sheet::backdrop { background: rgb(17 45 78 / 48%); }
+.route-adjust-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.route-adjust-heading h2 { margin: 0; font-size: 20px; }
+.route-adjust-heading > button { border: 0; background: transparent; min-height: 44px; padding: 8px 0 8px 12px; color: var(--muted); font: inherit; cursor: pointer; font-size: 13px; }
+.route-adjust-context { margin: 12px 0 18px; line-height: 1.8; color: var(--muted); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.route-adjust-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.route-adjust-presets[hidden] { display: none; }
+.route-adjust-presets button { min-height: 44px; padding: 8px 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+.route-adjust-sheet label { display: block; margin-bottom: 9px; font-size: 14px; font-weight: 600; }
+.route-adjust-sheet textarea { width: 100%; box-sizing: border-box; min-height: 115px; padding: 12px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font: inherit; font-size: 14px; line-height: 1.7; resize: vertical; }
+.route-subtle { font-size: 12px; line-height: 1.85; color: var(--muted); }
+.route-adjust-actions { display: flex; justify-content: end; gap: 12px; margin-top: 18px; }
+.route-adjust-actions > button:not(.primary-action) { padding: 10px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; }
+.route-adjust-sheet [data-revision-feedback] { font-size: 13px; color: var(--ink); line-height: 1.8; }
+@media (max-width: 350px) { .route-adjust-sheet { padding: 18px; } }

@@ -9,6 +9,14 @@
   </nav>
 {%- endmacro %}
 
+{% macro task_binding() -%}
+  {% if display_state is defined %}
+  <input type="hidden" name="expected_plan_id" value="{{ plan.id }}" />
+  <input type="hidden" name="source_hash" value="{{ display_state.source_hash }}" />
+  <input type="hidden" name="expected_requirements_revision" value="{{ trip.requirements.revision }}" />
+  {% endif %}
+{%- endmacro %}
+
 {% block title %}{{ trip.destination }}{% endblock %}
 
 {% block page_styles %}
@@ -16,6 +24,7 @@
   {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/workflow.css') }}?v={{ static_version }}" />{% endif %}
   {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/places.css') }}?v={{ static_version }}" />{% endif %}
   {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/itinerary.css') }}?v={{ static_version }}" />{% endif %}
+  {% if tab == 'itinerary' and trip.mode == 'city' %}<link rel="stylesheet" href="{{ url_for('static', path='/city-route.css') }}?v={{ static_version }}" />{% endif %}
 {% endblock %}
 {% block page_scripts %}
   {% if tab == 'chat' %}<script src="{{ url_for('static', path='/chat.js') }}?v={{ static_version }}"></script>{% endif %}
@@ -26,13 +35,14 @@
 {% endblock %}
 
 {% block content %}
-<section class="workspace {{ 'workspace--board' if tab == 'board' else 'workspace--chat' if tab == 'chat' else '' }}"{% if travel_tasks is defined %} data-travel-tasks-url="/api/trips/{{ trip.id }}/tasks"{% endif %}>
+<section class="workspace {{ 'workspace--board' if tab == 'board' else 'workspace--chat' if tab == 'chat' else '' }}"{% if travel_tasks is defined %} data-travel-tasks-url="/api/trips/{{ trip.id }}/tasks"{% endif %}{% if display_state is defined %} data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash }}" data-requirements-revision="{{ trip.requirements.revision }}"{% endif %}>
   {% if tab == "board" %}
     <section class="idea-wall-screen">
       <header class="idea-wall-top">
         <a href="/trips"><span>旅行想法</span>{{ trip.destination | replace("周末旅行", "想法墙") }}</a>
         <form action="/workspace/{{ trip.id }}/plan" method="post">
           {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
+          {{ task_binding() }}
           <button class="generate-plan" type="submit">{{ '生成路线' if trip.mode == 'city' else '生成计划' }}</button>
         </form>
       </header>
@@ -92,6 +102,7 @@
             {% if trip.mode == 'city' %}
             <form action="/workspace/{{ trip.id }}/plan" method="post">
               {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
+              {{ task_binding() }}
               <button type="submit">生成同城路线</button>
             </form>
             {% endif %}
@@ -128,6 +139,13 @@
       </header>
 
       <section class="itinerary-panel">
+        {% set current_tasks = travel_tasks | default([]) %}
+        {% set running_tasks = current_tasks | selectattr('status', 'in', ['queued', 'running']) | list %}
+        {% set current_task = running_tasks[-1] if running_tasks else none %}
+        <section class="route-task-status display-progress" data-route-task-status role="status" aria-live="polite"{% if not current_task %} hidden{% endif %}>
+          <strong data-route-task-heading>{% if current_task %}{{ '正在安排你的路线' if current_task.kind == 'plan' else '正在处理，已有路线仍可查看' }}{% endif %}</strong><p data-route-task-message>{% if current_task %}可以离开页面，回来后继续查看；无需重复提交。{% endif %}</p>
+          <div class="route-task-actions"><button type="button" data-route-task-retry hidden>重试本次任务</button><a href="/workspace/{{ trip.id }}?tab=chat" data-route-task-chat hidden>去聊天补充</a><a href="/workspace/{{ trip.id }}?tab=itinerary" data-route-task-refresh hidden>查看最新路线</a></div>
+        </section>
         {% if not plan.text %}
         <section class="itinerary-summary-card" aria-label="行程摘要">
           <div class="itinerary-summary-heading">
@@ -222,7 +240,7 @@
           {% endif %}
         {% endif %}
         {% if plan.text %}
-          <section data-display-controller data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash if display_state is defined else plan.display_source_hash }}"
+          <section data-display-controller data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash if display_state is defined else plan.display_source_hash }}" data-requirements-revision="{{ trip.requirements.revision }}"
                    data-state-url="/api/trips/{{ trip.id }}/plan-state" data-partial-url="/workspace/{{ trip.id }}/display/partial" data-retry-url="/api/trips/{{ trip.id }}/display">
             {% include 'partials/display_panel.html' %}
           </section>
@@ -236,11 +254,13 @@
           <section class="text-itinerary-actions" aria-label="行程操作">
             {% if plan.status != '已确认' %}
               <form action="/workspace/{{ trip.id }}/plan/confirm" method="post">
+                {{ task_binding() }}
                 <button class="primary-action compact" type="submit">确认当前行程</button>
               </form>
             {% endif %}
             <form class="text-itinerary-revision" action="/workspace/{{ trip.id }}/revision" method="post">
               {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
+              {{ task_binding() }}
               <label for="text-revision-feedback">想怎么调整？</label>
               <textarea id="text-revision-feedback" name="feedback" rows="4" maxlength="2000" placeholder="例如：第二天下午减少步行，其他安排保留" required></textarea>
               <p role="status" data-revision-feedback hidden></p>
@@ -327,15 +347,17 @@
         {% else %}
           <div class="empty-state">
             <h2>还没有行程</h2>
-            <p>先和 Agent 说说时间、预算和想去的地方，再生成第一版计划。</p>
+            <p>{{ '住宿已确认，可以直接生成路线；日期、人数和预算均可选。' if trip.mode == 'city' and trip.lodging else '先和 Agent 说说时间、预算和想去的地方，再生成第一版计划。' }}</p>
             <form action="/workspace/{{ trip.id }}/plan" method="post">
               {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
+              {{ task_binding() }}
               <button class="primary-action compact" type="submit">让 Agent 生成第一版</button>
             </form>
             <a class="secondary-action compact" href="/workspace/{{ trip.id }}?tab=chat">回到对话补充需求</a>
           </div>
         {% endif %}
       </section>
+      {% if trip.mode == 'city' and plan.text and route_view is defined %}{% include 'partials/route_adjust.html' %}{% endif %}
       {% if plan.days %}
         <dialog id="revision-sheet" class="revision-sheet" aria-labelledby="revision-sheet-title" aria-describedby="revision-sheet-context" data-revision-sheet>
           <div class="revision-sheet-heading">
@@ -348,6 +370,7 @@
           </div>
           <form action="/workspace/{{ trip.id }}/revision" method="post" data-revision-form data-workspace-url="/workspace/{{ trip.id }}">
             {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}
+            {{ task_binding() }}
             <input type="hidden" name="item_id" />
             <label for="revision-feedback">想怎么调整？</label>
             <textarea id="revision-feedback" name="feedback" rows="4" maxlength="2000" placeholder="例如：推迟半小时，或换成步行更少的安排" required></textarea>

@@ -1,0 +1,17 @@
+<dialog class="route-adjust-sheet" data-route-adjust aria-labelledby="route-adjust-title" aria-describedby="route-adjust-context">
+  <div class="route-adjust-heading"><h2 id="route-adjust-title">调整路线</h2><button type="button" data-route-adjust-close aria-label="关闭调整面板">关闭</button></div>
+  <p class="route-adjust-context" id="route-adjust-context" data-route-adjust-context></p>
+  <form action="/workspace/{{ trip.id }}/revision" method="post" data-route-adjust-form>
+    <input type="hidden" name="request_id" value="{{ task_request_id() }}" />{{ task_binding() }}
+    <input type="hidden" name="day_index" value="" /><input type="hidden" name="item_index" value="" />
+    <div class="route-adjust-presets" data-route-adjust-presets>
+      <button type="button" data-route-adjust-preset="想换掉这一站，选择符合原有偏好的其他安排，并重新核对相邻交通和用餐。">换一站</button>
+      <button type="button" data-route-adjust-preset="缩短这一站的停留，留更多休息时间，重新核对后续时间与交通。">少停留一些</button>
+    </div>
+    <label for="route-adjust-feedback">你希望怎么改？</label>
+    <textarea id="route-adjust-feedback" name="feedback" rows="4" maxlength="2000" required placeholder="例如：换成不用爬台阶的地方，其他安排尽量保留"></textarea>
+    <p class="route-subtle">会结合当前方案调整相关安排和衔接。生成失败时保留原路线。</p>
+    <p role="status" data-revision-feedback hidden></p>
+    <div class="route-adjust-actions"><button type="button" data-route-adjust-close>先不调整</button><button class="primary-action compact" type="submit">提交调整</button></div>
+  </form>
+</dialog>

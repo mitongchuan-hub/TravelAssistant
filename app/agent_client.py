@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import traceback
 import uuid
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
@@ -47,6 +46,7 @@ class AgentReply:
     display_source_hash: str = ""
     display_status: str = "not_requested"
     workflow_state: dict | None = None
+    preserve_plan_basis: bool = False
 
 
 VALID_CARD_KINDS = {"requirement-summary", "missing-info", "conflict", "itinerary-draft", "revision"}
@@ -63,6 +63,8 @@ class ConversationTrace:
     trip_id: str
     user_body: str
     events: list[str] = field(default_factory=list)
+    records: list[dict] = field(default_factory=list, repr=False)
+    written: bool = field(default=False, repr=False)
 
     def add(self, title: str, value: object) -> None:
         if isinstance(value, str):
@@ -70,30 +72,187 @@ class ConversationTrace:
         else:
             content = json.dumps(value, ensure_ascii=False, indent=2, default=str)
         self.events.append(f"\n{'=' * 20} {title} {'=' * 20}\n{content}\n")
+        self.records.append({"title": title, "value": value})
 
     def write(self, error: BaseException | None = None) -> None:
         if error is not None:
-            self.add("调用异常", f"{type(error).__name__}: {error}\n{traceback.format_exc()}")
-        log_dir = APP_DIR / ".cache" / "llm_logs"
+            self.add("调用异常", f"{type(error).__name__}: {error}")
+        if self.written:
+            return
+        self.written = True
         try:
-            log_dir.mkdir(parents=True, exist_ok=True)
-            filename = f"{self.started_at.replace(':', '').replace('.', '-')}_{self.request_id}.txt"
-            path = log_dir / filename
-            header = (
-                "TravelAssistant Agent conversation log\n"
-                f"request_id: {self.request_id}\n"
-                f"started_at: {self.started_at}\n"
-                f"trip_id: {self.trip_id}\n"
-                f"user_body: {self.user_body}\n"
-            )
-            path.write_text(header + "".join(self.events), encoding="utf-8")
-        except OSError as exc:
-            logger.warning("Could not write Agent conversation log (%s)", type(exc).__name__)
+            record_agent_run(self, error=error)
+        except Exception as exc:
+            logger.warning("Could not record agent run (%s)", type(exc).__name__)
+def record_agent_run(trace: ConversationTrace, *, error: BaseException | None = None) -> None:
+    from .persistence import insert_agent_run
+    insert_agent_run(os.getenv("CITY_DB_PATH", ".cache/cityassistant.sqlite3"), _agent_run_row(trace, error))
+
+
+def _agent_run_row(trace: ConversationTrace, error: BaseException | None) -> dict:
+    records = trace.records
+    output = None
+    for record in reversed(records):
+        if record["title"] == "最终模型原始回复" and isinstance(record["value"], str):
+            output = record["value"]
+            break
+    model = None
+    for record in records:
+        value = record["value"]
+        if not isinstance(value, dict):
+            continue
+        if record["title"] == "模型请求" and value.get("model"):
+            model = value["model"]
+        elif record["title"] == "切换备用模型" and value.get("to"):
+            model = value["to"]
+    tokens_in = 0
+    tokens_out = 0
+    for record in records:
+        if record["title"] != "模型响应":
+            continue
+        value = record["value"]
+        usage = value.get("usage") if isinstance(value, dict) else None
+        if not isinstance(usage, dict):
+            continue
+        if isinstance(usage.get("prompt_tokens"), int):
+            tokens_in += usage["prompt_tokens"]
+        if isinstance(usage.get("completion_tokens"), int):
+            tokens_out += usage["completion_tokens"]
+    tool_calls = 0
+    for record in records:
+        if record["title"] == "共享调用预算" and isinstance(record["value"], dict):
+            tool_calls = int(record["value"].get("tool_calls") or 0)
+    process = [
+        {"title": record["title"], "value": record["value"]}
+        for record in records
+        if record["title"] not in {"输入上下文", "最终模型原始回复"}
+    ]
+    return {
+        "request_id": trace.request_id,
+        "trip_id": trace.trip_id or None,
+        "user_input": trace.user_body,
+        "process": process,
+        "output": output,
+        "ok": error is None,
+        "error": f"{type(error).__name__}: {error}" if error is not None else None,
+        "model": model,
+        "tokens_in": tokens_in or None,
+        "tokens_out": tokens_out or None,
+        "tool_calls": tool_calls,
+        "duration_ms": int((datetime.now() - datetime.fromisoformat(trace.started_at)).total_seconds() * 1000),
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+
 def is_llm_enabled() -> bool:
     disabled = os.getenv("TRAVEL_AGENT_DISABLE_LLM", "").strip().lower()
     if disabled in {"1", "true", "yes", "on"} or os.getenv("PYTEST_CURRENT_TEST"):
         return False
     return bool(os.getenv("OPENAI_API_KEY"))
+
+
+def generate_task_proposal(request_context, execution_context, *, cancelled=None):
+    """Run the task-execution strategy and return only a sealed proposal.
+
+    Strategy selection and persistence stay in Store.  A fallback retries only
+    the model request that failed; it never reconstructs or replays the workspace.
+    """
+    from .agent_protocol import RequestContext
+    from .agent_runtime import TurnBudget
+    from .task_context import normalize_workflow
+    from .task_runtime import TaskExecutionContext, TaskExecutionRuntime
+    from .turn_workspace import TurnWorkspace
+
+    if not isinstance(request_context, RequestContext):
+        raise ValueError('request_context必须由服务器创建')
+    if not isinstance(execution_context, TaskExecutionContext):
+        raise ValueError('execution_context类型不正确')
+    trace = ConversationTrace(
+        request_id=request_context.request_id,
+        started_at=datetime.now().isoformat(timespec='seconds'),
+        trip_id=request_context.trip_id,
+        user_body=request_context.body,
+    )
+    trace.add('输入上下文', {
+        'strategy': request_context.strategy, 'entry': request_context.entry,
+        'request_id': request_context.request_id, 'message_id': request_context.message_id,
+        'trip_id': request_context.trip_id,
+        'requirements_revision': request_context.requirements_revision,
+        'workflow_revision': request_context.workflow_revision,
+        'sequence': request_context.sequence, 'epoch': request_context.epoch,
+    })
+    if not is_llm_enabled():
+        workflow = normalize_workflow(getattr(execution_context.trip, 'workflow_state', {}),
+                                      messages=execution_context.messages,
+                                      plan_basis=request_context.plan_basis,
+                                      requirements_revision=request_context.requirements_revision)
+        workspace = TurnWorkspace(request_context, workflow_state=workflow,
+            authorized_message_ids=[getattr(row, 'id', '') for row in execution_context.messages
+                                    if getattr(row, 'id', '')],
+            visible_task_ids=[row['id'] for row in workflow['tasks']])
+        proposal = workspace.fail_closed('模型服务当前不可用，本次未生成或修改行程。')
+        trace.add('Task Execution结果', {'failed': True, 'reason': proposal.reason})
+        trace.write()
+        return proposal
+
+    client = None
+    runtime = None
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            api_key=os.getenv('OPENAI_API_KEY'),
+            base_url=os.getenv('OPENAI_BASE_URL') or None,
+            timeout=float(os.getenv('OPENAI_TIMEOUT_SECONDS', '180.0')),
+            max_retries=0,
+        )
+        primary_model = os.getenv('OPENAI_MODEL') or os.getenv('MODEL_ID') or 'qwen-plus'
+        fallback_model = os.getenv('OPENAI_FALLBACK_MODEL', 'qwen-plus').strip()
+
+        def request_current(client_arg, model, messages, **kwargs):
+            try:
+                return _create_chat_completion(client_arg, model, messages, **kwargs)
+            except Exception as exc:
+                if not _is_rate_limit_error(exc) or not fallback_model or fallback_model == model:
+                    raise
+                logger.warning('Primary model request was rate limited; retrying that request on fallback')
+                trace.add('切换备用模型', {'from': model, 'to': fallback_model,
+                                            'scope': 'current_model_request', 'reason': str(exc)})
+                return _create_chat_completion(client_arg, fallback_model, messages, **kwargs)
+
+        budget = TurnBudget(cancelled=cancelled)
+        runtime = TaskExecutionRuntime(
+            client, primary_model, request_context, execution_context,
+            request=request_current, trace=trace, budget=budget,
+        )
+        proposal = runtime.run()
+        trace.add('Task Execution结果', {
+            'proposal_id': proposal.id, 'failed': proposal.failed,
+            'reason': proposal.reason, 'selected_artifact_ids': proposal.selected_artifact_ids,
+            'usage': budget.usage(),
+        })
+        return proposal
+    except Exception as exc:
+        trace.write(exc)
+        # If execution started, its workspace is authoritative: preserve only
+        # explicitly ready independent effects instead of reconstructing a turn.
+        if runtime is not None:
+            try:
+                return runtime.workspace.fail_closed('本次任务执行未完成，当前需求和行程已保留。')
+            except WorkspaceError:
+                raise
+        workflow = normalize_workflow(getattr(execution_context.trip, 'workflow_state', {}),
+                                      messages=execution_context.messages,
+                                      plan_basis=request_context.plan_basis,
+                                      requirements_revision=request_context.requirements_revision)
+        workspace = TurnWorkspace(request_context, workflow_state=workflow,
+            authorized_message_ids=[getattr(row, 'id', '') for row in execution_context.messages
+                                    if getattr(row, 'id', '')],
+            visible_task_ids=[row['id'] for row in workflow['tasks']])
+        return workspace.fail_closed('本次任务执行未完成，当前需求和行程已保留。')
+    finally:
+        if client is not None and callable(getattr(client, 'close', None)):
+            client.close()
+        trace.write()
 
 
 def generate_agent_reply(
@@ -107,6 +266,7 @@ def generate_agent_reply(
     target_item_id: str | None = None,
     agent_role: str | None = None,
     cancelled=None,
+    display_target: dict | None = None,
 ) -> AgentReply | None:
     trace = ConversationTrace(
         request_id=uuid.uuid4().hex[:12],
@@ -124,6 +284,12 @@ def generate_agent_reply(
         "plan": plan.__dict__ if plan else None,
         "metrics": metrics or {},
     })
+    if display_target is not None:
+        from .tasks import validate_display_target_metadata
+        if not planning_mode or agent_role != 'revision' or target_item_id:
+            raise ValueError('展示目标只能用于明确授权的行程修改')
+        display_target = validate_display_target_metadata(plan, display_target)
+        trace.add('展示修改目标', display_target)
     if not is_llm_enabled():
         trace.add("调用结果", "LLM 当前未启用，本轮提示服务不可用，不生成或修改行程。")
         trace.write()
@@ -154,14 +320,16 @@ def generate_agent_reply(
         place_catalog = seed_places(plan)
         route_cache = {}
         try:
-            response = _request_model(client, model, context, planning_mode, trace=trace, trip=trip, place_catalog=place_catalog, route_cache=route_cache, existing_plan=plan, target_item_id=target_item_id, snapshot=snapshot, agent_role=agent_role)
+            response = _request_model(client, model, context, planning_mode, trace=trace, trip=trip, place_catalog=place_catalog, route_cache=route_cache, existing_plan=plan, target_item_id=target_item_id, snapshot=snapshot, agent_role=agent_role,
+                                      **({'display_target': display_target} if display_target is not None else {}))
         except Exception as exc:
             fallback_model = os.getenv("OPENAI_FALLBACK_MODEL", "qwen-plus").strip()
             if not _is_rate_limit_error(exc) or not fallback_model or fallback_model == model:
                 raise
             logger.warning("Primary model was rate limited; trying fallback model")
             trace.add("切换备用模型", {"from": model, "to": fallback_model, "reason": str(exc)})
-            response = _request_model(client, fallback_model, context, planning_mode, trace=trace, trip=trip, place_catalog=place_catalog, route_cache=route_cache, existing_plan=plan, target_item_id=target_item_id, snapshot=snapshot, agent_role=agent_role)
+            response = _request_model(client, fallback_model, context, planning_mode, trace=trace, trip=trip, place_catalog=place_catalog, route_cache=route_cache, existing_plan=plan, target_item_id=target_item_id, snapshot=snapshot, agent_role=agent_role,
+                                      **({'display_target': display_target} if display_target is not None else {}))
 
         content = (response.choices[0].message.content or '').strip() if response else ''
         trace.add('最终模型原始回复', content)
@@ -171,7 +339,7 @@ def generate_agent_reply(
         return replace(runtime_reply, verified_places=place_catalog)
     except Exception as exc:
         trace.write(exc)
-        # Conversation content is intentionally written to the local trace file above.
+        # Conversation content is intentionally recorded in the agent_runs trace row above.
         # The standard application logger still avoids provider responses and credentials.
         status_code = getattr(exc, "status_code", None)
         logger.warning("Agent reply failed (%s, status=%s)", type(exc).__name__, status_code)
@@ -266,15 +434,18 @@ def generate_plan_display(source_text: str, source_dates, trip_id: str, *, cance
         trace.write()
 
 
-def _request_model(client, model: str, context: str, planning_mode: bool, *, trace: ConversationTrace | None = None, trip: Trip | None = None, place_catalog: dict | None = None, route_cache: dict | None = None, existing_plan: TripPlan | None = None, target_item_id: str | None = None, snapshot: dict | None = None, agent_role: str | None = None) -> object:
+def _request_model(client, model: str, context: str, planning_mode: bool, *, trace: ConversationTrace | None = None, trip: Trip | None = None, place_catalog: dict | None = None, route_cache: dict | None = None, existing_plan: TripPlan | None = None, target_item_id: str | None = None, snapshot: dict | None = None, agent_role: str | None = None, display_target: dict | None = None) -> object:
     from .agent_runtime import TravelAgentRuntime
     snapshot = snapshot or {'trip': trip, 'plan': existing_plan, 'user_body': context,
                             'current_date': datetime.now().date().isoformat()}
     runtime = TravelAgentRuntime(client, model, snapshot, trace=trace,
                                  catalog=place_catalog, cache=route_cache, request=_create_chat_completion)
     role = (agent_role or ('revision' if target_item_id else 'planning')) if planning_mode else 'main'
-    scope = 'item' if target_item_id else ''
-    return runtime.run(role, snapshot['user_body'], scope=scope, target_item_id=target_item_id)
+    if display_target is not None and (role != 'revision' or target_item_id):
+        raise ValueError('展示目标只能用于明确授权的行程修改')
+    scope = 'item' if target_item_id or display_target is not None else ''
+    return runtime.run(role, snapshot['user_body'], scope=scope, target_item_id=target_item_id,
+                       **({'display_target': display_target} if display_target is not None else {}))
 
 
 def _build_chat_context(messages: list[Message], user_body: str) -> str:
@@ -326,6 +497,13 @@ def _create_chat_completion(
         else:
             params['reasoning_effort'] = reasoning_effort
             reasoning_status = 'requested'
+    # Simple roles (intent routing, casual chat) need no reasoning; the endpoint only
+    # honors the chat-template switch (a bare enable_thinking parameter is ignored
+    # server-side). Per-role env vars restore the model's default thinking behavior.
+    _no_thinking_role_env = {'main': 'OPENAI_MAIN_ENABLE_THINKING', 'chat': 'OPENAI_CHAT_ENABLE_THINKING'}
+    if agent_role in _no_thinking_role_env \
+            and os.getenv(_no_thinking_role_env[agent_role], 'false').strip().lower() != 'true':
+        params['extra_body'] = {'chat_template_kwargs': {'enable_thinking': False}}
     if tools:
         params["tools"] = tools
     if response_format:
@@ -342,9 +520,12 @@ def _create_chat_completion(
                                                    'status': reasoning_status}})
             started = monotonic()
             response = create_completion(client, params, api)
+            usage = getattr(response, 'usage', None)
+            if budget is not None:
+                budget.record_usage(getattr(usage, 'prompt_tokens', None),
+                                    getattr(usage, 'completion_tokens', None))
             if trace:
                 message = response.choices[0].message
-                usage = getattr(response, 'usage', None)
                 details = getattr(usage, 'completion_tokens_details', None)
                 trace.add("模型响应", {
                     'agent_role': agent_role,

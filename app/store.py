@@ -30,11 +30,12 @@ from .models import (
 from .routes import route_from_raw
 from .places import resolve_place
 from .display_tasks import DisplayTasks
-from .tasks import ACTIVE, TravelTasks
+from .tasks import ACTIVE, TravelTasks, validate_display_target_metadata
+from .turn_commit import TurnCommit, TurnPersistenceError
 from .plan_validation import PlanValidationError, validate_plan
 from .requirements import chat_changes, initial_requirements, update_requirements
 from .trip_welcome import trip_welcome
-from .persistence import CURRENT_SCHEMA_VERSION, backup_database, load_snapshot, restore_state, save_snapshot, serialize_state
+from .persistence import CURRENT_SCHEMA_VERSION, backup_database, ensure_relational_schema, load_snapshot, restore_state, save_snapshot, serialize_state
 
 USERS = {
     "u1": User(id="u1", name="林夏", initials="林"),
@@ -139,7 +140,7 @@ def _preparation_from_raw(raw: object) -> TravelPreparation:
     return TravelPreparation(clothing=items("clothing"), accommodation=items("accommodation"))
 
 
-class DemoStore(TravelTasks, DisplayTasks):
+class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
     def __init__(self, db_path: str | None = None, persistence_enabled: bool | None = None, *, display_worker_enabled: bool | None = None) -> None:
         self.db_path = db_path or os.getenv("CITY_DB_PATH", ".cache/cityassistant.sqlite3")
         self.persistence_enabled = self._resolve_persistence_enabled(persistence_enabled)
@@ -167,6 +168,8 @@ class DemoStore(TravelTasks, DisplayTasks):
         for trip in self.trips.values():
             trip.requirements = initial_requirements(trip.budget, trip.style)
         self._load_persisted_state()
+        if self.persistence_enabled:
+            ensure_relational_schema(self.db_path)
 
     @staticmethod
     def _resolve_persistence_enabled(value: bool | None) -> bool:
@@ -344,18 +347,26 @@ class DemoStore(TravelTasks, DisplayTasks):
         self._persist()
         return updated
 
-    @_state_locked
     def clear_chat(self, trip_id: str) -> None:
-        self.trips[trip_id].workflow_state = {}
-        for task in self.tasks.values():
-            if task['trip_id'] == trip_id and task['status'] in {'queued', 'running'}:
-                task.update(status='superseded', message='聊天已清空，本轮已取消', result_url='')
-        self.messages[trip_id] = []
-        self.cancel_display_jobs(trip_id)
-        self.trips[trip_id].last_activity = "聊天记录已清空"
-        self._persist()
+        from .task_context import clear_workflow
+        with self._lock:
+            stage = self._stage_turn(trip_id)
+            stage.trips[trip_id].workflow_state = clear_workflow(stage.trips[trip_id].workflow_state)
+            for task in stage.tasks.values():
+                if task['trip_id'] == trip_id and task['status'] in {'queued', 'running'}:
+                    task.update(status='superseded', message='聊天已清空，本轮已取消', result_url='')
+            stage.messages[trip_id] = []
+            stage.cancel_display_jobs(trip_id)
+            stage.trips[trip_id].last_activity = "聊天记录已清空"
+            self._persist_staged_turn(stage, trip_id)
+        self._notify_display_worker()
 
     def add_user_message(self, trip_id: str, body: str, sender_id: str = "u1", process_agent: bool = True) -> Message:
+        if process_agent:
+            from uuid import uuid4
+            task, _ = self.submit_task(trip_id, 'chat', {'body': body}, uuid4().hex)
+            self.run_task(task['id'])
+            return next(message for message in self.messages[trip_id] if message.id == task['message_id'])
         with self._lock:
             clean_body = body.strip()
             owner = self.trips[trip_id].owner
@@ -419,7 +430,7 @@ class DemoStore(TravelTasks, DisplayTasks):
                 with lock:
                     yield
 
-    def _generate_reply(self, trip_id: str, body: str, thinking_message_id: str | None = None, *, planning_requested: bool = False, target_item_id: str | None = None, agent_role: str | None = None) -> AgentReply | None:
+    def _generate_reply(self, trip_id: str, body: str, thinking_message_id: str | None = None, *, planning_requested: bool = False, target_item_id: str | None = None, agent_role: str | None = None, display_target: dict | None = None) -> AgentReply | None:
         with self._lock:
             messages = self.messages[trip_id]
             if thinking_message_id:
@@ -432,6 +443,10 @@ class DemoStore(TravelTasks, DisplayTasks):
                 "plan": self.plans[trip_id],
                 "metrics": self.trip_metrics(trip_id),
             })
+            if display_target is not None:
+                if target_item_id or agent_role != 'revision' or not planning_requested:
+                    raise ValueError('展示目标只能用于明确授权的行程修改')
+                display_target = validate_display_target_metadata(context['plan'], display_target)
         # Only the explicit plan endpoint bypasses conversational intent classification.
         original_revision = context["trip"].requirements.revision
         reply = generate_agent_reply(
@@ -439,6 +454,7 @@ class DemoStore(TravelTasks, DisplayTasks):
             planning_mode=planning_requested,
             target_item_id=target_item_id,
             **({'agent_role': agent_role} if agent_role else {}),
+            **({'display_target': display_target} if display_target is not None else {}),
             **({'cancelled': lambda: not self._task_current()} if getattr(self._task_context, 'task_id', None) else {}),
             **context,
         )
@@ -584,13 +600,32 @@ class DemoStore(TravelTasks, DisplayTasks):
         self._persist()
         return card
 
-    def request_revision(self, trip_id: str, item_id: str | None = None, feedback: str = "", sender: User | None = None) -> Message | None:
+    def request_revision(self, trip_id: str, item_id: str | None = None, feedback: str = "", sender: User | None = None, *, display_target: dict | None = None) -> Message | None:
+        if not getattr(self._task_context, 'task_id', None):
+            from uuid import uuid4
+            payload = {'feedback': feedback.strip() or '希望安排更轻松一点'}
+            if item_id:
+                payload['item_id'] = item_id
+            if display_target is not None:
+                from .plan_display import text_hash
+                with self._lock:
+                    target = validate_display_target_metadata(self.plans[trip_id], display_target)
+                    payload.update(display_target={key: target[key] for key in ('day_index', 'item_index')},
+                        expected_plan_id=self.plans[trip_id].id, source_hash=text_hash(self.plans[trip_id].text),
+                        expected_requirements_revision=self.trips[trip_id].requirements.revision)
+            task, _ = self.submit_task(trip_id, 'revision', payload, uuid4().hex)
+            receipt = self.run_task(task['id'])
+            return next((row for row in self.messages[trip_id] if receipt and row.id == receipt.message_id), None)
         with self._agent_lock(trip_id):
             with self._lock:
                 if not self._task_current():
                     return None
                 original = deepcopy(self.plans[trip_id])
                 sender = sender or self.trips[trip_id].owner
+                if display_target is not None:
+                    if item_id is not None:
+                        raise ValueError('展示目标与旧行程条目不能同时指定')
+                    display_target = validate_display_target_metadata(original, display_target)
                 target = next((item for day in original.days for item in day.items if item.id == item_id), None)
                 if not original.has_content or (item_id and target is None):
                     self.messages[trip_id].append(self._agent_reply(trip_id, "", sender, self._revision_failure("目标行程已不存在，请刷新后重试。")))
@@ -599,7 +634,8 @@ class DemoStore(TravelTasks, DisplayTasks):
             # Keep user feedback separate from system instructions and target metadata.
             instruction = feedback.strip() or '希望安排更轻松一点'
             reply = self._generate_reply(trip_id, instruction, planning_requested=True,
-                                         target_item_id=target.id if target else None, agent_role='revision')
+                                         target_item_id=target.id if target else None, agent_role='revision',
+                                         **({'display_target': display_target} if display_target is not None else {}))
             with self._lock:
                 if not self._task_current():
                     return None
@@ -612,7 +648,8 @@ class DemoStore(TravelTasks, DisplayTasks):
                 before = self.plans[trip_id].id
                 message = self._agent_reply(trip_id, instruction, sender, reply)
                 if self.plans[trip_id].id != before:
-                    self._add_revision_idea(trip_id, target.title if target else original.title, feedback, sender)
+                    item_title = display_target['title'] if display_target is not None else target.title if target else original.title
+                    self._add_revision_idea(trip_id, item_title, feedback, sender)
                     self.trips[trip_id].last_activity = 'Agent 已根据反馈生成新草案'
                 self.messages[trip_id].append(message)
                 self._persist()
@@ -660,6 +697,11 @@ class DemoStore(TravelTasks, DisplayTasks):
         return "待归类"
 
     def generate_plan(self, trip_id: str) -> Message | None:
+        if not getattr(self._task_context, 'task_id', None):
+            from uuid import uuid4
+            task, _ = self.submit_task(trip_id, 'plan', {}, uuid4().hex)
+            receipt = self.run_task(task['id'])
+            return next((row for row in self.messages[trip_id] if receipt and row.id == receipt.message_id), None)
         with self._lock:
             if not self._task_current():
                 return None
@@ -672,31 +714,8 @@ class DemoStore(TravelTasks, DisplayTasks):
         except Exception:
             self.fail_agent_task(trip_id, thinking.id)
 
-    @_state_locked
-    def confirm_plan(self, trip_id: str) -> None:
-        plan = self.plans[trip_id]
-        if not plan.has_content:
-            return
-        plan.status = "已确认"
-        self.trips[trip_id].status = "已确认"
-        self.trips[trip_id].last_activity = "你已确认当前行程"
-        self.messages[trip_id].append(
-            Message(
-                id=f"m-{next(_id_counter)}",
-                sender=USERS["agent"],
-                sender_type="agent",
-                body="当前行程已确认，后续修改会更新当前方案。",
-                created_at=_now_label(),
-                agent_card=AgentCard(
-                    kind="itinerary-draft",
-                    title="行程已确认",
-                    summary="后续修改会直接更新当前方案。",
-                    bullets=["保留当前安排", "可继续反馈调整", "可继续查看行程"],
-                    actions=[AgentAction(label="查看行程", target="itinerary")],
-                ),
-            )
-        )
-        self._persist()
+    def confirm_plan(self, trip_id: str):
+        return self.confirm_current_turn(trip_id)
 
     def _commit_agent_result(self, trip_id: str, reply: AgentReply, sender: User | None) -> AgentReply:
         """One atomic boundary for chat, plan and revision results."""
@@ -728,7 +747,8 @@ class DemoStore(TravelTasks, DisplayTasks):
                 if not reply.failed and not reply.needs_input:
                     if reply.plan_text:
                         self._apply_text_plan(trip_id, reply.plan_text, reply.evidence,
-                            display=reply.display, display_source_hash=reply.display_source_hash, display_status=reply.display_status)
+                            display=reply.display, display_source_hash=reply.display_source_hash, display_status=reply.display_status,
+                            **({'preserve_plan_basis': True} if reply.preserve_plan_basis else {}))
                     elif reply.plan:
                         if reply.target_item_id:
                             self._apply_agent_revision(trip_id, reply.plan, reply.target_item_id, reply.verified_places)
@@ -871,25 +891,27 @@ class DemoStore(TravelTasks, DisplayTasks):
         return None
 
     @_state_locked
-    def _apply_text_plan(self, trip_id: str, text: str, evidence: list[dict] | None = None, *, display=None, display_source_hash='', display_status='not_requested') -> None:
+    def _apply_text_plan(self, trip_id: str, text: str, evidence: list[dict] | None = None, *, display=None, display_source_hash='', display_status='not_requested', preserve_plan_basis=False) -> None:
         if not isinstance(text, str) or not text.strip():
             raise ValueError('行程内容不能为空')
-        from .plan_display import validate_display, text_hash
+        from .plan_display import validate_display, text_hash, dates_from_snapshot
+        trip, previous = self.trips[trip_id], self.plans[trip_id]
+        requirements_snapshot = deepcopy(previous.requirements_snapshot) if preserve_plan_basis else asdict(trip.requirements)
+        requirements_revision = previous.requirements_revision if preserve_plan_basis else trip.requirements.revision
+        lodging_snapshot = deepcopy(previous.lodging_snapshot if preserve_plan_basis else trip.lodging)
         if display is not None:
             try:
                 if display_source_hash != text_hash(text):
                     raise ValueError('展示数据与原文不对应')
-                from .planning import planning_brief
-                brief, _ = planning_brief(self.trips[trip_id])
-                display = validate_display(display, brief['dates'] if brief else None)
+                display = validate_display(display, dates_from_snapshot(requirements_snapshot))
             except Exception:
                 display, display_status = None, 'fallback'
         self.plans[trip_id] = TripPlan(
             id=f"plan-{next(_id_counter)}", title=(display['title'] if display else f"{self.trips[trip_id].requirements.city or self.trips[trip_id].destination}行程"),
             status="草案", text=text, evidence=deepcopy(evidence or []),
-            requirements_revision=self.trips[trip_id].requirements.revision,
+            requirements_revision=requirements_revision,
             display=deepcopy(display), display_source_hash=display_source_hash, display_status=display_status,
-            requirements_snapshot=asdict(self.trips[trip_id].requirements),
+            requirements_snapshot=requirements_snapshot, lodging_snapshot=lodging_snapshot,
         )
         self.trips[trip_id].status = "草案"
         self._discard_display_jobs(trip_id)

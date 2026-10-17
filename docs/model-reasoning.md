@@ -1,8 +1,10 @@
 # 按 Agent 角色设置思考强度
 
-当前工作流中，意图识别、闲聊与展示转换是无工具 LLM 节点；查询、规划、修改是三个共用 Loop 的业务 Agent。规划/修改直接输出并保存完整文字，后续 display LLM 提取展示数据。独立交付复核角色已删除。
+当前工作流中，意图识别、闲聊与展示转换是无工具 LLM 节点；纯需求整理、查询、规划、修改是四个共用 Loop 的业务 Agent。规划/修改直接输出并保存完整文字，后续 display LLM 提取展示数据。独立交付复核角色已删除。
 
 具体链路见 [当前实现](agent-role-implementation.md)。
+
+2026-10-16 新增的 `task_execution` 策略尚未默认启用：`main_execution` 默认 low，可用 `OPENAI_REASONING_EFFORT_MAIN_EXECUTION` 单独覆盖，未配置时沿用 `OPENAI_REASONING_EFFORT_MAIN`。各 `*_capability` 先读取自身覆盖，再沿用 requirements/research/planning/revision 对应原角色覆盖，最后使用全局值和代码默认值；规划/修改默认仍为 medium。新主执行角色不套用旧分类器的隐式禁 thinking 假设，也未自动修改本机模型或思考配置。新策略的低档质量和端到端时延仍需真实任务评测，不能引用历史分类耗时作为验收。详见[实施记录](task-execution-implementation-20261016.md)。
 
 ## 默认值与配置
 
@@ -11,12 +13,13 @@
 | main（意图识别） | low |
 | chat（闲聊） | low |
 | display（展示转换） | low |
+| requirements（纯需求整理） | low |
 | research | low |
 | planning | medium |
 | revision（修改） | medium |
 | revision / explain（只读解释） | low |
 
-配置优先级：单角色环境变量 > 全局环境变量 > 上表代码默认值。chat 未配置单独值时可沿用 MAIN 覆盖；独立 requirements 配置不再使用。环境变量留空表示未覆盖；显式写 `default` 表示不发送思考参数，恢复服务端默认行为。
+配置优先级：单角色环境变量 > 全局环境变量 > 上表代码默认值。chat 未配置单独值时可沿用 MAIN 覆盖；2026-10-16 新增独立纯需求角色后，`OPENAI_REASONING_EFFORT_REQUIREMENTS` 用于该角色，混合请求仍使用原业务角色档位。环境变量留空表示未覆盖；显式写 `default` 表示不发送思考参数，恢复服务端默认行为。
 
 ```env
 # 可选全局覆盖：全部使用服务端默认行为
@@ -26,6 +29,7 @@ OPENAI_REASONING_EFFORT=default
 OPENAI_REASONING_EFFORT_MAIN=low
 OPENAI_REASONING_EFFORT_CHAT=low
 OPENAI_REASONING_EFFORT_DISPLAY=low
+OPENAI_REASONING_EFFORT_REQUIREMENTS=low
 OPENAI_REASONING_EFFORT_RESEARCH=low
 OPENAI_REASONING_EFFORT_PLANNING=medium
 OPENAI_REASONING_EFFORT_REVISION=medium

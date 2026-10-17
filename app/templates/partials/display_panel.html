@@ -2,6 +2,7 @@
 <div data-display-panel data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash if display_state is defined else plan.display_source_hash }}"
      data-display-status="{{ plan.display_status }}" data-business-busy="{{ 'true' if display_state is defined and display_state.busy else 'false' }}" data-version="{{ display_state.version if display_state is defined else plan.display_status }}">
   {% include 'partials/display_summary.html' %}
+  {% if route_view is defined and route_view.is_city and route_view.basis_status in ['stale', 'unknown'] %}<p class="display-progress" role="status" data-route-basis>{{ '设置已更新，当前方案尚未更新。' if route_view.basis_status == 'stale' else '原方案依据不完整。' }} {{ route_view.basis_message }} <a href="#text-revision-feedback">调整当前行程</a></p>{% endif %}
   {% if plan.display_status == 'pending' %}
     <p class="display-progress" role="status" data-display-notice><span data-display-notice-text>行程已生成，正在整理卡片。可以先阅读完整文字。</span></p>
   {% elif not plan.display and plan.text %}

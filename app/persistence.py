@@ -31,8 +31,63 @@ from .plan_display import migrate_stored_display
 from .requirements import initial_requirements
 
 SNAPSHOT_KEY = "demo_store_v1"
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
+
+
+def ensure_agent_runs_schema(db_path: str | Path) -> None:
+    path = Path(db_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS agent_runs (
+                id INTEGER PRIMARY KEY,
+                request_id TEXT NOT NULL,
+                trip_id TEXT,
+                user_input TEXT NOT NULL,
+                process TEXT,
+                output TEXT,
+                ok INTEGER NOT NULL DEFAULT 1,
+                error TEXT,
+                model TEXT,
+                tokens_in INTEGER,
+                tokens_out INTEGER,
+                tool_calls INTEGER,
+                duration_ms INTEGER,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+
+
+def insert_agent_run(db_path: str | Path, row: dict[str, Any]) -> None:
+    ensure_agent_runs_schema(db_path)
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            """
+            INSERT INTO agent_runs (
+                request_id, trip_id, user_input, process, output, ok, error,
+                model, tokens_in, tokens_out, tool_calls, duration_ms, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["request_id"],
+                row.get("trip_id"),
+                row["user_input"],
+                json.dumps(row["process"], ensure_ascii=False) if isinstance(row.get("process"), list) else None,
+                row.get("output"),
+                1 if row.get("ok") else 0,
+                row.get("error"),
+                row.get("model"),
+                row.get("tokens_in"),
+                row.get("tokens_out"),
+                int(row.get("tool_calls") or 0),
+                row.get("duration_ms"),
+                row["created_at"],
+            ),
+        )
 
 
 def backup_database(db_path: str | Path) -> Path:
@@ -55,6 +110,7 @@ def ensure_relational_schema(db_path: str | Path) -> None:
         if trip_columns and "owner_id" not in trip_columns:
             connection.execute("DROP TABLE trips")
         connection.execute("DROP TABLE IF EXISTS trip_members")
+        connection.execute("DROP TABLE IF EXISTS plan_versions")
         connection.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -114,6 +170,11 @@ def ensure_relational_schema(db_path: str | Path) -> None:
                 plan_json TEXT NOT NULL,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS app_snapshots (
+                key TEXT PRIMARY KEY,
+                payload TEXT NOT NULL,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
             """
         )
         if "requirements_json" not in {row[1] for row in connection.execute("PRAGMA table_info(trips)")}:
@@ -121,9 +182,8 @@ def ensure_relational_schema(db_path: str | Path) -> None:
 
 
 def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, Any]) -> None:
-    # executescript() commits an open transaction, which would leave the snapshot
-    # and the cleared tables committed even if a subsequent INSERT fails.
-    connection.execute("DROP TABLE IF EXISTS plan_versions")
+    # Keep this function DML-only: final turn persistence calls it inside the same
+    # transaction as app_snapshots, and SQLite DDL belongs to schema initialization.
     for table in ("plans", "ideas", "messages", "trips", "users"):
         connection.execute(f"DELETE FROM {table}")
     for user in snapshot.get("users", {}).values():
@@ -183,13 +243,22 @@ def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, A
             (trip_id, json.dumps(plan, ensure_ascii=False)),
         )
 
-def save_snapshot(db_path: str | Path, snapshot: dict[str, Any]) -> None:
+def save_snapshot(
+    db_path: str | Path,
+    snapshot: dict[str, Any],
+    *,
+    initialize: bool = True,
+) -> None:
+    """Persist one complete snapshot.
+
+    Schema creation belongs to startup/migration.  ``initialize=False`` is used by
+    the final turn commit so no DDL can implicitly commit part of that business
+    transaction.
+    """
     path = Path(db_path)
-    ensure_relational_schema(path)
+    if initialize:
+        ensure_relational_schema(path)
     with sqlite3.connect(path) as connection:
-        connection.execute(
-            "CREATE TABLE IF NOT EXISTS app_snapshots (key TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)"
-        )
         connection.execute(
             """
             INSERT INTO app_snapshots (key, payload, updated_at)
@@ -230,7 +299,8 @@ def serialize_state(store: Any, users: dict[str, User]) -> dict[str, Any]:
 
 
 def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) -> int:
-    legacy = int(snapshot.get("schema_version", 1)) < 2
+    schema_version = int(snapshot.get("schema_version", 1))
+    legacy = schema_version < 2
     users.clear()
     users.update({user_id: _user(raw_user) for user_id, raw_user in snapshot.get("users", {}).items()})
     if "agent" not in users:
@@ -258,10 +328,43 @@ def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) 
         for trip_id, raw_cards in snapshot.get("idea_cards", {}).items()
         if trip_id in store.trips
     }
-    store.tasks = deepcopy(snapshot.get("tasks", {}))
+    store.tasks = _restore_tasks(snapshot.get("tasks", {}), store.trips)
     store.display_jobs = {jid: deepcopy(job) for jid, job in snapshot.get('display_jobs', {}).items()
                           if job.get('trip_id') in store.trips}
+
+    from .agent_protocol import plan_basis
+    from .task_context import normalize_workflow
+    for trip_id, trip in store.trips.items():
+        trip.workflow_state = normalize_workflow(
+            trip.workflow_state,
+            trip=trip,
+            trip_id=trip_id,
+            messages=store.messages.get(trip_id, []),
+            plan_basis=plan_basis(store.plans.get(trip_id)) if trip_id in store.plans else None,
+        )
     return _next_numeric_id(snapshot)
+
+
+def _restore_tasks(raw_tasks: Any, trips: dict[str, Trip]) -> dict[str, dict[str, Any]]:
+    """Restore execution records defensively; they never revive on process start."""
+    if not isinstance(raw_tasks, dict):
+        return {}
+    restored: dict[str, dict[str, Any]] = {}
+    for task_id, raw in raw_tasks.items():
+        if not isinstance(task_id, str) or not isinstance(raw, dict):
+            continue
+        trip_id = raw.get('trip_id')
+        if trip_id not in trips or raw.get('id') != task_id:
+            continue
+        task = deepcopy(raw)
+        strategy = task.get('execution_strategy', 'legacy')
+        task['execution_strategy'] = strategy if strategy in {'legacy', 'task_execution'} else 'legacy'
+        status = task.get('status')
+        if status not in {'queued', 'running', 'succeeded', 'failed', 'superseded'}:
+            task['status'] = 'failed'
+            task['message'] = '任务记录格式已更新，请基于当前状态重新提交。'
+        restored[task_id] = task
+    return restored
 
 
 def _user(raw: dict[str, Any]) -> User:
@@ -404,6 +507,7 @@ def _plan(raw: dict[str, Any], legacy: bool = False) -> TripPlan:
         display_source_hash=str(raw.get("display_source_hash") or ""),
         display_status=str(raw.get("display_status") or "not_requested"),
         requirements_snapshot=deepcopy(raw.get("requirements_snapshot") or {}),
+        lodging_snapshot=deepcopy(raw["lodging_snapshot"]) if isinstance(raw.get("lodging_snapshot"), dict) else {},
     )
 
 

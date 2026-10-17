@@ -4,18 +4,22 @@
 
 ## 当前说明
 
+- [功能保护与排版恢复](route-product-20261015.md)：按用户反馈恢复原排版，保留可信导航、版本保护、就地调整与失败恢复；恢复前后验收分别记录。
 - [同城游玩](city-outings-20261015.md)：`main` 的住宿地址入口、可选设置、每日往返、分支与数据库隔离。
 - 2026-10-15之前的完整旅行规则和评测保留为兼容模式及历史证据，`travel-full` 分支保存改造前版本。
 
 - [产品边界](product-boundaries-v1.md)：已确认的首版范围，区分目标与已实现能力。
-- [当前架构](agent-architecture-current.md)与[角色实现](agent-role-implementation.md)：四意图、工具循环、当前行程保存和后台展示。
+- [当前架构](agent-architecture-current.md)与[角色实现](agent-role-implementation.md)：当前默认 `legacy` 的五意图、独立纯需求整理、工具循环、当前行程保存和后台展示。
+- [任务执行设计](agent-task-execution-design-20261016.md)与[实施记录](task-execution-implementation-20261016.md)：A–C 已实现并通过当前离线回归；D 已建立50条×3次的离线数据、Schema校验和评分格式，真实模型评测未运行、真实语义未验收。策略名为 `TRAVEL_AGENT_EXECUTION_STRATEGY=legacy|task_execution`，默认仍是 `legacy`。
 - [思考强度配置](model-reasoning.md)、[高德MCP](amap-mcp-implementation.md)、[展示协议](travel-itinerary-display-schema.md)。
 - [规划提示词](planning-prompt-redesign-20261013.md)、[用餐约束](planning-meals-20261013.md)、[少样本示范](planning-fewshot-20261014.md)、[少样本复测](planning-fewshot-test-20261014.md)与[交付改进及残余](planning-delivery-20261014.md)：当前规则、示例对照、独立复测、接驳检查、概览预览及模型复核移除记录。
 - [聊天界面](chat-redesign-20261013.md)、[行程卡片](itinerary-cards-ui-20261012.md)与[去重及最终布局](itinerary-repetition-20261012.md)。
-- [测试目录与执行入口](../tests/README.md)。
+- [测试目录与执行入口](../tests/README.md)，以及独立[同城测试集 v1](../tests/datasets/city_outings_v1/README.md)（28场景，离线与真实质量分开记录）。
 
 ## 实施与验收记录
 
+- [同城真实模型小样本](city-live-evaluation-20261015.md)：当前模型与冻结工具的正文/卡片逐例检查，记录内容缺陷、执行器漏测与独立补测，不以机器成功代替语义合格。
+- [同城测试集 v1 首轮离线验收](city-dataset-evaluation-20261015.md)：28/28场景、参数化后99项通过；项目全量915项通过。真实模型/地图与浏览器本轮未测，语义质量独立标记未评估。
 - [当前行程简化](latest-itinerary-only-20261010.md)、[异步展示](async-display-implementation.md)、[日期完整性](display-completeness-implementation.md)、[七项优化](seven-optimizations-20261013.md)。
 - [早期工作流验收](workflow-evaluation-20261010.md)与[根因排查](workflow-root-cause-20261010.md)：包含已被后续改造替代的阶段，保留问题与验证依据。
 - [2026-10-08评测](travel-agent-evaluation-20261008.md)、[旧工作流评测](travel-agent-evaluation-workflow-20261010.md)、[最新版行程评测](travel-agent-evaluation-latest-only-20261010.md)。首轮失败与补测独立保留，不能合并成新的成绩。

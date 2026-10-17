@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from contextvars import ContextVar
+from contextlib import contextmanager
 from datetime import date
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -26,6 +28,7 @@ WEATHER_TOOL_SPEC = {
 
 _GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
 _FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+_budget_context = ContextVar('weather_budget', default=None)
 _WEATHER_CODES = {
     0: "晴",
     1: "大致晴",
@@ -49,6 +52,16 @@ _WEATHER_CODES = {
     96: "雷雨伴冰雹",
     99: "强雷雨伴冰雹",
 }
+
+
+@contextmanager
+def budget_scope(budget):
+    """Propagate the parent cancellation, deadline and actual HTTP call budget."""
+    token = _budget_context.set(budget)
+    try:
+        yield
+    finally:
+        _budget_context.reset(token)
 
 
 def query_weather(arguments: dict, *, cache=None) -> dict:
@@ -175,12 +188,22 @@ def _clothing_advice(temperature_max: object, temperature_min: object, precipita
 
 
 def _fetch_json(url: str, params: dict) -> dict:
+    budget = _budget_context.get()
+    timeout = 8.0
+    if budget is not None:
+        # Count the two real Open-Meteo requests independently.  Cancellation is
+        # checked immediately before socket I/O and the HTTP timeout is bounded by
+        # the shared wall-clock deadline.
+        budget.external()
+        timeout = min(timeout, budget.remaining())
     request = Request(
         f"{url}?{urlencode(params)}",
         headers={"User-Agent": "TravelAssistant/1.0"},
         method="GET",
     )
-    with urlopen(request, timeout=8) as response:
+    with urlopen(request, timeout=timeout) as response:
+        if budget is not None:
+            budget.check_current()
         payload = json.loads(response.read().decode("utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("weather response is not an object")

@@ -1,0 +1,8 @@
+{% macro route_leg(leg, label) -%}
+{% if leg %}<section class="route-leg" aria-label="{{ label }}" data-route-leg data-route-status="{{ leg.status }}">
+  <div><strong>{{ label }}</strong><span>{{ leg.origin }} → {{ leg.destination }}</span></div>
+  <p>{{ leg.summary }}</p>
+  {% if leg.source or leg.queried_at %}<details class="route-leg-evidence"><summary>查询依据</summary><small>{{ leg.source }}{% if leg.queried_at %} · 查询于 {{ place_query_time(leg.queried_at) }}{% endif %}</small></details>{% endif %}
+  {% if leg.navigation_url %}<a href="{{ leg.navigation_url }}" target="_blank" rel="noopener noreferrer">在高德重新规划此段</a>{% endif %}
+</section>{% endif %}
+{%- endmacro %}

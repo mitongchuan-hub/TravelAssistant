@@ -174,6 +174,7 @@ class TripPlan:
     display_source_hash: str = ""
     display_status: str = "not_requested"
     requirements_snapshot: dict = field(default_factory=dict)
+    lodging_snapshot: dict = field(default_factory=dict)
 
     @property
     def has_content(self) -> bool:
