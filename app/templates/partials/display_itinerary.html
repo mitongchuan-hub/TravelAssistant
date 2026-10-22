@@ -21,10 +21,10 @@
 <section class="display-itinerary" data-display-itinerary aria-label="按天行程">
   {% if display.preparation.clothing or display.preparation.accommodation or display.weather or display.weather_metadata %}
   <section class="display-preflight" aria-label="行前信息">
-    <div class="display-section-heading"><h3>出发前</h3><span>天气 · 穿着 · 住宿</span></div>
+    <div class="display-section-heading"><h3>出发前</h3></div>
     {% if display.weather or display.weather_metadata %}
     <section class="display-weather" data-display-weather aria-label="天气预报">
-      <div class="display-info-heading">{{ icon('cloud') }}<h4>天气</h4><span>原文预报参考</span></div>
+      <div class="display-info-heading">{{ icon('cloud') }}<h4>天气</h4></div>
       <div class="display-weather-grid">
         {% for item in display.weather %}
         <article class="display-weather-day">
@@ -33,16 +33,13 @@
             {% if item.temperature_text %}<div><dt>气温</dt><dd>{{ item.temperature_text }}</dd></div>{% endif %}
             {% if item.precipitation_text %}<div><dt>降水</dt><dd>{{ item.precipitation_text }}</dd></div>{% endif %}
           </dl>{% endif %}
-          {% if item.queried_at_text %}<p class="display-weather-query">查询于 {{ item.queried_at_text }}</p>{% endif %}
           {% if item.notes %}<ul class="display-weather-notes">{% for note in item.notes %}<li>{{ note }}</li>{% endfor %}</ul>{% endif %}
         </article>{% endfor %}
       </div>
       {% if display.weather_query or display.weather_notes or display.weather_metadata %}<div class="display-weather-shared">
-        {% if display.weather_query %}<p class="display-weather-query">查询于 {{ display.weather_query }}</p>{% endif %}
         {% if display.weather_notes %}<ul class="display-weather-notes">{% for note in display.weather_notes %}<li>{{ note }}</li>{% endfor %}</ul>{% endif %}
         {% for item in display.weather_metadata %}<div class="display-weather-meta">
           {% if item.date_text %}<strong>{{ item.date_text }}</strong>{% endif %}
-          {% if item.queried_at_text %}<p class="display-weather-query">查询于 {{ item.queried_at_text }}</p>{% endif %}
           {% if item.notes %}<ul class="display-weather-notes">{% for note in item.notes %}<li>{{ note }}</li>{% endfor %}</ul>{% endif %}
         </div>{% endfor %}
       </div>{% endif %}
@@ -53,7 +50,11 @@
       <section class="display-prep-group" data-display-prep="{{ key }}" aria-label="{{ label }}">
         <div class="display-info-heading">{{ icon(glyph) }}<h4>{{ label }}</h4><span class="display-info-count">{{ display.preparation[key] | length }}项</span></div>
         <div class="display-prep-list display-prep-list--{{ key }}">
-          {% for item in display.preparation[key] %}<article class="display-prep-entry"><h5>{{ item.title }}</h5>{% if item.body %}<p>{{ item.body }}</p>{% endif %}</article>{% endfor %}
+          {% for item in display.preparation[key] %}
+          {% if key == 'clothing' and item.body %}
+          <details class="display-prep-entry display-prep-disclosure"><summary><h5>{{ item.title }}</h5><span>穿着建议</span></summary><p>{{ item.body }}</p></details>
+          {% else %}<article class="display-prep-entry"><h5>{{ item.title }}</h5>{% if item.body %}<p>{{ item.body }}</p>{% endif %}</article>{% endif %}
+          {% endfor %}
         </div>
       </section>{% endif %}
       {% endfor %}
@@ -81,19 +82,32 @@
           <div class="display-item-time"><span class="display-time-dot" aria-hidden="true"></span>{{ item.time_text or '时间待明确' }}</div>
           <div class="display-item-content">
             <div class="display-item-heading"><span class="display-category">{{ categories.get(item.category, '安排') }}</span><h4>{{ item.title }}</h4></div>
-            {% if item.description %}<p class="display-description">{{ item.description }}</p>{% endif %}
-            {% if item.location or item.duration_text or item.cost_text or city_route and item.category in ['activity', 'meal', 'transport', 'accommodation'] %}
+            {% if item.duration_text and item.category in ['transport', 'rest'] %}<p class="display-item-meta">{{ icon('clock') }}{{ item.duration_text }}</p>{% endif %}
+            {% if item.transport_preview_parts %}
+            <div class="display-ride-excerpts" aria-label="原方案乘车安排">{% for part in item.transport_preview_parts %}<p>{{ part }}</p>{% endfor %}</div>
+            <details class="display-transport-detail"><summary>步行、进出口与完整说明</summary>
+              <ol class="display-transport-steps" aria-label="原方案完整乘车说明">{% for part in item.description_parts %}<li>{{ part }}</li>{% endfor %}</ol>
+              {% if item.location %}<p class="display-description">起终点与地址：{{ item.location }}</p>{% endif %}
+            </details>
+            {% elif item.description_parts | length > 1 %}
+            <ol class="display-transport-steps" aria-label="原方案乘车说明">{% for part in item.description_parts %}<li>{{ part }}</li>{% endfor %}</ol>
+            {% elif item.description %}<p class="display-description">{{ item.description }}</p>{% endif %}
+            {% if item.location and not item.transport_preview_parts or item.duration_text and item.category not in ['transport', 'rest'] or item.cost_text %}
             <dl class="display-item-facts">
-              {% if item.location %}<div class="display-location"><dt>{{ icon('pin') }}<span>地点</span></dt><dd>{{ item.location }}</dd></div>{% endif %}
-              {% if item.duration_text %}<div class="display-duration"><dt>{{ icon('clock') }}<span>时长</span></dt><dd>{{ item.duration_text }}</dd></div>{% endif %}
-              {% if item.cost_text %}<div class="display-cost"><dt>{{ icon('wallet') }}<span>费用</span></dt><dd>{{ item.cost_text }}</dd></div>{% elif city_route and item.category in ['activity', 'meal', 'transport', 'accommodation'] %}<div class="display-cost"><dt>{{ icon('wallet') }}<span>费用</span></dt><dd>费用未提供，不代表免费</dd></div>{% endif %}
+              {% if item.location and not item.transport_preview_parts %}<div class="display-location"><dt>{{ icon('pin') }}<span>地点</span></dt><dd>{{ item.location }}</dd></div>{% endif %}
+              {% if item.duration_text and item.category not in ['transport', 'rest'] %}<div class="display-duration"><dt>{{ icon('clock') }}<span>{{ {'activity':'停留', 'meal':'用餐', 'accommodation':'住宿'}.get(item.category, '时长') }}</span></dt><dd>{{ item.duration_text }}</dd></div>{% endif %}
+              {% if item.cost_text %}<div class="display-cost"><dt>{{ icon('wallet') }}<span>费用</span></dt><dd>{{ item.cost_text }}</dd></div>{% endif %}
             </dl>{% endif %}
+            {% if route_item and route_item.incoming and route_item.incoming.line_summary %}
+            <div class="route-transit-preview"><strong>前往这一站</strong><p>{{ route_item.incoming.line_summary }}</p>
+              <ul class="display-boarding-stops">{% for step in route_item.incoming.transit_steps %}{% if step.kind == 'ride' %}<li>{% for line in step.lines %}{% if not loop.first %}<span>或</span>{% endif %}<span>{{ line.departure_stop or '上车站待核实' }} 上车 → {{ line.arrival_stop or '下车站待核实' }} 下车</span>{% endfor %}</li>{% elif step.kind == 'unknown' %}<li>此段接驳待核实</li>{% endif %}{% endfor %}</ul>
+            </div>{% endif %}
             {% if route_item and route_item.place_status != 'not_applicable' %}
             <details class="route-place"><summary>地点与交通</summary>
               {% if route_item.place %}
                 <strong>{{ route_item.place.name }}</strong><p>{{ route_item.place.city }} {{ route_item.place.district }} {{ route_item.place.address }}</p>
                 <div class="place-actions"><a href="{{ route_item.place.map_url }}" target="_blank" rel="noopener noreferrer">在高德查看</a><button type="button" data-copy-address="{{ route_item.place.copy_address }}">复制地址</button></div>
-                <small>地点已匹配 · {{ route_item.place.source }}。开放、门票和预约仍需核实。</small>
+                <small>开放、门票和预约仍需出发前核实。</small>
                 {% if route_item.place.opening_hours %}<p>上游营业参考：{{ route_item.place.opening_hours }}，不代表出行当日开放。</p>{% endif %}
               {% else %}<small>{{ route_item.message }}</small>{% endif %}
               {{ route_leg(route_item.incoming, '前往这一站') }}
@@ -104,9 +118,12 @@
         </article>
         {% else %}<p class="display-empty-day">当天具体安排待明确，可查看完整原文。</p>{% endfor %}
       </div>
-      {% if route_day and route_day.return_leg %}<details class="route-place"><summary>返回住处的交通参考</summary>{{ route_leg(route_day.return_leg, '返回住处') }}</details>{% endif %}
+      {% if route_day and route_day.return_leg %}
+      {% if route_day.return_leg.line_summary %}<p class="route-transit-preview"><strong>返回住处：</strong>{{ route_day.return_leg.line_summary }}</p>{% endif %}
+      <details class="route-place"><summary>返回住处的交通参考</summary>{{ route_leg(route_day.return_leg, '返回住处') }}</details>{% endif %}
     </section>{% endfor %}
   </div>
+  {% if display.has_unprovided_cost %}<p class="display-cost-note">部分安排费用未提供，不代表免费；门票、预约与票价请出发前核实。</p>{% endif %}
   {% if display.pending_items or display.risks %}
   <section class="display-checklists" aria-label="核实与提醒">
     {% if display.pending_items %}<section class="display-section display-section--pending"><div class="display-section-heading"><h3>{{ icon('check') }}待确认事项</h3><span>{{ display.pending_items | length }}项</span></div><ul>{% for item in display.pending_items %}<li>{{ item }}</li>{% endfor %}</ul></section>{% endif %}
