@@ -98,7 +98,7 @@
         <details class="chat-menu" data-chat-menu>
           <summary aria-label="更多聊天操作" title="更多">⋯</summary>
           <div class="chat-menu-panel">
-            <a href="/workspace/{{ trip.id }}/requirements">{{ '游玩设置' if trip.mode == 'city' else '旅行需求' }}</a>
+            <a href="/workspace/{{ trip.id }}/requirements">游玩设置</a>
             {% if trip.mode == 'city' %}
             <form action="/workspace/{{ trip.id }}/plan" method="post">
               {% if travel_tasks is defined %}<input type="hidden" name="request_id" value="{{ task_request_id() }}" />{% endif %}

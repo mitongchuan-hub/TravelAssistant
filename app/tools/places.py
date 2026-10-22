@@ -3,7 +3,7 @@ import math
 from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from . import amap_mcp
+from app.tools import amap_mcp
 
 PLACE_TOOL_SPEC = {
     'type': 'function',

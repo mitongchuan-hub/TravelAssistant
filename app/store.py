@@ -12,7 +12,7 @@ from threading import RLock, local
 from contextlib import contextmanager
 from itertools import count
 
-from .models import (
+from app.models import (
     AgentAction,
     AgentCard,
     IdeaCard,
@@ -23,12 +23,12 @@ from .models import (
     TripPlan,
     User,
 )
-from .display_tasks import DisplayTasks
-from .tasks import ACTIVE, TravelTasks, validate_display_target_metadata
-from .turn_commit import TurnCommit, TurnPersistenceError
-from .requirements import chat_changes, initial_requirements, update_requirements
-from .trip_welcome import trip_welcome
-from .persistence import CURRENT_SCHEMA_VERSION, backup_database, ensure_relational_schema, load_snapshot, restore_state, save_snapshot, serialize_state
+from app.workflow.display_tasks import DisplayTasks
+from app.workflow.tasks import ACTIVE, TravelTasks, validate_display_target_metadata
+from app.workflow.turn_commit import TurnCommit, TurnPersistenceError
+from app.services.requirements import chat_changes, initial_requirements, update_requirements
+from app.views.trip_welcome import trip_welcome
+from app.persistence import CURRENT_SCHEMA_VERSION, backup_database, ensure_relational_schema, load_snapshot, restore_state, save_snapshot, serialize_state
 
 USERS = {
     "u1": User(id="u1", name="林夏", initials="林"),
@@ -230,7 +230,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         }
 
     @_state_locked
-    def create_trip(self, destination: str, date_range: str, budget: str, style: str, note: str, owner: User | None = None, *, requirements: dict | None = None, mode='travel', lodging=None) -> Trip:
+    def create_trip(self, destination: str, date_range: str, budget: str, style: str, note: str, owner: User | None = None, *, requirements: dict | None = None, mode='city', lodging=None) -> Trip:
         owner = owner or USERS["u1"]
         trip_id = f"trip-{next(_id_counter)}"
         trip = Trip(
@@ -246,13 +246,13 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             requirements=initial_requirements(budget, style),
             mode=mode,
         )
-        if mode not in {'travel', 'city'}:
+        if mode != 'city':
             raise ValueError('不支持的行程类型')
         if requirements is not None:
             trip = update_requirements(trip, requirements)
             if mode == 'city':
                 trip.lodging = self._validated_lodging(lodging, trip.requirements.city)
-            from .planning import planning_brief
+            from app.services.planning import planning_brief
             _, question = planning_brief(trip, require_all=True)
             if question:
                 raise ValueError(question)
@@ -275,7 +275,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
 
     @staticmethod
     def _validated_lodging(lodging, city):
-        from .places import collect_places
+        from app.services.places import collect_places
         trusted = collect_places([{'role': 'tool', 'name': 'search_places', 'content':
             json.dumps({'status': 'available', 'candidates': [lodging]}, ensure_ascii=False)}])
         if not trusted or not city or lodging['city'] != city:
@@ -285,9 +285,11 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
     @_state_locked
     def update_city_outing(self, trip_id, changes, expected_revision, lodging):
         trip = self.trips[trip_id]
-        if trip.mode != 'city' or trip.requirements.revision != expected_revision:
+        if trip.requirements.revision != expected_revision:
             raise ValueError('游玩设置已经更新，请刷新后重新保存')
-        updated = update_requirements(trip, changes)
+        candidate = deepcopy(trip)
+        candidate.mode = 'city'
+        updated = update_requirements(candidate, changes)
         updated.lodging = self._validated_lodging(lodging, updated.requirements.city)
         if trip.destination == f'{trip.requirements.city}同城游玩':
             updated.destination = f'{updated.requirements.city}同城游玩'
@@ -308,7 +310,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         return updated
 
     def clear_chat(self, trip_id: str) -> None:
-        from .task_context import clear_workflow
+        from app.workflow.task_context import clear_workflow
         with self._lock:
             stage = self._stage_turn(trip_id)
             stage.trips[trip_id].workflow_state = clear_workflow(stage.trips[trip_id].workflow_state)
@@ -342,7 +344,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
 
     @_state_locked
     def queue_user_message(self, trip_id: str, body: str, sender_id: str) -> tuple[Message, Message]:
-        message = self.add_user_message(trip_id, body, sender_id, process_agent=False)
+        message = self.add_user_message(trip_id, body, sender_id)
         return message, self.start_agent_task(trip_id)
 
     def start_agent_task(self, trip_id: str) -> Message:
@@ -453,7 +455,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             if item_id:
                 payload['item_id'] = item_id
             if display_target is not None:
-                from .plan_display import text_hash
+                from app.services.plan_display import text_hash
                 with self._lock:
                     target = validate_display_target_metadata(self.plans[trip_id], display_target)
                     payload.update(display_target={key: target[key] for key in ('day_index', 'item_index')},
@@ -580,7 +582,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
     def _apply_text_plan(self, trip_id: str, text: str, evidence: list[dict] | None = None, *, display=None, display_source_hash='', display_status='not_requested', preserve_plan_basis=False) -> None:
         if not isinstance(text, str) or not text.strip():
             raise ValueError('行程内容不能为空')
-        from .plan_display import validate_display, text_hash, dates_from_snapshot
+        from app.services.plan_display import validate_display, text_hash, dates_from_snapshot
         trip, previous = self.trips[trip_id], self.plans[trip_id]
         requirements_snapshot = deepcopy(previous.requirements_snapshot) if preserve_plan_basis else asdict(trip.requirements)
         requirements_revision = previous.requirements_revision if preserve_plan_basis else trip.requirements.revision

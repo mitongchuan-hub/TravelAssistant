@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .models import (
+from app.models import (
     AgentAction,
     AgentCard,
     IdeaCard,
@@ -27,8 +27,8 @@ from .models import (
     User,
 )
 
-from .plan_display import migrate_stored_display
-from .requirements import initial_requirements
+from app.services.plan_display import migrate_stored_display
+from app.services.requirements import initial_requirements
 
 SNAPSHOT_KEY = "demo_store_v1"
 CURRENT_SCHEMA_VERSION = 6
@@ -332,8 +332,8 @@ def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) 
     store.display_jobs = {jid: deepcopy(job) for jid, job in snapshot.get('display_jobs', {}).items()
                           if job.get('trip_id') in store.trips}
 
-    from .agent_protocol import plan_basis
-    from .task_context import normalize_workflow
+    from app.agents.agent_protocol import plan_basis
+    from app.workflow.task_context import normalize_workflow
     for trip_id, trip in store.trips.items():
         trip.workflow_state = normalize_workflow(
             trip.workflow_state,
@@ -391,7 +391,7 @@ def _trip(raw: dict[str, Any], legacy: bool = False) -> Trip:
             else initial_requirements(str(raw["budget"]), str(raw["style"]))
         ),
         workflow_state=deepcopy(raw.get("workflow_state") or {}),
-        mode=str(raw.get('mode') or 'travel'),
+        mode=str(raw.get('mode') or 'city'),
         lodging=deepcopy(raw.get('lodging') or {}),
     )
 

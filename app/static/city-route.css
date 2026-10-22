@@ -8,6 +8,9 @@
 .route-leg > div { display: flex; flex-wrap: wrap; gap: 4px 10px; }
 .route-leg strong { color: var(--ink); font-weight: 600; }
 .route-leg p { margin: 5px 0; }
+.route-transit-preview { margin: 10px 0; color: var(--ink); font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.route-transit-steps { margin: 12px 0; padding-inline-start: 20px; overflow-wrap: anywhere; }
+.route-transit-steps > li { margin: 10px 0; padding-inline-start: 2px; }
 .route-leg small { display: block; font-size: 11px; }
 .route-leg a { display: inline-flex; align-items: center; min-height: 44px; color: var(--ocean); }
 .route-leg-evidence > summary { cursor: pointer; min-height: 36px; padding: 8px 0; }

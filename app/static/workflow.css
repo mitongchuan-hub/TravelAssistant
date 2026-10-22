@@ -56,13 +56,14 @@
 .display-info-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #345d83; }
 .display-info-heading h4 { margin: 0; font-size: 14px; }
 .display-info-heading > span { margin-left: auto; font-size: 11px; color: #536f87; }
-.display-weather-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr)); gap: 10px; }
-.display-weather-day { padding: 12px; border-radius: 12px; background: rgb(255 255 255 / 78%); }
-.display-weather-top { display: grid; gap: 3px; }
+.display-weather-grid { display: grid; gap: 12px; }
+.display-weather-day { padding: 0; }
+.display-weather-day + .display-weather-day { padding-top: 12px; border-top: 1px solid #d3e3f0; }
+.display-weather-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
 .display-weather-top strong { font-size: 12px; font-weight: 650; }
 .display-weather-top > span { color: #426687; font-size: 14px; }
-.display-weather-values { margin: 12px 0 0; display: grid; gap: 6px; }
-.display-weather-values div { display: grid; gap: 1px; }
+.display-weather-values { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.display-weather-values div { display: flex; align-items: baseline; gap: 6px; }
 .display-weather-values dt { color: #5d7287; font-size: 11px; }
 .display-weather-values dd { margin: 0; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .display-weather-query { margin: 10px 0 0; color: #536b82; font-size: 11px; }
@@ -77,11 +78,18 @@
 .display-weather-meta { font-size: 12px; color: #4a657d; }
 .display-weather-meta + .display-weather-meta { margin-top: 10px; }
 .display-preparation { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 14px; }
-.display-prep-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
-.display-prep-list--clothing { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.display-prep-entry { padding: 12px; border-radius: 12px; background: rgb(255 255 255 / 78%); }
+.display-prep-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.display-prep-entry { padding: 10px 0; }
+.display-prep-entry + .display-prep-entry { border-top: 1px solid #d3e3f0; }
+.display-prep-entry:first-child { padding-top: 0; }
+.display-prep-entry:last-child { padding-bottom: 0; }
 .display-prep-entry h5 { margin: 0; font-size: 13px; font-weight: 650; }
 .display-prep-entry p { margin: 6px 0 0; color: #53667c; font-size: 13px; white-space: pre-wrap; line-height: 1.8; }
+.display-prep-disclosure { padding-block: 0; }
+.display-prep-disclosure > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; cursor: pointer; list-style: none; }
+.display-prep-disclosure > summary::-webkit-details-marker { display: none; }
+.display-prep-disclosure > summary > span { flex: 0 0 auto; color: var(--ocean); font-size: 12px; }
+.display-prep-disclosure p { margin: 0 0 12px; }
 
 .display-info-count { flex: 0 0 auto; color: var(--muted); font-size: 11px; font-weight: 400; }
 .display-day-nav { position: sticky; top: 0; z-index: 12; display: flex; gap: 8px; margin: 0 -2px; padding: calc(8px + env(safe-area-inset-top)) 2px 10px; overflow-x: auto; scrollbar-width: thin; background: var(--bg); border-bottom: 1px solid var(--line); scroll-padding-inline: 2px; }
@@ -112,14 +120,30 @@
 .display-item--other { --display-accent: #667384; }
 .display-item-heading { display: flex; align-items: start; gap: 10px; }
 .display-category { flex: 0 0 auto; margin-top: 2px; padding: 2px 7px; border-radius: 6px; color: var(--display-accent); background: color-mix(in srgb, var(--display-accent) 9%, white); font-size: 11px; font-weight: 600; }
-.display-item-heading h4 { margin: 0; color: var(--ink); font-size: 16px; font-weight: 650; line-height: 1.5; }
+.display-item-heading h4 { margin: 0; color: var(--ink); font-size: 16px; font-weight: 700; line-height: 1.5; }
 .display-description { margin: 11px 0 0; color: #3e536b; font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
-.display-item-facts { display: grid; gap: 9px; margin: 14px 0 0; padding: 12px 0 0; border-top: 1px solid #edf0f4; }
+.display-item-meta { display: flex; gap: 6px; align-items: baseline; margin: 8px 0 0; color: #425a71; font-size: 13px; }
+.display-item-meta .display-icon { width: 14px; height: 14px; flex-basis: 14px; align-self: center; }
+.display-transport-steps { margin: 12px 0 0; padding-left: 20px; color: #3e536b; font-size: 14px; line-height: 1.8; }
+.display-transport-steps li { padding-left: 3px; white-space: pre-wrap; }
+.display-transport-steps li + li { margin-top: 6px; }
+.display-transport-steps li::marker { color: #52677d; font-size: 12px; }
+.display-ride-excerpts { display: grid; gap: 8px; margin-top: 12px; color: #3e536b; font-size: 14px; line-height: 1.8; }
+.display-ride-excerpts p { margin: 0; white-space: pre-wrap; }
+.display-transport-detail { margin-top: 6px; }
+.display-transport-detail > summary { display: flex; align-items: center; min-height: 44px; color: var(--ocean); font-size: 12px; cursor: pointer; }
+.display-transport-detail > summary::before { content: '+'; margin-right: 7px; }
+.display-transport-detail[open] > summary::before { content: '−'; }
+.display-item-facts { display: grid; gap: 7px; margin: 12px 0 0; padding: 0; }
 .display-item-facts > div { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 9px; }
 .display-item-facts dt { display: flex; gap: 4px; align-items: start; padding-top: 1px; color: #52677d; font-size: 11px; }
 .display-item-facts dt .display-icon { width: 14px; height: 14px; flex-basis: 14px; margin-top: 3px; }
 .display-item-facts dd { margin: 0; font-size: 13px; line-height: 1.7; color: #425a71; white-space: pre-wrap; }
-.display-item-facts .display-cost dd { color: #846434; }
+.display-cost dd { color: var(--ink); }
+.display-cost-note { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.8; }
+.route-transit-preview > p { margin: 4px 0; font-size: 13px; font-weight: 600; }
+.display-boarding-stops { display: grid; gap: 6px; margin: 6px 0 0; padding-left: 16px; }
+.display-boarding-stops li > span { display: block; }
 .display-item-reminder { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: #f3f6fa; }
 .display-item-reminder > p { display: flex; align-items: center; gap: 5px; margin: 0 0 5px; color: #4e6278; font-size: 11px; font-weight: 600; }
 .display-item-reminder .display-icon { width: 14px; height: 14px; flex-basis: 14px; }
@@ -151,6 +175,7 @@
 .itinerary-summary-card--text .itinerary-summary-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 0; padding-top: 6px; }
 .itinerary-summary-card--text .itinerary-summary-stats div { padding: 10px 4px 0; gap: 7px; }
 .itinerary-summary-card--text .itinerary-summary-stats strong { font-size: 18px; line-height: 1.35; overflow-wrap: anywhere; }
+.itinerary-summary-card--text .display-stat-pending strong { color: var(--muted); font-size: 13px; font-weight: 400; }
 .itinerary-summary-card--text .itinerary-summary-stats small { font-size: 11px; font-weight: 400; }
 .itinerary-summary-card--text .itinerary-summary-stats span { font-weight: 400; font-size: 11px; }
 .itinerary-status { flex: 0 0 auto; padding: 4px 9px; border: 1px solid #dbe5ef; border-radius: 8px; color: #416687; background: #eef4f9; font-size: 11px; font-weight: 500; }
@@ -166,7 +191,7 @@
   .display-overview { padding: 16px; }
   .display-preparation { grid-template-columns: 1fr; }
   .display-weather, .display-prep-group { padding: 14px; }
-  .display-weather-grid { gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .display-weather-grid { gap: 10px; }
   .display-weather-day:only-child { grid-column: 1 / -1; }
   .display-item { grid-template-columns: minmax(0, 1fr); padding-left: 17px; gap: 8px; padding-bottom: 18px; }
   .display-item::before { left: 3px; top: 13px; bottom: -13px; }
@@ -177,6 +202,8 @@
   .display-item-heading { gap: 8px; }
   .display-item-heading h4 { font-size: 15px; }
   .display-description { font-size: 13px; }
+  .display-transport-steps { font-size: 13px; }
+  .display-ride-excerpts { font-size: 13px; }
   .display-item-facts { gap: 8px; }
   .display-item-facts > div { grid-template-columns: 42px minmax(0, 1fr); gap: 7px; }
   .display-item-reminder { padding: 9px 10px; }

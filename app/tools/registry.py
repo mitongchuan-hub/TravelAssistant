@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from .routes import ROUTE_TOOL_SPEC, lookup_route
-from .places import PLACE_TOOL_SPEC, search_places
-from .food import FOOD_TOOL_SPEC, search_food
-from .weather import WEATHER_TOOL_SPEC, query_weather
+from app.tools.routes import ROUTE_TOOL_SPEC, lookup_route
+from app.tools.places import PLACE_TOOL_SPEC, search_places
+from app.tools.food import FOOD_TOOL_SPEC, search_food
+from app.tools.weather import WEATHER_TOOL_SPEC, query_weather
 
 
 TOOL_SPECS = [WEATHER_TOOL_SPEC, FOOD_TOOL_SPEC, PLACE_TOOL_SPEC, ROUTE_TOOL_SPEC]

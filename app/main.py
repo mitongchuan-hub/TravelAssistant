@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from .auth import (
+from app.auth import (
     SESSION_COOKIE_NAME,
     SESSION_TTL_SECONDS,
     AuthStore,
@@ -23,17 +23,17 @@ from .auth import (
 )
 from urllib.parse import quote
 from uuid import uuid4
-from .tasks import TaskConflict, validate_task_basis
-from .tools.places import map_url, query_time_label, search_places
-from .places import collect_places
-from .city_outings import CITY_FORM_FIELDS, LodgingChoices, city_requirements
-from .models import AgentCard, Message, User
-from .requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
-from .chat_presentation import chat_reply_view, chat_time_break, chat_actions, chat_supplemental
-from .presentation import day_date_label, timeline_time_parts
-from .display_presentation import display_view, coverage_detail
-from .route_view import build_route_view
-from .store import IDEA_WALL_LIMIT, USERS, store
+from app.workflow.tasks import TaskConflict, validate_task_basis
+from app.tools.places import map_url, query_time_label, search_places
+from app.services.places import collect_places
+from app.services.city_outings import CITY_FORM_FIELDS, LodgingChoices, city_requirements
+from app.models import AgentCard, Message, User
+from app.services.requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
+from app.views.chat_presentation import chat_reply_view, chat_time_break, chat_actions, chat_supplemental
+from app.views.presentation import day_date_label, timeline_time_parts
+from app.views.display_presentation import display_view, coverage_detail
+from app.views.route_view import build_route_view
+from app.store import IDEA_WALL_LIMIT, USERS, store
 
 @asynccontextmanager
 async def lifespan(application):
@@ -50,7 +50,7 @@ auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20261015-layout-restored-3"
+templates.env.globals["static_version"] = "20261022-itinerary-fields"
 templates.env.filters.update(day_date_label=day_date_label, timeline_time_parts=timeline_time_parts,
                              display_view=display_view, coverage_detail=coverage_detail,
                              chat_reply_view=chat_reply_view, chat_time_break=chat_time_break,
@@ -408,13 +408,7 @@ def _requirements_page(request: Request, trip, user: User, values: dict | None =
         for key in LIST_FIELDS:
             values[key] = "\n".join(values[key])
         values["revision"] = trip.requirements.revision
-    if trip.mode == 'city':
-        return _city_form_page(request, user, values, trip=trip, error=error, status=status_code)
-    return templates.TemplateResponse(request, "requirements.html", {
-        "trip": trip, "current_user": user, "values": values, "error": error,
-        "saved": request.query_params.get("saved") == "1",
-        "idea_cards": store.idea_cards[trip.id],
-    }, status_code=status_code)
+    return _city_form_page(request, user, values, trip=trip, error=error, status=status_code)
 
 
 @app.post("/workspace/{trip_id}/requirements", response_class=HTMLResponse)
@@ -424,21 +418,7 @@ async def save_requirements(request: Request, trip_id: str) -> Response:
         return RedirectResponse(url="/", status_code=303)
     trip = get_owned_trip_or_404(trip_id, user)
     data = await request.form()
-    if trip.mode == 'city':
-        return await _save_city_form(request, user, data, trip)
-    values = {key: data.get(key, "") for key in BASIC_FIELDS | PROFILE_FIELDS | {"revision"}}
-    try:
-        if not all(isinstance(value, str) for value in values.values()):
-            raise ValueError("需求格式不正确")
-        if not values["revision"].isdigit():
-            raise ValueError("请刷新页面后再保存")
-        changes = {key: value for key, value in values.items() if key != "revision"}
-        for key in LIST_FIELDS:
-            changes[key] = changes[key].splitlines()
-        store.update_trip_requirements(trip_id, changes, int(values["revision"]))
-    except ValueError as exc:
-        return _requirements_page(request, trip, user, values, str(exc), 400)
-    return RedirectResponse(url=f"/workspace/{trip_id}/requirements?saved=1", status_code=303)
+    return await _save_city_form(request, user, data, trip)
 
 
 @app.get("/workspace/{trip_id}", response_class=HTMLResponse)

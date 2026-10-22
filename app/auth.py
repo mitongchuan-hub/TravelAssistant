@@ -9,7 +9,7 @@ from threading import RLock
 
 import bcrypt
 
-from .persistence import ensure_relational_schema
+from app.persistence import ensure_relational_schema
 
 SESSION_COOKIE_NAME = "travel_session"
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 30

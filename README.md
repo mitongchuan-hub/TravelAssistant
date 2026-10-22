@@ -5,14 +5,18 @@
 ## 使用方式
 
 1. 注册或登录，填写住宿地址或酒店名称，选择实际地图候选。
-2. 可选填写日期、天数、每日出门/返回时间、人数、预算与偏好；默认一天，未知信息不补成事实。
+2. 必填出行开始日期和游玩天数，自动计算结束日期；每日出门/返回时间、人数、预算与偏好可选，未知信息不补成事实。
 3. 在聊天中说“生成路线”，或使用聊天菜单、想法页、行程页的生成入口。
 4. 先阅读完整文字，后台再整理按天卡片；卡片失败可单独重试，不丢失正文。
 5. 通过聊天或卡片“调整此项”修改当前方案。设置变化不会自动重排行程。
 
 默认聊天，底栏保持“想法／聊天／行程”；功能优化不重新排列既有页面。每日从同一住宿出发并返回，可信地点可打开高德导航，未知地点保持待核实。查询耗时只是查询时估算，不保证未来开放、班次、票价或现实可执行性。
 
-旧完整旅行仍保留原需求、聊天和行程，不自动转换为同城模式。每趟旅行只保留一份当前方案，没有方案历史恢复入口。
+项目只提供从住宿出发并返回的同城游玩。历史记录的需求、聊天和行程可查看；继续生成或调整前，须在游玩设置中确认住宿并保存。每趟行程只保留一份当前方案，没有方案历史恢复入口。
+
+## 代码目录
+
+`app/main.py` 是网站入口。`app/agents/` 管理模型调用与 Agent 执行，`app/workflow/` 管理任务状态与提交，`app/services/` 处理需求和行程业务，`app/views/` 生成展示数据。模型、存储、持久化及认证保留在 `app` 根目录；地图工具、提示词、模板与静态资源分别位于 `tools/`、`prompts/`、`templates/`、`static/`。
 
 ## 环境与安装
 
@@ -53,7 +57,7 @@ TRAVEL_DISPLAY_OUTPUT_FORMAT=yaml
 - `AMAP_MAPS_API_KEY` 非空时优先于 `AMAP_MAP_KEY`；凭证仅由服务端使用。
 - `TRAVEL_DISPLAY_ENABLED=0` 关闭后台卡片整理，正文仍可交付。
 - `TRAVEL_PERSISTENCE=0` 不持久保存状态，仅适合隔离调试；正常使用保持开启。
-- 其他配置项见 `.env.example`；实际参数处理以 `app/agent_roles.py`、`app/model_transport.py` 和 `app/tools/amap_mcp.py` 为准。
+- 其他配置项见 `.env.example`；实际参数处理以 `app/agents/agent_roles.py`、`app/agents/model_transport.py` 和 `app/tools/amap_mcp.py` 为准。
 
 不要提交 `.env`、SQLite 数据库或包含用户对话的运行记录。
 
@@ -104,13 +108,34 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 ## 当前测试入口
 
-当前保留的离线专项测试：
+主 Agent 能力测试集及字段、评审说明见 [main_agent_v1](tests/datasets/main_agent_v1/README.md)。使用项目指定的 conda 解释器，在项目根目录执行：
 
-```powershell
-python -m pytest -q tests/automated/test_main_input_projection.py tests/automated/test_main_observations.py
+```bash
+# 离线验证数据和评测基础设施，不调用模型
+E:/anaconda/envs/TravelAssistant/python.exe -m tests.main_agent_eval.runner --validate-only
+E:/anaconda/envs/TravelAssistant/python.exe -m pytest tests/automated -q
+
+# 显式调用真实主模型：输入会发送到配置的模型服务，可能产生费用
+E:/anaconda/envs/TravelAssistant/python.exe -m tests.main_agent_eval.runner --live-main --profile smoke --repeat 1
+# 完整集或按标签筛选
+E:/anaconda/envs/TravelAssistant/python.exe -m tests.main_agent_eval.runner --live-main --profile full
+E:/anaconda/envs/TravelAssistant/python.exe -m tests.main_agent_eval.runner --live-main --profile full --tag weather
 ```
 
-覆盖 main 输入投影及工具观察合同，不是完整 Web、地图或路线质量回归。`python -m pytest -q` 只运行当前实际存在且符合 `pytest.ini` 发现规则的测试。旧浏览器脚本、数据集及批量 runner 已不在当前工作区，不再列为可用命令。
+`--live-main` 保留生产主循环、提示词及工具校验，专业能力和外部事实使用固定资料，用于隔离回归。
+
+全真实协作评测见 [main_agent_system_v1](tests/datasets/main_agent_system_v1/README.md)：
+
+```bash
+# 只验证全真实模式的数据，不发请求
+E:/anaconda/envs/TravelAssistant/python.exe -m tests.main_agent_eval.runner --validate-only --dataset tests/datasets/main_agent_system_v1/cases.json
+# 主 Agent、实际调用的子 Agent、天气/地点/路线查询全部真实，可能产生费用
+E:/anaconda/envs/TravelAssistant/python.exe -m tests.main_agent_eval.runner --live-system --profile smoke --repeat 1
+```
+
+`--live-system` 不预设子 Agent 返回内容或调用顺序，使用运行日相对日期和真实查询证据判断结果；缺服务或网络异常单独报告，不把天气未知当作条件不满足。正常协作不设置 token 总额硬上限，但保留循环、调用次数和超时保护。
+
+两种模式均不接正式数据库。报告写入 `.cache/main_agent_eval/` 的独立运行目录；机器检查、服务状态与待人工语义评审分开，离线测试通过不代表模型能力通过。结果验收到候选采用，不证明数据库提交或 Web 展示成功，多轮用例测的是给定合法历史状态下的理解和衔接。
 
 文档及代码变更可检查：
 

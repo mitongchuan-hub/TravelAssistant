@@ -6,7 +6,14 @@ from time import monotonic
 import json
 import logging
 import os
+from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+from dotenv import load_dotenv
+
+# Lodging search runs before agent_client is imported, so load the project
+# configuration at the provider boundary as well as in the model client.
+load_dotenv(Path(__file__).resolve().parents[2] / '.env', override=False)
 
 import anyio
 from anyio.from_thread import start_blocking_portal
@@ -239,7 +246,7 @@ def session():
     except Exception as exc:
         # SDK task groups may wrap an exception raised by the synchronous caller.
         # Business cancellation/budget errors must not turn into provider fallback.
-        from app.agent_runtime import AgentBudgetError
+        from app.agents.agent_runtime import AgentBudgetError
         def budget_error(error):
             if isinstance(error, AgentBudgetError):
                 return error

@@ -2,6 +2,26 @@
 {% if leg %}<section class="route-leg" aria-label="{{ label }}" data-route-leg data-route-status="{{ leg.status }}">
   <div><strong>{{ label }}</strong><span>{{ leg.origin }} → {{ leg.destination }}</span></div>
   <p>{{ leg.summary }}</p>
+  {% if leg.transit_steps %}
+  <ol class="route-transit-steps" aria-label="乘车与步行步骤">
+    {% for step in leg.transit_steps %}<li>
+      {% if step.kind == 'ride' %}
+        <strong>{{ '换乘' if step.transfer else '乘坐' }}</strong>
+        {% if step.entrance %}<p>从 {{ step.entrance }} 进入</p>{% endif %}
+        {% for line in step.lines %}
+          {% if not loop.first %}<p>或乘坐</p>{% endif %}
+          <p><strong>{{ line.name }}</strong>{% if line.direction %} · 往{{ line.direction }}方向{% endif %}</p>
+          <p>{{ line.departure_stop or '上车站待核实' }} 上车 → {{ line.arrival_stop or '下车站待核实' }} 下车</p>
+          {% if line.duration_minutes is not none or line.via_stop_count is not none %}<small>{% if line.duration_minutes is not none %}乘车约{{ '%g' | format(line.duration_minutes) }}分钟{% endif %}{% if line.via_stop_count is not none %}{% if line.duration_minutes is not none %} · {% endif %}途经{{ '%g' | format(line.via_stop_count) }}站{% endif %}</small>{% endif %}
+        {% endfor %}
+        {% if step.exit %}<p>从 {{ step.exit }} 出站</p>{% endif %}
+      {% elif step.kind == 'walking' %}
+        <strong>步行{% if step.distance_meters is not none %}约{{ '%g' | format(step.distance_meters) }}米{% endif %}</strong>{% if step.duration_minutes is not none %}<span> · 约{{ '%g' | format(step.duration_minutes) }}分钟</span>{% endif %}
+        {% for instruction in step.instructions %}<p>{{ instruction }}</p>{% endfor %}
+      {% else %}<p>此段接驳信息待核实，请在高德核对后出发。</p>{% endif %}
+    </li>{% endfor %}
+  </ol>
+  {% elif leg.missing_transit_details %}<p>线路明细未提供，请在高德核对后出发。</p>{% endif %}
   {% if leg.source or leg.queried_at %}<details class="route-leg-evidence"><summary>查询依据</summary><small>{{ leg.source }}{% if leg.queried_at %} · 查询于 {{ place_query_time(leg.queried_at) }}{% endif %}</small></details>{% endif %}
   {% if leg.navigation_url %}<a href="{{ leg.navigation_url }}" target="_blank" rel="noopener noreferrer">在高德重新规划此段</a>{% endif %}
 </section>{% endif %}

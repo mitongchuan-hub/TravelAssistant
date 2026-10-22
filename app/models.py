@@ -12,6 +12,7 @@ class User:
 class TripRequirements:
     start_date: str = ""
     end_date: str = ""
+    # Retained only for reading historical snapshots.
     arrival_time: str = ""
     departure_time: str = ""
     city: str = ""
@@ -22,6 +23,7 @@ class TripRequirements:
     budget_amount: str = ""
     budget_scope: str = "unspecified"
     budget_coverage: str = ""
+    transport_mode: str = "unspecified"
     must_visit: list[str] = field(default_factory=list)
     avoid: list[str] = field(default_factory=list)
     dietary: list[str] = field(default_factory=list)
@@ -45,7 +47,7 @@ class Trip:
     last_activity: str
     requirements: TripRequirements = field(default_factory=TripRequirements)
     workflow_state: dict = field(default_factory=dict)
-    mode: str = "travel"
+    mode: str = "city"
     lodging: dict = field(default_factory=dict)
 
 

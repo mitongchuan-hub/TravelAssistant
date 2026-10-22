@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import math
 from urllib.error import HTTPError, URLError
-from . import amap_mcp
+from app.tools import amap_mcp
 
 
 FOOD_TOOL_SPEC = {
