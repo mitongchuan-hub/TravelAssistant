@@ -79,9 +79,9 @@
         {% for item in day['items'] %}
         {% set route_item = route_day['items'][loop.index0] if route_day else none %}
         <article class="display-item display-item--{{ item.category }}" id="display-item-{{ day_index }}-{{ loop.index0 }}">
-          <div class="display-item-time"><span class="display-time-dot" aria-hidden="true"></span>{{ item.time_text or '时间待明确' }}</div>
+          <div class="display-item-time"><span class="display-time-dot" aria-hidden="true"></span><span>{{ item.time_text or '时间待明确' }}</span><span class="display-category">{{ categories.get(item.category, '安排') }}</span></div>
           <div class="display-item-content">
-            <div class="display-item-heading"><span class="display-category">{{ categories.get(item.category, '安排') }}</span><h4>{{ item.title }}</h4></div>
+            <div class="display-item-heading"><h4>{{ item.title }}</h4></div>
             {% if item.duration_text and item.category in ['transport', 'rest'] %}<p class="display-item-meta">{{ icon('clock') }}{{ item.duration_text }}</p>{% endif %}
             {% if item.transport_preview_parts %}
             <div class="display-ride-excerpts" aria-label="原方案乘车安排">{% for part in item.transport_preview_parts %}<p>{{ part }}</p>{% endfor %}</div>

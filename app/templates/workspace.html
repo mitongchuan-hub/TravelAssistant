@@ -21,7 +21,7 @@
 
 {% block page_styles %}
   {% if tab == 'chat' %}<link rel="stylesheet" href="{{ url_for('static', path='/chat.css') }}?v={{ static_version }}" />{% endif %}
-  {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/workflow.css') }}?v={{ static_version }}" />{% endif %}
+  {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/workflow.css') }}?v={{ static_version }}-transport-spacing" />{% endif %}
   {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/places.css') }}?v={{ static_version }}" />{% endif %}
   {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/itinerary.css') }}?v={{ static_version }}" />{% endif %}
   {% if tab == 'itinerary' and trip.mode == 'city' %}<link rel="stylesheet" href="{{ url_for('static', path='/city-route.css') }}?v={{ static_version }}" />{% endif %}
