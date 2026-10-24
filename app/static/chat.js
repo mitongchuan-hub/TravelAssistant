@@ -48,6 +48,34 @@ function saveChatDraft() {
   if (!isChatInput(input)) return;
   try { sessionStorage.setItem(`travelassistant:chat-draft:${location.pathname}`, input.value); } catch {}
 }
+
+function updateChatProgressClocks() {
+  if (document.hidden) return;
+  document.querySelectorAll('[data-progress-start]').forEach(node => {
+    const seconds = Math.max(0, Math.floor((Date.now() - Number(node.dataset.progressStart)) / 1000));
+    const minutes = Math.floor(seconds / 60);
+    node.textContent = minutes ? `${minutes}分${String(seconds % 60).padStart(2, '0')}秒` : `${seconds}秒`;
+  });
+}
+
+function preserveChatDisclosures(previous, incoming) {
+  if (!previous) return;
+  ['[data-chat-progress]', '[data-chat-full-reply]', '.chat-supplemental'].forEach(selector => {
+    const old = previous.querySelector(selector), next = incoming.querySelector(selector);
+    if (!old || !next) return;
+    if (selector === '[data-chat-progress]') {
+      const oldActive = ['queued', 'running'].includes(old.dataset.progressState);
+      const nextActive = ['queued', 'running'].includes(next.dataset.progressState);
+      // Closing a running disclosure is respected, but finishing folds it once.
+      if (oldActive !== nextActive) return;
+      if (nextActive && old.dataset.progressRevision === next.dataset.progressRevision) {
+        const clock = next.querySelector('[data-progress-clock]');
+        if (clock) clock.textContent = old.querySelector('[data-progress-clock]').textContent;
+      }
+    }
+    next.open = old.open;
+  });
+}
 function initializeChat() {
   const screen = document.querySelector('.chat-screen');
   const input = document.querySelector('.composer [name="body"]');
@@ -120,6 +148,8 @@ function initializeChat() {
   input.addEventListener('focus', viewportChanged);
   input.addEventListener('blur', viewportChanged);
   updateChatComposer();
+  updateChatProgressClocks();
+  window.setInterval(updateChatProgressClocks, 1000);
   viewportChanged();
 }
 document.addEventListener('travel-task-update', event => {

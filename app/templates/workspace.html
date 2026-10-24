@@ -21,7 +21,7 @@
 
 {% block page_styles %}
   {% if tab == 'chat' %}<link rel="stylesheet" href="{{ url_for('static', path='/chat.css') }}?v={{ static_version }}" />{% endif %}
-  {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/workflow.css') }}?v={{ static_version }}-transport-spacing" />{% endif %}
+  {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/workflow.css') }}?v={{ static_version }}-preflight-20261023" />{% endif %}
   {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/places.css') }}?v={{ static_version }}" />{% endif %}
   {% if tab == 'itinerary' %}<link rel="stylesheet" href="{{ url_for('static', path='/itinerary.css') }}?v={{ static_version }}" />{% endif %}
   {% if tab == 'itinerary' and trip.mode == 'city' %}<link rel="stylesheet" href="{{ url_for('static', path='/city-route.css') }}?v={{ static_version }}" />{% endif %}
@@ -247,7 +247,7 @@
           <details class="display-original"{% if not plan.display %} open{% endif %}><summary>查看完整行程原文</summary>
           <article class="text-itinerary" aria-label="行程原文">
             <h2>{{ plan.title }}</h2>
-            <div class="text-itinerary-content" data-itinerary-text>{{ plan.text }}</div>
+            <div class="text-itinerary-content" data-itinerary-text>{{ (plan.text | chat_reply_view).html }}</div>
           </article>
           </details>
           {% include 'partials/plan_evidence.html' %}

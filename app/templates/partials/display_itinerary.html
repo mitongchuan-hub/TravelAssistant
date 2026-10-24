@@ -24,19 +24,19 @@
     <div class="display-section-heading"><h3>出发前</h3></div>
     {% if display.weather or display.weather_metadata %}
     <section class="display-weather" data-display-weather aria-label="天气预报">
-      <div class="display-info-heading">{{ icon('cloud') }}<h4>天气</h4></div>
-      <div class="display-weather-grid">
+      {% if display.weather %}<div class="display-weather-grid">
         {% for item in display.weather %}
         <article class="display-weather-day">
-          <div class="display-weather-top"><strong>{{ item.date_text or '天气参考' }}</strong>{% if item.summary %}<span>{{ item.summary }}</span>{% endif %}</div>
-          {% if item.temperature_text or item.precipitation_text %}<dl class="display-weather-values">
-            {% if item.temperature_text %}<div><dt>气温</dt><dd>{{ item.temperature_text }}</dd></div>{% endif %}
-            {% if item.precipitation_text %}<div><dt>降水</dt><dd>{{ item.precipitation_text }}</dd></div>{% endif %}
-          </dl>{% endif %}
+          <div class="display-weather-top"><h4>{{ item.date_text or '天气参考' }}</h4>{{ icon('cloud') }}</div>
+          {% if item.temperature_text or item.summary %}<div class="display-weather-current">
+            {% if item.temperature_text %}<p class="display-weather-temperature{% if item.temperature_text | length > 20 %} display-weather-temperature--long{% endif %}"><span class="sr-only">气温：</span>{{ item.temperature_text }}</p>{% endif %}
+            {% if item.summary %}<p class="display-weather-summary">{{ item.summary }}</p>{% endif %}
+          </div>{% endif %}
+          {% if item.precipitation_text %}<dl class="display-weather-values"><div><dt>降水</dt><dd>{{ item.precipitation_text }}</dd></div></dl>{% endif %}
           {% if item.notes %}<ul class="display-weather-notes">{% for note in item.notes %}<li>{{ note }}</li>{% endfor %}</ul>{% endif %}
         </article>{% endfor %}
-      </div>
-      {% if display.weather_query or display.weather_notes or display.weather_metadata %}<div class="display-weather-shared">
+      </div>{% endif %}
+      {% if display.weather_notes or display.weather_metadata %}<div class="display-weather-shared">
         {% if display.weather_notes %}<ul class="display-weather-notes">{% for note in display.weather_notes %}<li>{{ note }}</li>{% endfor %}</ul>{% endif %}
         {% for item in display.weather_metadata %}<div class="display-weather-meta">
           {% if item.date_text %}<strong>{{ item.date_text }}</strong>{% endif %}
@@ -51,8 +51,11 @@
         <div class="display-info-heading">{{ icon(glyph) }}<h4>{{ label }}</h4><span class="display-info-count">{{ display.preparation[key] | length }}项</span></div>
         <div class="display-prep-list display-prep-list--{{ key }}">
           {% for item in display.preparation[key] %}
-          {% if key == 'clothing' and item.body %}
-          <details class="display-prep-entry display-prep-disclosure"><summary><h5>{{ item.title }}</h5><span>穿着建议</span></summary><p>{{ item.body }}</p></details>
+          {% if key == 'clothing' and item.body and item.body | length > 80 %}
+          <details class="display-prep-entry display-prep-disclosure">
+            <summary><div><h5>{{ item.title }}</h5><span class="display-prep-toggle"><span class="display-prep-expand">展开详情</span><span class="display-prep-collapse">收起详情</span></span></div><span class="display-chevron" aria-hidden="true"></span></summary>
+            <p>{{ item.body }}</p>
+          </details>
           {% else %}<article class="display-prep-entry"><h5>{{ item.title }}</h5>{% if item.body %}<p>{{ item.body }}</p>{% endif %}</article>{% endif %}
           {% endfor %}
         </div>

@@ -60,6 +60,7 @@ class ConversationTrace:
     events: list[str] = field(default_factory=list)
     records: list[dict] = field(default_factory=list, repr=False)
     written: bool = field(default=False, repr=False)
+    on_progress: object = field(default=None, repr=False)
 
     def add(self, title: str, value: object) -> None:
         if isinstance(value, str):
@@ -68,6 +69,11 @@ class ConversationTrace:
             content = json.dumps(value, ensure_ascii=False, indent=2, default=str)
         self.events.append(f"\n{'=' * 20} {title} {'=' * 20}\n{content}\n")
         self.records.append({"title": title, "value": value})
+        if self.on_progress:
+            try:
+                self.on_progress(title, value)
+            except Exception as exc:
+                logger.warning('Could not update execution progress (%s)', type(exc).__name__)
 
     def write(self, error: BaseException | None = None) -> None:
         if error is not None:
@@ -146,7 +152,7 @@ def is_llm_enabled() -> bool:
     return bool(os.getenv("OPENAI_API_KEY"))
 
 
-def generate_task_proposal(request_context, execution_context, *, cancelled=None):
+def generate_task_proposal(request_context, execution_context, *, cancelled=None, on_progress=None):
     """Run the task-execution strategy and return only a sealed proposal.
 
     Strategy selection and persistence stay in Store.  A fallback retries only
@@ -167,6 +173,7 @@ def generate_task_proposal(request_context, execution_context, *, cancelled=None
         started_at=datetime.now().isoformat(timespec='seconds'),
         trip_id=request_context.trip_id,
         user_body=request_context.body,
+        on_progress=on_progress,
     )
     trace.add('输入上下文', {
         'strategy': request_context.strategy, 'entry': request_context.entry,
@@ -334,7 +341,7 @@ def _create_chat_completion(
     # The main execution loop is a routing/coordination pass: the endpoint only
     # honors the chat-template switch (a bare enable_thinking parameter is ignored
     # server-side). Env var OPENAI_MAIN_ENABLE_THINKING=true restores default thinking.
-    if (agent_role == 'main_execution'
+    if (agent_role in {'main_execution', 'main_reply_review'}
             and os.getenv('OPENAI_MAIN_ENABLE_THINKING', 'false').strip().lower() != 'true'):
         params['extra_body'] = {'chat_template_kwargs': {'enable_thinking': False}}
     if tools:

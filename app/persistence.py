@@ -428,6 +428,7 @@ def _message(raw: dict[str, Any], owner: User | None = None, legacy: bool = Fals
         created_at=str(raw["created_at"]),
         status=str(raw.get("status", "sent")),
         agent_card=_card(raw.get("agent_card"), legacy),
+        execution_progress=deepcopy(raw.get('execution_progress') or {}),
     )
 
 

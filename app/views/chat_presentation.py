@@ -7,6 +7,30 @@ import re
 _MARKDOWN = MarkdownIt('commonmark', {'html': False, 'breaks': True}).enable('table').disable('image')
 
 
+def chat_duration(milliseconds):
+    seconds = max(0, int(milliseconds or 0) // 1000)
+    minutes, seconds = divmod(seconds, 60)
+    return f'{minutes}分{seconds:02d}秒' if minutes else f'{seconds}秒'
+
+
+def chat_progress_view(progress):
+    if not isinstance(progress, dict) or not progress:
+        return None
+    state = progress.get('state', 'failed')
+    active = state in {'queued', 'running'}
+    steps = progress.get('steps', [])
+    current = next((step for step in reversed(steps) if step['status'] == 'running'), None)
+    heading = ('正在' + current['label'] if current else '正在整理回复') if active else {
+        'succeeded': '处理完成', 'failed': '本次处理未完成',
+        'superseded': '已由新消息替代', 'needs_input': '等待你的补充',
+    }.get(state, '执行过程')
+    if state == 'queued':
+        heading = '等待处理'
+    return {**progress, 'active': active, 'heading': heading,
+            'elapsed': chat_duration(progress.get('duration_ms') if not active
+                                     else progress.get('updated_at', 0) - progress.get('started_at', 0))}
+
+
 def chat_reply_view(body, card=None):
     text = body or ''
     long = len(text) > 900 or len(text.splitlines()) > 18

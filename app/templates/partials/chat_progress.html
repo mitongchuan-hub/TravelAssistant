@@ -1,0 +1,23 @@
+<details class="chat-progress" data-chat-progress data-progress-state="{{ progress.state }}" data-progress-revision="{{ progress.revision }}"{% if progress.active %} open{% endif %}>
+  <summary aria-label="{{ progress.heading }}，展开或收起执行过程">
+    <svg class="chat-progress-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 3 5 5-5 5"/></svg>
+    <span class="chat-progress-heading">{{ progress.heading }}</span>
+    <span class="chat-progress-time" data-progress-clock{% if progress.active %} data-progress-start="{{ progress.started_at }}"{% endif %}>{{ progress.elapsed }}</span>
+  </summary>
+  {% if progress.steps %}<ol class="chat-progress-steps" aria-label="执行步骤">
+    {% for step in progress.steps %}
+    <li class="chat-progress-step" data-step-state="{{ step.status }}">
+      <svg class="chat-progress-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        {% if step.status == 'running' %}<circle class="chat-progress-spinner" cx="10" cy="10" r="6" stroke-dasharray="24 14"/>
+        {% elif step.status in ['failed', 'unavailable'] %}<circle cx="10" cy="10" r="7"/><path d="M10 6v5m0 3h.01"/>
+        {% elif step.status == 'stopped' %}<path d="M7 5v10m6-10v10"/>
+        {% elif step.kind == 'tool' %}<circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/>
+        {% else %}<path d="M5 3h8l3 3v11H5zM8 8h5m-5 3h5m-5 3h3"/>{% endif %}
+      </svg>
+      <div class="chat-progress-copy"><span>{{ step.label }}</span>{% if step.detail %}<small>{{ step.detail }}</small>{% endif %}</div>
+      <span class="chat-progress-step-status">{{ {'running':'进行中', 'succeeded':'完成', 'failed':'失败', 'unavailable':'暂无结果', 'stopped':'已停止'}.get(step.status, '已结束') }}{% if step.status != 'running' %}<small>{{ step.duration_ms | chat_duration }}</small>{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ol>{% endif %}
+  <p class="chat-progress-footer">{% if progress.active %}<span class="chat-progress-live" aria-hidden="true"></span>{{ '请求已收到，等待开始' if progress.state == 'queued' else '执行中，步骤持续更新' }}{% else %}{{ '执行未完成，可查看下方说明' if progress.state == 'failed' else '旧请求已停止更新' if progress.state == 'superseded' else '本轮执行过程' }}{% endif %}{% if progress.omitted %} · 显示最近 {{ progress.steps | length }} 个步骤{% endif %}</p>
+</details>

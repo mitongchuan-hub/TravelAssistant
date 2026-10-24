@@ -7,6 +7,7 @@ from app.models import AgentAction, AgentCard, Message
 from app.persistence import save_snapshot, serialize_state
 from app.services.requirements import chat_changes, update_requirements
 from app.workflow.tasks import now
+from app.workflow.task_progress import finish_progress
 
 
 class TurnPersistenceError(RuntimeError):
@@ -42,7 +43,7 @@ class TurnCommit:
                 request_id=request_id or (task['request_id'] if task else uuid4().hex),
                 message_id=message_id or (task.get('message_id') if task else None) or 'operation-' + uuid4().hex,
                 body=source or '', entry=entry,
-                strategy=task.get('execution_strategy', 'task_execution'),
+                strategy=task.get('execution_strategy', 'task_execution') if task else 'task_execution',
                 requirements_revision=task['requirements_revision'] if task else trip.requirements.revision,
                 plan_basis=PlanBasis.from_value(task['plan_basis']) if task and task.get('plan_basis') else plan_basis(self.plans[trip_id]),
                 workflow_revision=task.get('workflow_revision', workflow['revision']) if task else workflow['revision'],
@@ -126,7 +127,8 @@ class TurnCommit:
         execution = TaskExecutionContext(**snapshot, current_date=datetime.now().date().isoformat(),
             entry=context.entry, scope='item' if task['payload'].get('item_id') or display_target else '',
             target_item_id=task['payload'].get('item_id'), display_target=display_target)
-        proposal = agent_client.generate_task_proposal(context, execution, cancelled=cancelled)
+        proposal = agent_client.generate_task_proposal(context, execution, cancelled=cancelled,
+            on_progress=lambda title, value: self.record_task_progress(task_id, title, value))
         receipt = self.commit_turn(context, proposal)
         if not receipt.committed and self.tasks.get(task_id, {}).get('status') == 'running':
             return self.fail_execution(task_id, ValueError(receipt.reason))
@@ -168,7 +170,10 @@ class TurnCommit:
                 stage = self._stage_turn(task['trip_id'])
                 target = stage.tasks[task_id]
                 target.update(status='failed', message=conflict, updated_at=now(), result_url='')
-                stage.messages[task['trip_id']] = [row for row in stage.messages[task['trip_id']] if row.id != task.get('thinking_id')]
+                for row in stage.messages[task['trip_id']]:
+                    if row.id == task.get('thinking_id'):
+                        row.status, row.body = 'failed', conflict
+                        row.execution_progress = finish_progress(row.execution_progress, 'failed')
                 receipt = self._receipt(context, committed=False, task_status='failed', reason=conflict, stage=stage)
                 from app.agents.agent_protocol import thaw
                 target['receipt'] = thaw(receipt)
@@ -373,6 +378,8 @@ class TurnCommit:
             if index is None:
                 messages.append(message)
             else:
+                message.execution_progress = finish_progress(messages[index].execution_progress,
+                    'failed' if failed else 'needs_input' if proposal.question else 'succeeded')
                 messages[index] = message
             trip.last_activity = 'Agent 等待补充信息' if proposal.question else 'Agent 本轮部分完成' if failed else 'Agent 已完成本轮请求'
             task_status = 'failed' if failed else 'succeeded'

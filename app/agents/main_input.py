@@ -10,6 +10,8 @@ from dataclasses import asdict, is_dataclass
 import json
 from typing import Any, Iterable, Mapping
 
+from jsonschema import ValidationError
+
 from app.agents.agent_protocol import PlanBasis, plan_basis
 from app.services.plan_display import dates_from_snapshot, text_hash, validate_display
 from app.services.planning import required_information
@@ -116,22 +118,13 @@ def _valid_display(plan: Any, dates: list[str] | None) -> list[dict[str, Any]] |
     raw = deepcopy(_get(plan, "display", None))
     try:
         validated = validate_display(raw, dates)
-    except (TypeError, ValueError, KeyError):
+    except (TypeError, ValueError, KeyError, ValidationError):
         return None
     days = validated.get("days") if isinstance(validated, Mapping) else None
     if not isinstance(days, list):
         return None
-    structured_days = _get(plan, "days", []) or []
-    # Display is index-bound to the structured plan in the UI. Without that
-    # source, a valid-looking derivative cannot safely become an outline.
-    if not isinstance(structured_days, list) or not structured_days or len(days) != len(structured_days):
-        return None
-    for index, day in enumerate(days):
-        display_items = _get(day, "items", None)
-        structured_items = _get(structured_days[index], "items", None)
-        if (not isinstance(display_items, list) or not isinstance(structured_items, (list, tuple))
-                or len(display_items) != len(structured_items)):
-            return None
+    # Current itineraries are prose-first; the display is bound to that text
+    # and its saved dates, independently of the legacy structured days.
     return days
 
 
@@ -144,12 +137,18 @@ def _outline_from_days(days: Any, dates: list[str] | None) -> list[dict[str, Any
         day_date = _text(_get(day, "date", "")) or (dates[index] if dates and index < len(dates) else None)
         theme = _text(_get(day, "theme", "")) or None
         day_ref = _text(_get(day, "id", "")) or f"day-{index + 1}"
-        outline.append({"ref": day_ref, "label": label, "date": day_date, "theme": theme})
+        items = [{
+            "title": _text(_get(item, "title", "")),
+            "time_text": _text(_get(item, "time_text", "")) or _text(_get(item, "time", "")) or None,
+            "location": _text(_get(item, "location", "")) or None,
+        } for item in (_get(day, "items", []) or [])]
+        outline.append({"ref": day_ref, "label": label, "date": day_date, "theme": theme, "items": items})
     return outline
 
 
-def project_plan(plan: Any, expected_basis: PlanBasis | Mapping[str, Any] | None = None) -> dict[str, Any] | None:
-    """Return a version-bound outline, never a prose prefix masquerading as one."""
+def project_plan(plan: Any, expected_basis: PlanBasis | Mapping[str, Any] | None = None,
+                 *, include_text: bool = False) -> dict[str, Any] | None:
+    """Return version-bound activities and, when requested, complete saved prose."""
     if plan is None or not bool(_get(plan, "has_content", False)):
         return None
     dates = _snapshot_dates(plan)
@@ -169,12 +168,15 @@ def project_plan(plan: Any, expected_basis: PlanBasis | Mapping[str, Any] | None
     if outline is None and basis_matches_plan:
         display_days = _valid_display(plan, dates)
         outline = _outline_from_days(display_days, dates)
-    return {
+    view = {
         "ref": _text(_get(plan, "id", "")),
         "title": _text(_get(plan, "title", "")),
         "status": _text(_get(plan, "status", "")),
         "outline": outline,
     }
+    if include_text and basis_matches_plan:
+        view["text"] = _get(plan, "text", "")
+    return view
 
 
 def project_conversation(messages: Iterable[Any], current_message_id: str, *, limit: int = 8) -> list[dict[str, Any]]:
@@ -301,7 +303,7 @@ def _clip_text(value: Any, maximum: int = _MAX_TEXT) -> str:
 
 def project_idea_wall(raw: Any, *, include_body: bool = False,
                       limit: int = _IDEA_WALL_LIMIT) -> dict[str, Any]:
-    """Project recent idea-wall cards as bounded, non-authoritative context."""
+    """Project bounded user wishes; card contents do not grant tool authority."""
     values = list(raw) if isinstance(raw, (list, tuple)) else []
     if type(limit) is not int or limit < 1:
         limit = _IDEA_WALL_LIMIT
@@ -313,11 +315,11 @@ def project_idea_wall(raw: Any, *, include_body: bool = False,
             continue
         item = {
             "ref": ref,
-            "kind": _text(_get(idea, "kind", "")),
             "title": _clip_text(_text(_get(idea, "title", "")), _IDEA_WALL_TITLE_LIMIT),
-            "status": _text(_get(idea, "status", "")),
         }
         if include_body:
+            item["kind"] = _text(_get(idea, "kind", ""))
+            item["status"] = _text(_get(idea, "status", ""))
             item["body"] = _clip_text(_text(_get(idea, "body", "")), _IDEA_WALL_BODY_LIMIT)
             item["author"] = _text(_get(idea, "author", ""))
         items.append(item)
@@ -440,7 +442,12 @@ def project_main_read_context(section: str, raw: Any, *, trip: Any = None, plan:
         source = _get(raw, "items", []) if isinstance(raw, Mapping) else raw
         return project_ideas(source, query=query, offset=offset, limit=limit)
     if section == "plan":
-        return project_plan(plan, expected_basis) or {"plan": None}
+        if expected_basis is not None and plan_basis(plan) != PlanBasis.from_value(expected_basis):
+            raise ValueError("当前行程与本轮请求版本不一致，请基于最新行程重试")
+        view = project_plan(plan, expected_basis, include_text=True)
+        if view is None:
+            return {"plan": None}
+        return view
     if section == "evidence":
         source = _get(raw, "results", []) if isinstance(raw, Mapping) else raw
         return project_evidence(source, query=query, offset=offset, limit=limit)
@@ -502,15 +509,15 @@ def project_main_context(*, request_context: Any, execution_context: Any,
             "mode": _get(trip, "mode", "city"),
             "entry": request_context.entry,
         },
+        "conversation": project_conversation(recent_chat, request_context.message_id),
         "requirements": project_requirements(trip, missing_requirements),
         "idea_wall": project_idea_wall(execution_context.idea_cards),
-        "current_plan": project_plan(plan, request_context.plan_basis),
-        "conversation": project_conversation(recent_chat, request_context.message_id),
         "task_context": project_tasks(
             workflow, message_ids=message_ids,
             plan_basis_value=request_context.plan_basis,
             requirements_revision=request_context.requirements_revision,
         ),
+        "current_plan": project_plan(plan, request_context.plan_basis, include_text=True),
     }
 
 

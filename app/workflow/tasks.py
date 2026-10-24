@@ -7,6 +7,7 @@ from uuid import uuid4
 from app.agents.agent_protocol import PlanBasis, plan_basis
 from app.services.plan_display import text_hash
 from app.workflow.task_context import advance_request, normalize_workflow
+from app.workflow.task_progress import advance_progress, finish_progress
 
 ACTIVE = {'queued', 'running'}
 BASIS_FIELDS = {'expected_plan_id', 'source_hash', 'expected_requirements_revision'}
@@ -240,8 +241,10 @@ class TravelTasks:
                                 updated_at=now(), result_url='',
                             )
                             thinking = previous.get('thinking_id')
-                            self.messages[trip_id] = [row for row in self.messages[trip_id]
-                                                      if row.id != thinking]
+                            for row in self.messages[trip_id]:
+                                if row.id == thinking:
+                                    row.execution_progress = finish_progress(row.execution_progress, 'superseded')
+                                    row.status, row.body = 'superseded', '这次处理已由你的新消息替代。'
                 trip.workflow_state = deepcopy(next_workflow)
                 self._defer_persist = previous_defer + 1
                 if original:
@@ -292,6 +295,26 @@ class TravelTasks:
     def list_tasks(self, trip_id):
         with self._lock:
             return deepcopy([task for task in self.tasks.values() if task['trip_id'] == trip_id][-20:])
+
+    def record_task_progress(self, task_id, title, value):
+        with self._lock:
+            task = self.tasks.get(task_id)
+            if not task or task['status'] != 'running':
+                return
+            message = next((row for row in self.messages.get(task['trip_id'], [])
+                            if row.id == task.get('thinking_id') and row.status == 'thinking'), None)
+            if message is None:
+                return
+            progress = advance_progress(message.execution_progress, title, value)
+            if progress is None:
+                return
+            previous = message.execution_progress
+            message.execution_progress = progress
+            try:
+                self._persist()
+            except Exception:
+                # Observability must never turn a valid business request into a failure.
+                message.execution_progress = previous
 
     def run_task(self, task_id):
         with self._lock:

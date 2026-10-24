@@ -4,8 +4,10 @@
   <article class="message {{ message.sender_type }}{% if previous and previous.sender_type == message.sender_type and not time_break %} message--continued{% endif %}{% if message.status == 'thinking' %} thinking-message{% endif %}" data-message-id="{{ message.id }}" data-status="{{ message.status }}"{% if time_break %} data-time-break="{{ time_break }}"{% endif %}{% if message.status == 'thinking' %} data-agent-thinking-message="true"{% endif %} aria-label="{{ '你' if message.sender_type == 'user' else '旅行助手' }}的消息">
     {% if message.sender_type != 'user' %}<span class="avatar" aria-hidden="true">✦</span>{% endif %}
     <div class="message-body">
+      {% set progress = message.execution_progress | default({}) | chat_progress_view %}
+      {% if message.sender_type != 'user' and progress %}{% include 'partials/chat_progress.html' %}{% endif %}
       {% if message.status == 'thinking' %}
-        <div class="chat-bubble chat-thinking" role="status">正在整理回复 <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+        {% if not progress %}<div class="chat-bubble chat-thinking" role="status">正在整理回复 <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>{% endif %}
       {% elif message.sender_type == 'user' %}
         <div class="chat-bubble chat-user-text">{{ message.body }}</div>
       {% else %}

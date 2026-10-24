@@ -29,7 +29,7 @@ from app.services.places import collect_places
 from app.services.city_outings import CITY_FORM_FIELDS, LodgingChoices, city_requirements
 from app.models import AgentCard, Message, User
 from app.services.requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
-from app.views.chat_presentation import chat_reply_view, chat_time_break, chat_actions, chat_supplemental
+from app.views.chat_presentation import chat_reply_view, chat_time_break, chat_actions, chat_supplemental, chat_progress_view, chat_duration
 from app.views.presentation import day_date_label, timeline_time_parts
 from app.views.display_presentation import display_view, coverage_detail
 from app.views.route_view import build_route_view
@@ -50,11 +50,12 @@ auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20261022-itinerary-fields"
+templates.env.globals["static_version"] = "20261023-itinerary-markdown"
 templates.env.filters.update(day_date_label=day_date_label, timeline_time_parts=timeline_time_parts,
                              display_view=display_view, coverage_detail=coverage_detail,
                              chat_reply_view=chat_reply_view, chat_time_break=chat_time_break,
-                             chat_actions=chat_actions, chat_supplemental=chat_supplemental)
+                             chat_actions=chat_actions, chat_supplemental=chat_supplemental,
+                             chat_progress_view=chat_progress_view, chat_duration=chat_duration)
 templates.env.globals["task_request_id"] = lambda: uuid4().hex
 templates.env.globals["place_map_url"] = map_url
 templates.env.globals["place_query_time"] = query_time_label

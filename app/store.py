@@ -348,6 +348,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         return message, self.start_agent_task(trip_id)
 
     def start_agent_task(self, trip_id: str) -> Message:
+        from app.workflow.task_progress import new_progress
         with self._lock:
             thinking_message = Message(
                 id=f"m-{next(_id_counter)}",
@@ -356,6 +357,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
                 body="思考中 •••",
                 created_at=_now_label(),
                 status="thinking",
+                execution_progress=new_progress('queued'),
             )
             self.messages[trip_id].append(thinking_message)
             task_id = getattr(self._task_context, 'task_id', None)
@@ -403,6 +405,8 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             if thinking_message_id:
                 for index, message in enumerate(self.messages[trip_id]):
                     if message.id == thinking_message_id:
+                        from app.workflow.task_progress import finish_progress
+                        error_message.execution_progress = finish_progress(message.execution_progress, 'failed')
                         self.messages[trip_id][index] = error_message
                         break
                 else:

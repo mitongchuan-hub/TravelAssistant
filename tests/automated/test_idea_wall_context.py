@@ -1,4 +1,4 @@
-"""Idea-wall cards are bounded planning context, not formal requirements."""
+"""Idea-wall wishes reach planning without granting system/tool authority."""
 import json
 from types import SimpleNamespace
 
@@ -32,6 +32,8 @@ def test_projection_keeps_latest_cards_and_bounds_text():
     assert wall["truncated"] is True
     assert [item["ref"] for item in wall["items"]] == [f"idea-{index}" for index in range(2, 10)]
     first = wall["items"][0]
+    assert first["status"] == "待整理"
+    assert first["kind"] == "待归类"
     assert first["title"].startswith("想法2")
     assert len(first["title"]) == 120
     assert len(first["body"]) == 500
@@ -39,11 +41,12 @@ def test_projection_keeps_latest_cards_and_bounds_text():
     assert "rotation" not in first
 
 
-def test_summary_omits_body_and_author():
+def test_summary_does_not_present_card_organization_as_unfinished_travel_work():
     wall = project_idea_wall(cards(2))
     assert wall["truncated"] is False
     assert all("body" not in item for item in wall["items"])
     assert all("author" not in item for item in wall["items"])
+    assert all("status" not in item and "kind" not in item for item in wall["items"])
 
 
 def test_empty_and_invalid_cards_are_safe():
@@ -155,6 +158,16 @@ def test_draft_payload_contains_full_idea_wall():
     assert wall["items"][0]["body"].startswith("正文0")
     assert wall["items"][0]["author"] == "你"
     assert captured["capability_request"] == "生成"
+    assert captured['idea_requirement_refs'] == ['idea-0', 'idea-1']
+
+
+def test_truncated_payload_still_lists_every_required_idea_reference():
+    captured = {}
+    with pytest.raises(StopAfterCapture):
+        runtime(captured, idea_cards=cards(10)).run_capability('draft_itinerary', 'Generate', workspace=workspace())
+    assert captured['idea_wall']['truncated'] is True
+    assert len(captured['idea_wall']['items']) == 8
+    assert captured['idea_requirement_refs'] == [f'idea-{index}' for index in range(10)]
 
 
 def test_non_planning_capability_does_not_receive_idea_wall():

@@ -464,11 +464,13 @@ async function refreshChatMessages(chatList, options = {}) {
       const incoming = Array.from(fragment.content.querySelectorAll('[data-message-id]'));
       const existing = new Map(Array.from(chatList.querySelectorAll('[data-message-id]'))
         .map((node) => [node.dataset.messageId, node]));
+      const focusedProgress = document.activeElement?.closest('[data-chat-progress]');
+      const focusedMessageId = focusedProgress?.closest('[data-message-id]')?.dataset.messageId;
+      const newReply = incoming.some(node => node.dataset.status !== 'thinking'
+        && (!existing.has(node.dataset.messageId) || existing.get(node.dataset.messageId).dataset.status !== node.dataset.status));
       const messages = incoming.map((node) => {
         const previous = existing.get(node.dataset.messageId);
-        if (previous?.querySelector('details[open]')) {
-          node.querySelector('details')?.setAttribute('open', '');
-        }
+        preserveChatDisclosures(previous, node);
         return previous?.outerHTML === node.outerHTML ? previous : node;
       });
       // Unsent messages must remain available for the existing retry action.
@@ -477,13 +479,18 @@ async function refreshChatMessages(chatList, options = {}) {
       if (messages.some((node, index) => chatList.children[index] !== node)
           || chatList.children.length !== messages.length + local.length + extras.length) {
         chatList.replaceChildren(...messages, ...local, ...extras);
+        if (focusedMessageId) {
+          messages.find(node => node.dataset.messageId === focusedMessageId)
+            ?.querySelector('[data-chat-progress] > summary')?.focus({preventScroll: true});
+        }
+        updateChatProgressClocks();
         if (wasNearBottom) scrollChatToLatest();
         else {
           restoreChatView(chatList, view);
           const notice = document.querySelector('[data-chat-new]');
-          if (notice) notice.hidden = false;
+          if (notice && newReply) notice.hidden = false;
         }
-        document.querySelector('[data-chat-announcement]')?.replaceChildren('收到新回复');
+        if (newReply) document.querySelector('[data-chat-announcement]')?.replaceChildren('收到新回复');
         updateChatComposer();
       }
     }

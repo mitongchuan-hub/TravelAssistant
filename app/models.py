@@ -75,6 +75,7 @@ class Message:
     created_at: str
     status: str = "sent"
     agent_card: AgentCard | None = None
+    execution_progress: dict = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

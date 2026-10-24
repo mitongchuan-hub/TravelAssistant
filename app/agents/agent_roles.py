@@ -70,9 +70,9 @@ EDIT_PLAN_TEXT = tool('edit_plan_text', '执行用户明确指定文字的精确
 }, ['user_quote', 'operation', 'old_text', 'new_text'])
 
 
-# The execution strategy deliberately has nine tools.  These schemas are copied
+# Execution tool schemas are copied
 # into each request in deterministic order and validated again by TaskExecutionRuntime.
-EXECUTION_READ_CONTEXT = strict_tool('read_context', '按需读取当前旅行的需求、任务、行程或证据。', {
+EXECUTION_READ_CONTEXT = strict_tool('read_context', '按需读取当前旅行的需求、任务、想法或证据；section=plan 返回当前行程完整正文，可核实某个想法是否已安排。', {
     'section': {'type': 'string', 'enum': ['requirements', 'messages', 'ideas', 'plan', 'evidence', 'tasks']},
     'query': {'type': 'string'}, 'offset': {'type': 'integer', 'minimum': 0},
     'limit': {'type': 'integer', 'minimum': 1, 'maximum': 100},
@@ -84,6 +84,18 @@ EXECUTION_MANAGE_TASK = strict_tool('manage_task', '跟踪复杂事项、状态�
     'item': {'type': 'string'}, 'effect_refs': {'type': 'array', 'items': {'type': 'string'}},
     'unresolved_items': {'type': 'array', 'items': {'type': 'string'}},
 }, ['operation', 'effect_kind'])
+EXECUTION_MANAGE_TODOS = strict_tool('manage_todos', '维护本轮多事项清单；add新增待处理项，update按返回的id更新，不删除其他项。非pending状态必须说明结果或原因；done仅表示本轮处理完毕，不代表候选已保存。', {
+    'operation': {'type': 'string', 'enum': ['add', 'update']},
+    'items': {'type': 'array', 'minItems': 1, 'maxItems': 20, 'items': {
+        'type': 'object', 'additionalProperties': False,
+        'properties': {
+            'id': {'type': ['string', 'null']},
+            'title': {'type': 'string', 'minLength': 1, 'maxLength': 200},
+            'status': {'type': 'string', 'enum': ['pending', 'done', 'needs_input', 'unresolved']},
+            'reason': {'type': 'string', 'maxLength': 1000},
+        }, 'required': ['id', 'title', 'status', 'reason'],
+    }},
+}, ['operation', 'items'])
 EXECUTION_PREPARE_REQUIREMENTS = strict_tool('prepare_requirements', '提出正式需求候选；活动追问答案仍只按 answer_target 使用。', {
     'task_ref': {'type': ['string', 'null']}, 'message_ref': {'type': 'string'},
     'answer_question_ref': {'type': ['string', 'null']},
@@ -169,8 +181,16 @@ COMPLETE_CAPABILITY = strict_tool('complete_capability', '专业能力的结构�
     ]},
     'completed_items': {'type': 'array', 'items': {'type': 'string'}},
     'unresolved_items': {'type': 'array', 'items': {'type': 'string'}},
+    'idea_outcomes': {'type': 'array', 'items': {
+        'type': 'object', 'additionalProperties': False,
+        'properties': {
+            'idea_ref': {'type': 'string'},
+            'status': {'type': 'string', 'enum': ['scheduled', 'conflict', 'needs_input', 'excluded']},
+            'reason': {'type': 'string', 'minLength': 1, 'maxLength': 1000},
+        }, 'required': ['idea_ref', 'status', 'reason'],
+    }, 'description': '完整规划成功时逐项覆盖全部想法引用；scheduled的reason逐字摘录新行程中的对应安排，其他状态说明具体冲突、缺项或不适用原因。'},
 }, ['status', 'summary', 'artifact_text', 'question', 'answer_target', 'completed_items', 'unresolved_items'])
-EXECUTION_TOOLS = (EXECUTION_READ_CONTEXT, EXECUTION_MANAGE_TASK, EXECUTION_PREPARE_REQUIREMENTS,
+EXECUTION_TOOLS = (EXECUTION_READ_CONTEXT, EXECUTION_MANAGE_TASK, EXECUTION_MANAGE_TODOS, EXECUTION_PREPARE_REQUIREMENTS,
                    EXECUTION_RESEARCH, EXECUTION_DRAFT_ITINERARY,
                    EXECUTION_REVISE_ITINERARY, EXECUTION_CONFIRM_ITINERARY, EXECUTION_ASK_USER,
                    EXECUTION_FINISH_TURN)

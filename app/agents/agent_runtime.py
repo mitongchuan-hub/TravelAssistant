@@ -285,8 +285,10 @@ class TravelAgentRuntime:
                                               'search_max_calls': 6}}
         if capability == 'draft_itinerary':
             wall = project_idea_wall(self.snapshot.get('idea_cards', ()), include_body=True)
-            if wall['items']:
+            idea_refs = self._idea_requirement_refs()
+            if idea_refs:
                 payload['idea_wall'] = wall
+                payload['idea_requirement_refs'] = idea_refs
                 self.event('想法墙上下文', {
                     'count': len(wall['items']),
                     'refs': [item['ref'] for item in wall['items']],
@@ -420,10 +422,32 @@ class TravelAgentRuntime:
             message['_responses_output'] = wire
         return message
 
+    def _idea_requirement_refs(self):
+        cards = self.snapshot.get('idea_cards') or ()
+        return [item['ref'] for item in project_idea_wall(
+            cards, limit=max(1, len(cards)))['items']]
+
+    def _validate_idea_outcomes(self, args):
+        expected = set(self._idea_requirement_refs())
+        outcomes = args.get('idea_outcomes') or []
+        refs = [item['idea_ref'] for item in outcomes]
+        if len(refs) != len(set(refs)) or set(refs) != expected:
+            raise ValueError('idea_outcomes必须逐项覆盖idea_requirement_refs，不能遗漏、重复或伪造引用；截断内容请read_context(section=ideas)分页补读。')
+        text = args.get('artifact_text') or ''
+        for item in outcomes:
+            reason = item['reason'].strip()
+            if not reason or item['status'] not in {'scheduled', 'conflict', 'needs_input', 'excluded'}:
+                raise ValueError('idea_outcomes必须提供有效状态和具体处理依据。')
+            if item['status'] == 'scheduled' and reason not in text:
+                raise ValueError('idea_outcomes的scheduled依据必须逐字摘录本次artifact_text中的实际安排。')
+
     def _complete_capability(self, capability, args, workspace, *, task='', conversation_task_id=None,
                              question_factory=None, candidate_policy=None):
         from app.agents.agent_protocol import CapabilityResult, CapabilityStatus
         status = CapabilityStatus(args['status'])
+        if capability == 'draft_itinerary' and status == CapabilityStatus.OK:
+            self._validate_idea_outcomes(args)
+            self.event('想法需求覆盖', {'items': deepcopy(args.get('idea_outcomes') or [])})
         if capability == 'research' and status == CapabilityStatus.OK:
             route_error = transit_detail_guard(task, self.evidence)
             if route_error:
@@ -447,6 +471,7 @@ class TravelAgentRuntime:
             artifact = workspace.register_artifact('itinerary', {
                 'text': args['artifact_text'].strip(), 'evidence': deepcopy(self.evidence),
                 'preserve_plan_basis': False,
+                'idea_outcomes': deepcopy(args.get('idea_outcomes') or []),
             }, source_capability=capability, conversation_task_id=conversation_task_id,
                depends_on=dependencies[-1:], evidence_refs=condition_evidence,
                effect=effect, condition=condition)
@@ -472,9 +497,14 @@ class TravelAgentRuntime:
                 raise ValueError('专业能力追问缺少父级任务绑定器')
             target = args.get('answer_target') or {'namespace': capability, 'field': 'clarification'}
             question = question_factory(capability, args.get('question') or summary, target)
+        unresolved = list(args.get('unresolved_items') or ())
+        if capability == 'draft_itinerary':
+            for item in args.get('idea_outcomes') or []:
+                if item['status'] != 'scheduled':
+                    unresolved.append(f"想法{item['idea_ref']}（{item['status']}）：{item['reason']}")
         return workspace.observe(CapabilityResult(status, capability, summary,
             tuple(artifact_refs), tuple(evidence_refs), tuple(args.get('completed_items') or ()),
-            tuple(args.get('unresolved_items') or ()), question,
+            tuple(unresolved), question,
             summary if status == CapabilityStatus.FAILED else None))
 
     def planning_route_review(self):
@@ -505,6 +535,9 @@ class TravelAgentRuntime:
             raise ValueError('未知上下文类型')
         key = {'messages': 'messages', 'ideas': 'idea_cards'}[section]
         entries = [asdict(v) for v in self.snapshot.get(key, []) if section != 'messages' or v.status == 'sent']
+        if section == 'messages':
+            for entry in entries:
+                entry.pop('execution_progress', None)
         query = args.get('query', '')
         if not isinstance(query, str):
             raise ValueError('检索词必须为文本')
@@ -518,6 +551,7 @@ class TravelAgentRuntime:
 
     def execute_tool(self, role, name, args):
         started, output, error = monotonic(), None, None
+        self.event('工具开始', {'role': role, 'name': name, 'arguments': args})
         try:
             output, direct = self._execute_tool(role, name, args)
             return output, direct

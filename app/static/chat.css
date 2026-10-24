@@ -183,6 +183,35 @@ body.chat-page { overflow: hidden; }
 .chat-screen .retry-message { margin-top: 6px; font-size: 12px; min-height: 36px; box-shadow: none; }
 .chat-thinking { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); background: transparent; border-color: transparent; padding-left: 2px; }
 .chat-screen .typing-dots i { width: 4px; height: 4px; background: var(--muted); }
+.chat-progress { margin: 0 0 10px; color: var(--muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.thinking-message .chat-progress { margin-bottom: 0; }
+.chat-progress > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px 0; list-style: none; cursor: pointer; border-radius: 4px; }
+.chat-progress > summary::-webkit-details-marker { display: none; }
+.chat-progress-chevron { width: 12px; height: 12px; flex: 0 0 12px; transition: transform .15s ease; }
+.chat-progress[open] > summary .chat-progress-chevron { transform: rotate(90deg); }
+.chat-progress-heading { min-width: 0; flex: 1; font-weight: 500; }
+.chat-progress[data-progress-state="running"] .chat-progress-heading { color: var(--ocean); }
+.chat-progress-time { flex: 0 0 auto; font-size: 11px; font-variant-numeric: tabular-nums; }
+.chat-progress-steps { margin: 2px 0 0; padding: 0; list-style: none; }
+.chat-progress-step { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: start; gap: 8px; padding: 8px 0; }
+.chat-progress-icon { width: 18px; height: 18px; margin-top: 2px; color: var(--muted); }
+.chat-progress-copy { min-width: 0; }
+.chat-progress-copy > span { color: var(--ink); }
+.chat-progress-copy > small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.6; }
+.chat-progress-step-status { min-width: 42px; font-size: 11px; text-align: right; }
+.chat-progress-step-status > small { display: block; font-size: 11px; font-variant-numeric: tabular-nums; }
+.chat-progress-step[data-step-state="running"] .chat-progress-icon,
+.chat-progress-step[data-step-state="running"] .chat-progress-step-status { color: var(--ocean); }
+.chat-progress-spinner { transform-origin: 10px 10px; animation: chat-progress-spin 1.2s linear infinite; }
+.chat-progress-footer { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line); font-size: 11px; }
+.chat-progress-live { width: 5px; height: 5px; flex: 0 0 5px; border-radius: 50%; background: var(--ocean); }
+.chat-progress > summary:focus-visible { outline: 2px solid var(--ocean); outline-offset: 3px; }
+@keyframes chat-progress-spin { to { transform: rotate(360deg); } }
+@media (hover: hover) { .chat-progress > summary:hover .chat-progress-heading { color: var(--ink); } }
+@media (prefers-reduced-motion: reduce) {
+  .chat-progress-spinner { animation: none; }
+  .chat-progress-chevron { transition: none; }
+}
 .chat-screen .chat-dock {
   position: relative;
   inset: auto;
