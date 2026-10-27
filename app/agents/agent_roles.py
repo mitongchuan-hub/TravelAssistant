@@ -153,6 +153,10 @@ EXECUTION_REVISE_ITINERARY = strict_tool('revise_itinerary', '按当前行程引
 EXECUTION_CONFIRM_ITINERARY = strict_tool('confirm_itinerary', '确认用户已看到且依据未变的当前行程。', {
     'plan_ref': {'type': 'string'},
 }, ['plan_ref'])
+EXECUTION_RESTYLE_ITINERARY = strict_tool('restyle_itinerary', '仅修改当前攻略网页的视觉风格，产生展示候选；不改行程正文、地点、时间、预算或确认状态。结束时显式采用artifact_ref后后台重新生成网页。', {
+    'plan_ref': {'type': 'string', 'minLength': 1, 'maxLength': 200},
+    'instruction': {'type': 'string', 'minLength': 1, 'maxLength': 2000},
+}, ['plan_ref', 'instruction'])
 EXECUTION_ASK_USER = strict_tool('ask_user', '提出一个关键问题；可同时采用不依赖答案的候选。', {
     'task_ref': {'type': ['string', 'null']}, 'question': {'type': 'string'},
     'answer_target': {'type': 'object', 'properties': {
@@ -192,7 +196,7 @@ COMPLETE_CAPABILITY = strict_tool('complete_capability', '专业能力的结构�
 }, ['status', 'summary', 'artifact_text', 'question', 'answer_target', 'completed_items', 'unresolved_items'])
 EXECUTION_TOOLS = (EXECUTION_READ_CONTEXT, EXECUTION_MANAGE_TASK, EXECUTION_MANAGE_TODOS, EXECUTION_PREPARE_REQUIREMENTS,
                    EXECUTION_RESEARCH, EXECUTION_DRAFT_ITINERARY,
-                   EXECUTION_REVISE_ITINERARY, EXECUTION_CONFIRM_ITINERARY, EXECUTION_ASK_USER,
+                   EXECUTION_REVISE_ITINERARY, EXECUTION_RESTYLE_ITINERARY, EXECUTION_CONFIRM_ITINERARY, EXECUTION_ASK_USER,
                    EXECUTION_FINISH_TURN)
 
 

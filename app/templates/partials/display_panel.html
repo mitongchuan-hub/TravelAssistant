@@ -1,15 +1,35 @@
-{% set display = plan.display | display_view %}
-<div data-display-panel data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash if display_state is defined else plan.display_source_hash }}"
-     data-display-status="{{ plan.display_status }}" data-business-busy="{{ 'true' if display_state is defined and display_state.busy else 'false' }}" data-version="{{ display_state.version if display_state is defined else plan.display_status }}">
-  {% include 'partials/display_summary.html' %}
-  {% if route_view is defined and route_view.is_city and route_view.basis_status in ['stale', 'unknown'] %}<p class="display-progress" role="status" data-route-basis>{{ '设置已更新，当前方案尚未更新。' if route_view.basis_status == 'stale' else '原方案依据不完整。' }} {{ route_view.basis_message }} <a href="#text-revision-feedback">调整当前行程</a></p>{% endif %}
-  {% if plan.display_status == 'pending' %}
-    <p class="display-progress" role="status" data-display-notice><span data-display-notice-text>行程已生成，正在整理卡片。可以先阅读完整文字。</span></p>
-  {% elif not plan.display and plan.text %}
-    <p class="display-progress" role="status" data-display-notice>
-      <span data-display-notice-text>{% if plan.display_status == 'fallback' %}卡片暂未整理完成，完整文字已保留。{% else %}完整行程已保存，可以整理为按天卡片。{% endif %}</span>
-      {% if display_state is not defined or display_state.enabled %}<button type="button" data-display-retry{% if display_state is defined and display_state.busy %} disabled{% endif %}>{% if plan.display_status == 'fallback' %}重新整理卡片{% else %}整理卡片{% endif %}</button>{% endif %}
-    </p>
+{% set available = display_state.guide_available %}
+{% set guide_url = '/workspace/' ~ trip.id ~ '/guide?plan_id=' ~ (plan.id | urlencode) ~ '&source_hash=' ~ display_state.source_hash ~ '&version=' ~ display_state.guide_version %}
+<div class="guide-panel" data-display-panel data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash }}" data-requirements-revision="{{ trip.requirements.revision }}" data-display-status="{{ plan.display_status }}" data-business-busy="{{ 'true' if display_state.busy else 'false' }}" data-version="{{ display_state.version }}">
+  {% if plan.text %}
+    <div class="guide-toolbar">
+      <span class="guide-plan-status">{{ plan.status }}</span>
+      {% if available %}<a href="{{ guide_url }}" target="_blank" rel="noopener noreferrer">打开网页</a><a class="guide-download" href="{{ guide_url }}&download=1">下载 HTML</a>{% endif %}
+      {% if plan.status != '已确认' %}<form action="/workspace/{{ trip.id }}/plan/confirm" method="post"><input type="hidden" name="expected_plan_id" value="{{ plan.id }}"><input type="hidden" name="source_hash" value="{{ display_state.source_hash }}"><input type="hidden" name="expected_requirements_revision" value="{{ trip.requirements.revision }}"><button type="submit"{% if display_state.busy %} disabled{% endif %}>确认行程</button></form>{% endif %}
+    </div>
+    {% if display_state.basis_status in ['stale', 'unknown'] %}<p class="guide-notice" role="status"><span>{% if display_state.basis_status == 'stale' %}游玩设置已更新，请在聊天中更新行程。{% else %}这份行程的住宿依据尚未确认，可到<a href="/workspace/{{ trip.id }}/requirements">游玩设置</a>核对。{% endif %}</span></p>{% endif %}
+    {% if plan.display_status == 'pending' %}<p class="guide-notice" role="status" data-display-notice>正在生成攻略网页。{{ '上一版仍可查看。' if available else '可以先查看行程文字。' }}</p>
+    {% elif plan.display_status == 'fallback' or not available %}
+      <div class="guide-notice" role="status" data-display-notice><span>{{ '新版网页未生成，' ~ ('上一版仍可查看。' if available else '完整行程已保留。') if plan.display_status == 'fallback' else '行程已保存，可以生成攻略网页。' }}</span>{% if display_state.enabled %}<button type="button" data-display-retry{% if display_state.busy %} disabled{% endif %}>{{ '重新生成' if plan.display_status == 'fallback' else '生成攻略网页' }}</button>{% endif %}</div>
+    {% endif %}
+    {% if available %}<iframe class="guide-frame" title="{{ plan.display.title }}" src="{{ guide_url }}" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" data-guide-frame></iframe>{% endif %}
+    <details class="guide-source"{% if not available %} open{% endif %}><summary>查看完整行程文字</summary><article data-itinerary-text>{{ (plan.text | chat_reply_view).html }}</article></details>
+    {% if available and plan.display_status != 'pending' and display_state.enabled %}<button class="guide-regenerate" type="button" data-display-retry{% if display_state.busy %} disabled{% endif %}>重新生成网页</button>{% endif %}
+  {% elif plan.days %}
+    <div class="guide-notice">这是此前保存的行程，完整安排仍可阅读。可在聊天中说明需要如何调整。</div>
+    <article class="guide-legacy" data-itinerary-text>
+      <h2>{{ plan.title }}</h2>{% if plan.overview %}<p>{{ plan.overview }}</p>{% endif %}
+      {% for day in plan.days %}<section><h3>{{ day.date or day.label }}{% if day.theme %} · {{ day.theme }}{% endif %}</h3>
+        {% for item in day.items %}<h4>{{ item.time }} {{ item.title }}</h4><p>{{ item.location }}{% if item.duration %} · {{ item.duration }}{% endif %}</p>
+          {% if item.reason %}<p>{{ item.reason }}</p>{% endif %}{% if item.notes %}<p>{{ item.notes }}</p>{% endif %}
+          {% if item.meal %}<p>{{ item.meal.meal_type }}：{{ item.meal.recommendation }} · {{ item.meal.cuisine }} · {{ item.meal.budget }} · {{ item.meal.reservation }}</p>{% endif %}
+          {% for route in [item.incoming_route, item.departure_route] %}{% if route %}<p>{{ route.origin_name }} → {{ route.destination_name }}{% if route.duration_minutes is not none %} · 查询估算 {{ route.duration_minutes }} 分钟{% endif %} · {{ route.reason }}</p>{% endif %}{% endfor %}
+        {% endfor %}</section>
+      {% endfor %}
+      {% for group, label in [(plan.preparation.clothing, '衣物与装备'), (plan.preparation.accommodation, '住宿')] %}{% if group %}<h3>{{ label }}</h3>{% for item in group %}<p>{{ item.title }} · {{ item.body }} · {{ item.status }}</p>{% endfor %}{% endif %}{% endfor %}
+      {% for group, label in [(plan.pending_items, '待核实'), (plan.risks, '出行提醒')] %}{% if group %}<h3>{{ label }}</h3><ul>{% for item in group %}<li>{{ item }}</li>{% endfor %}</ul>{% endif %}{% endfor %}
+    </article>
+  {% else %}
+    <div class="guide-empty"><svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M14 10h27l9 9v35H14zM40 10v11h10M22 30h20M22 37h16M22 44h11"/></svg><h3>下一段旅途，从这里开始</h3><p>告诉助手想去哪、怎么游玩。行程安排好后，攻略网页会出现在这里。</p><p class="guide-empty-hint">也可以在聊天中说：帮我生成行程。</p></div>
   {% endif %}
-  {% if plan.display %}{% include 'partials/display_itinerary.html' %}{% endif %}
 </div>

@@ -26,6 +26,7 @@ _CAPABILITY_KINDS = {
     "draft_itinerary": frozenset({"itinerary", "evidence"}),
     "revise_itinerary": frozenset({"itinerary", "evidence"}),
     "confirm_itinerary": frozenset({"confirmation"}),
+    "restyle_itinerary": frozenset({"presentation"}),
     "manage_task": frozenset({"task"}),
 }
 
@@ -307,6 +308,10 @@ class TurnWorkspace:
         missing_dependencies = [item for item in artifact.depends_on if item not in self._adopted]
         if missing_dependencies:
             raise WorkspaceError("artifact dependencies must be adopted explicitly first")
+        selected_kinds = {self._artifacts[item].kind for item in self._adopted if item != artifact_id}
+        if (artifact.kind == 'presentation' and selected_kinds & {'presentation', 'itinerary'}
+                or artifact.kind == 'itinerary' and 'presentation' in selected_kinds):
+            raise WorkspaceError('网页风格候选只能采用一份，不能与新行程候选同时采用')
         if artifact.kind == "itinerary" and any(
             self._artifacts[item].kind == "itinerary" for item in self._adopted
         ):

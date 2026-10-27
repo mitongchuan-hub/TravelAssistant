@@ -1,18 +1,17 @@
 """The original itinerary renders Markdown without executing embedded HTML."""
-from pathlib import Path
-
-from jinja2 import Environment
+from jinja2 import Environment, FileSystemLoader
 
 from app.views.chat_presentation import chat_reply_view
 
 
 def render_original(text):
-    source = Path('app/templates/workspace.html').read_text(encoding='utf-8')
-    start = source.index('<div class="text-itinerary-content"')
-    fragment = source[start:source.index('</div>', start) + len('</div>')]
-    env = Environment(autoescape=True)
+    env = Environment(loader=FileSystemLoader('app/templates'), autoescape=True)
     env.filters['chat_reply_view'] = chat_reply_view
-    return env.from_string(fragment).render(plan={'text': text})
+    return env.get_template('partials/display_panel.html').render(
+        plan={'id': 'plan', 'text': text, 'status': '草案', 'display_status': 'not_requested'},
+        trip={'id': 'trip', 'requirements': {'revision': 0}},
+        display_state={'guide_available': False, 'guide_version': '', 'source_hash': 'source',
+                       'version': 'version', 'enabled': False, 'busy': False, 'basis_status': 'valid'})
 
 
 def test_original_renders_headings_bold_lists_tables_and_separator():

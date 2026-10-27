@@ -16,7 +16,7 @@ import secrets
 from typing import Any, Callable
 
 
-ARTIFACT_KINDS = frozenset({"requirements", "itinerary", "confirmation", "task", "evidence"})
+ARTIFACT_KINDS = frozenset({"requirements", "itinerary", "presentation", "confirmation", "task", "evidence"})
 EFFECT_KINDS = frozenset({"independent", "conditional", "hypothetical"})
 CONDITION_STATES = frozenset({"satisfied", "not_satisfied", "unknown"})
 ENTRY_KINDS = frozenset({"main", "planning", "revision", "confirm"})
@@ -197,7 +197,7 @@ class PlanBasis:
         return {field.name: getattr(self, field.name) for field in fields(self)}
 
 
-_DISPLAY_FIELDS = frozenset({"display", "display_source_hash", "display_status"})
+_DISPLAY_FIELDS = frozenset({"display", "display_source_hash", "display_status", "display_style"})
 
 
 def plan_basis(plan: Any) -> PlanBasis:
@@ -399,6 +399,10 @@ def _validate_payload(kind: str, payload: FrozenDict) -> None:
             raise ProtocolError("itinerary payload needs an evidence list")
         if type(payload.get("preserve_plan_basis")) is not bool:
             raise ProtocolError("itinerary payload needs preserve_plan_basis boolean")
+    elif kind == "presentation":
+        for key, maximum in (("plan_ref", 200), ("style_instruction", 2000)):
+            if not isinstance(payload.get(key), str) or not payload[key].strip() or len(payload[key]) > maximum:
+                raise ProtocolError('presentation payload needs valid ' + key)
     elif kind == "confirmation":
         raw_basis = payload.get("plan_basis")
         if not isinstance(raw_basis, FrozenDict):

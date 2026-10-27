@@ -32,6 +32,9 @@ def migrate_stored_display(data):
 
 
 def validate_display(data, dates=None):
+    if isinstance(data, dict) and data.get('schema_version') == '2.0':
+        from app.services.guide_html import validate_guide_display
+        return validate_guide_display(data, dates)
     VALIDATOR.validate(data)
     result = deepcopy(data)
     days = result['days']

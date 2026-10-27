@@ -15,7 +15,8 @@ from app.services.planning import planning_brief, required_information
 from app.services.planning_evidence import critical_route_review
 from app.services.places import collect_places
 from jsonschema import ValidationError
-from app.services.plan_display import validate_display, display_format, text_hash, parse_display_output
+from app.services.plan_display import text_hash
+from app.services.guide_html import build_guide_display
 from app.workflow.tasks import validate_display_target_metadata
 
 
@@ -738,17 +739,12 @@ class TravelAgentRuntime:
             else:
                 brief, _ = planning_brief(self.trip)
                 dates = brief['dates'] if brief else None
-            output_format = os.getenv('TRAVEL_DISPLAY_OUTPUT_FORMAT', 'yaml').strip().lower()
-            if output_format not in {'yaml', 'json'}:
-                raise ValueError('展示输出格式配置须为yaml或json')
-            response_format = display_format(dates) if output_format == 'json' else None
-            payload = {'source_text': result.plan_text, 'source_dates': dates, 'output_format': output_format}
-            if output_format == 'yaml':
-                payload['output_schema'] = display_format(dates)['json_schema']['schema']
-            raw = self.model_node('display', payload, response_format=response_format)
+            payload = {'source_text': result.plan_text, 'source_dates': dates,
+                       'style_instruction': self.snapshot.get('style_instruction', ''), 'output_format': 'html'}
+            raw = self.model_node('display', payload)
             try:
-                display = validate_display(parse_display_output(raw, output_format), dates)
-            except (json.JSONDecodeError, ValueError, ValidationError) as invalid:
+                display = build_guide_display(raw, dates)
+            except ValueError as invalid:
                 retry_allowed = self.snapshot.get('display_retry_allowed', lambda: True)
                 if self.budget.remaining() < 60 or self.budget.model_calls >= self.budget.max_models or not retry_allowed():
                     raise
@@ -756,10 +752,10 @@ class TravelAgentRuntime:
                 reason = invalid.message if hasattr(invalid, 'message') else str(invalid)
                 self.event('展示纠错', {'error_type': type(invalid).__name__, 'reason': reason[:300]})
                 payload.update(previous_output=raw, validation_error=reason[:500],
-                    correction_instruction='仅修正结构和日期。逐日对照原文，保留预约、饮食禁忌、预算口径、未知和估算。'
-                    '不得为凑天数编造或复制活动；原文缺少某日时items为空并说明原文未提供安排。')
-                raw = self.model_node('display', payload, response_format=response_format)
-                display = validate_display(parse_display_output(raw, output_format), dates)
+                    correction_instruction='修正 HTML 结构及被拒绝内容，返回完整 HTML。仅使用内联 CSS，'
+                    '所有标签显式闭合；保留原文活动顺序、交通、条件、预算与未知，不新增业务事实。')
+                raw = self.model_node('display', payload)
+                display = build_guide_display(raw, dates)
             self.event('展示转换', {'status': 'ready', 'source_hash': source_hash})
             return replace(result, display=display, display_source_hash=source_hash, display_status='ready')
         except Exception as exc:

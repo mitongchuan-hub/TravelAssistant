@@ -508,6 +508,7 @@ def _plan(raw: dict[str, Any], legacy: bool = False) -> TripPlan:
         display=migrate_stored_display(raw.get("display")),
         display_source_hash=str(raw.get("display_source_hash") or ""),
         display_status=str(raw.get("display_status") or "not_requested"),
+        display_style=str(raw.get("display_style") or ""),
         requirements_snapshot=deepcopy(raw.get("requirements_snapshot") or {}),
         lodging_snapshot=deepcopy(raw["lodging_snapshot"]) if isinstance(raw.get("lodging_snapshot"), dict) else {},
     )

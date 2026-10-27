@@ -29,6 +29,8 @@ from app.services.places import collect_places
 from app.services.city_outings import CITY_FORM_FIELDS, LodgingChoices, city_requirements
 from app.models import AgentCard, Message, User
 from app.services.requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
+from app.services.guide_html import GUIDE_CSP, GUIDE_SANDBOX, guide_document, validate_guide_display
+from app.services.plan_display import dates_from_snapshot
 from app.views.chat_presentation import chat_reply_view, chat_time_break, chat_actions, chat_supplemental, chat_progress_view, chat_duration
 from app.views.presentation import day_date_label, timeline_time_parts
 from app.views.display_presentation import display_view, coverage_detail
@@ -50,7 +52,7 @@ auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-templates.env.globals["static_version"] = "20261023-itinerary-markdown"
+templates.env.globals["static_version"] = "20261027-agent-html-guide"
 templates.env.filters.update(day_date_label=day_date_label, timeline_time_parts=timeline_time_parts,
                              display_view=display_view, coverage_detail=coverage_detail,
                              chat_reply_view=chat_reply_view, chat_time_break=chat_time_break,
@@ -429,7 +431,7 @@ def workspace(request: Request, trip_id: str, tab: str = "") -> Response:
         return RedirectResponse(url="/", status_code=303)
     with store._lock:
         trip = deepcopy(get_owned_trip_or_404(trip_id, user))
-        active_tab = tab if tab in {"chat", "board", "itinerary"} else 'chat'
+        active_tab = 'board' if tab == 'board' else 'chat'
         plan = deepcopy(store.plans[trip_id])
         context = {
             "trip": trip, "tab": active_tab, "plan": plan,
@@ -439,8 +441,8 @@ def workspace(request: Request, trip_id: str, tab: str = "") -> Response:
             "metrics": store.trip_metrics(trip_id), "current_user": user,
             "travel_tasks": store.list_tasks(trip_id),
             "display_state": store.get_display_state(trip_id),
+            "guide_open": tab == 'itinerary',
         }
-    context['route_view'] = build_route_view(trip, plan)
     return templates.TemplateResponse(request, 'workspace.html', context)
 
 
@@ -482,8 +484,34 @@ def display_partial(request: Request, trip_id: str, plan_id: str = '', source_ha
         plan = deepcopy(store.plans[trip_id])
         trip = deepcopy(store.trips[trip_id])
     return templates.TemplateResponse(request, 'partials/display_panel.html',
-        {'trip': trip, 'plan': plan, 'display_state': state, 'route_view': build_route_view(trip, plan)},
+        {'trip': trip, 'plan': plan, 'display_state': state},
         headers={'Cache-Control': 'no-store'})
+
+
+@app.get('/workspace/{trip_id}/guide', response_class=HTMLResponse)
+def guide_preview(request: Request, trip_id: str, plan_id: str = '', source_hash: str = '',
+                  version: str = '', download: bool = False) -> Response:
+    user = current_user(request)
+    if not user:
+        return JSONResponse({'error': '请先登录'}, status_code=401)
+    with store._lock:
+        get_owned_trip_or_404(trip_id, user)
+        state = store.get_display_state(trip_id)
+        if (not state['guide_available'] or state['plan_id'] != plan_id
+                or state['source_hash'] != source_hash or state['guide_version'] != version):
+            return JSONResponse({'error': '攻略已更新或尚未生成，请返回聊天查看最新版本'}, status_code=409)
+        plan = deepcopy(store.plans[trip_id])
+    try:
+        display = validate_guide_display(plan.display, dates_from_snapshot(plan.requirements_snapshot))
+        document = guide_document(display)
+    except (TypeError, ValueError, KeyError):
+        return JSONResponse({'error': '攻略网页暂不可用，可查看完整文字或重新生成'}, status_code=409)
+    headers = {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+               'Referrer-Policy': 'no-referrer',
+               'Content-Security-Policy': GUIDE_CSP + '; ' + GUIDE_SANDBOX + "; frame-ancestors 'self'"}
+    if download:
+        headers['Content-Disposition'] = "attachment; filename=travel-guide.html; filename*=UTF-8''" + quote(display['title'][:80] + '.html', safe='')
+    return HTMLResponse(document, headers=headers)
 
 
 @app.get("/api/trips/{trip_id}/tasks")

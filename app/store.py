@@ -215,7 +215,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         cards = self.idea_cards[trip_id]
         plan = self.plans[trip_id]
         display_days = (plan.display or {}).get('days', [])
-        plan_items = sum(len(day['items']) for day in display_days) if plan.display else sum(len(day.items) for day in plan.days)
+        plan_items = sum(len(day['items']) for day in display_days) if display_days else sum(len(day.items) for day in plan.days)
         basis = plan.requirements_snapshot
         plan_date_range = (f"{basis['start_date']} — {basis['end_date']}" if basis.get('start_date') and basis.get('end_date') else self.trips[trip_id].date_range)
         return {
@@ -223,7 +223,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             "idea_count": len(cards),
             "constraint_count": sum(card.kind != "待归类" for card in cards),
             "reminder_count": sum(card.kind == "禁忌" or card.status == "冲突提醒" for card in cards),
-            "plan_day_count": len(display_days) if plan.display else len(plan.days),
+            "plan_day_count": len(display_days) or len((plan.display or {}).get('dates', [])) or len(plan.days),
             "plan_date_range": plan_date_range,
             "plan_item_count": plan_items,
             "date_coverage_note": _date_coverage_note(self.trips[trip_id], plan),
@@ -603,6 +603,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             status="草案", text=text, evidence=deepcopy(evidence or []),
             requirements_revision=requirements_revision,
             display=deepcopy(display), display_source_hash=display_source_hash, display_status=display_status,
+            display_style=previous.display_style,
             requirements_snapshot=requirements_snapshot, lodging_snapshot=lodging_snapshot,
         )
         self.trips[trip_id].status = "草案"

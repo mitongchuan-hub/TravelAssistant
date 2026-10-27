@@ -328,6 +328,8 @@ class TaskExecutionRuntime:
                 return self._manage_task(args), None
             if name == 'confirm_itinerary':
                 return self._confirm(args), None
+            if name == 'restyle_itinerary':
+                return self._restyle(args), None
             if name in _TERMINAL_TOOLS:
                 return {}, self._terminal(name, args)
             raise ValueError('未知主工具')
@@ -696,6 +698,18 @@ class TaskExecutionRuntime:
             return
         if not expected[effect_kind] <= kinds:
             raise ValueError('任务效果引用种类与声明的effect_kind不一致')
+
+    def _restyle(self, args):
+        if not self.execution_context.plan.text.strip():
+            raise ValueError('当前没有可生成网页的行程正文，请先规划行程')
+        if args['plan_ref'] != self.request_context.plan_basis.plan_id:
+            raise ValueError('只能更新当前行程的攻略网页')
+        artifact = self.workspace.register_artifact(
+            'presentation', {'plan_ref': args['plan_ref'], 'style_instruction': args['instruction'].strip()},
+            source_capability='restyle_itinerary',
+        )
+        return {'status': 'ok', 'artifact_ref': artifact.id,
+                'summary': '展示偏好候选已生成，显式采用后后台更新网页，行程内容保持不变。'}
 
     def _confirm(self, args):
         if not self.request_context.plan_basis.has_content:

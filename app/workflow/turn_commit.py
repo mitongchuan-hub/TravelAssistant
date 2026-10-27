@@ -212,7 +212,7 @@ class TurnCommit:
             selected = {artifact.id: artifact for artifact in proposal.artifacts}
             evidence = {row.id: row for row in proposal.evidence}
             accepted, rejected = [], []
-            itinerary = confirmation = None
+            itinerary = confirmation = presentation = None
             original = deepcopy(trip)
             all_changes = {}
             for artifact in proposal.artifacts:
@@ -254,7 +254,18 @@ class TurnCommit:
                     if confirmation is not None:
                         raise ProtocolError('确认候选重复')
                     confirmation = artifact
+                elif artifact.kind == 'presentation':
+                    if presentation is not None or payload['plan_ref'] != stage.plans[trip_id].id:
+                        raise ProtocolError('网页风格候选重复或对应的行程已失效')
+                    presentation = artifact
                 accepted.append(artifact.id)
+            if presentation is not None:
+                if itinerary is not None or trip.requirements != original.requirements:
+                    raise ProtocolError('网页风格调整不能混入新行程或需求变化，请分别处理')
+                plan = stage.plans[trip_id]
+                from app.services.plan_display import text_hash
+                stage.retry_display(trip_id, plan.id, text_hash(plan.text),
+                    style_instruction=presentation.payload['style_instruction'], _committing=True)
             if confirmation is not None and (itinerary is not None or trip.requirements != original.requirements):
                 raise ProtocolError('确认不能与需求或新草稿混合采用')
             if itinerary is not None:
@@ -353,6 +364,8 @@ class TurnCommit:
                 effect_lines.append('行程已更新。')
             if confirmation:
                 effect_lines.append('当前行程已确认。')
+            if presentation:
+                effect_lines.append('网页展示偏好已保存，正在生成新的攻略页面。')
             cancelled = [row for row in workflow['tasks'] if row['status'] == 'cancelled']
             old_cancelled = {row['id'] for row in normalize_workflow(original.workflow_state)['tasks'] if row['status'] == 'cancelled'}
             if any(row['id'] not in old_cancelled for row in cancelled):
@@ -370,7 +383,7 @@ class TurnCommit:
             status = 'failed' if failed else 'sent'
             card = AgentCard('missing-info' if proposal.question or failed else 'itinerary-draft' if itinerary else 'requirement-summary',
                 '需要补充' if proposal.question else '旅行助手', body[:120], [],
-                [AgentAction('查看行程', 'itinerary')] if itinerary else [AgentAction('继续聊天', 'chat')])
+                [AgentAction('查看攻略', 'itinerary')] if itinerary or presentation else [AgentAction('继续聊天', 'chat')])
             from app.store import USERS
             message = Message(message_id, USERS['agent'], 'agent', body, datetime.now().strftime('%H:%M'), status, card)
             messages = stage.messages[trip_id]

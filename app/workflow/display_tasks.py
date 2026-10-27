@@ -9,7 +9,8 @@ from threading import Condition, Event, Thread
 from time import monotonic
 from uuid import uuid4
 
-from app.services.plan_display import text_hash, validate_display, dates_from_snapshot
+from app.services.plan_display import text_hash, dates_from_snapshot
+from app.services.guide_html import validate_guide_display
 from app.workflow.tasks import ACTIVE, now
 from app.views.route_view import plan_basis
 
@@ -63,6 +64,7 @@ class DisplayTasks:
         plan = self.plans.get(job['trip_id'])
         return bool(job['trip_id'] in self.trips and plan and plan.id == job['plan_id']
                     and text_hash(plan.text) == job['source_hash']
+                    and plan.display_style == job.get('style_instruction', '')
                     and plan.requirements_snapshot == job['requirements_snapshot'])
 
     def _discard_display_jobs(self, trip_id):
@@ -81,6 +83,7 @@ class DisplayTasks:
             return None
         jid = uuid4().hex
         job = {'id': jid, 'trip_id': trip_id, 'plan_id': plan.id, 'source_hash': source_hash,
+               'style_instruction': plan.display_style,
                'requirements_snapshot': deepcopy(plan.requirements_snapshot), 'status': 'queued',
                'created_at': now(), 'updated_at': now(), 'started_at': None, 'finished_at': None,
                'seconds': None, 'error_type': None, 'reason': None}
@@ -96,34 +99,47 @@ class DisplayTasks:
                         and j['plan_id'] == plan.id and j['source_hash'] == source_hash), None)
             trip = self.trips[trip_id]
             basis = plan_basis(trip, plan)
+            guide = plan.display if isinstance(plan.display, dict) and plan.display.get('schema_version') == '2.0' else None
+            guide_available = bool(guide and isinstance(guide.get('html'), str) and guide['html']
+                                   and plan.display_source_hash == source_hash)
+            guide_version = text_hash(guide['html']) if guide_available else ''
+            busy = self._foreground_active(trip_id)
             version = ':'.join([plan.id, source_hash, plan.display_status,
                                 job['id'] if job else '', job['updated_at'] if job else '',
-                                str(trip.requirements.revision), basis['basis_status']])
+                                str(trip.requirements.revision), basis['basis_status'],
+                                plan.status, str(busy), guide_version])
             return {'plan_id': plan.id, 'source_hash': source_hash, 'display_status': plan.display_status,
                     'version': version, 'enabled': self.display_enabled(), 'has_text': bool(plan.text),
                     'requirements_revision': trip.requirements.revision, **basis,
-                    'busy': self._foreground_active(trip_id)}
+                    'guide_available': guide_available, 'guide_version': guide_version,
+                    'busy': busy}
 
-    def retry_display(self, trip_id, plan_id, source_hash):
+    def retry_display(self, trip_id, plan_id, source_hash, *, style_instruction=None, _committing=False):
         with self._lock:
             plan = self.plans[trip_id]
             if plan.id != plan_id or text_hash(plan.text) != source_hash:
-                raise ValueError('行程已更新，请刷新后再整理卡片')
+                raise ValueError('行程已更新，请刷新后再生成攻略网页')
             if not self.display_enabled() or not plan.text:
-                raise ValueError('当前无法整理卡片，完整文字仍可阅读')
+                raise ValueError('当前无法生成攻略网页，完整文字仍可阅读')
+            style = plan.display_style if style_instruction is None else style_instruction
+            if not isinstance(style, str) or len(style) > 2000 or style_instruction is not None and not style.strip():
+                raise ValueError('网页展示偏好不能为空或超过 2000 字')
             existing = next((j for j in self.display_jobs.values() if j['trip_id'] == trip_id
                              and j['plan_id'] == plan.id and j['source_hash'] == source_hash), None)
-            if existing and existing['status'] in DISPLAY_ACTIVE:
+            if existing and existing['status'] in DISPLAY_ACTIVE and existing.get('style_instruction', '') == style:
                 return deepcopy(existing)
-            if self._foreground_active(trip_id):
-                raise ValueError('当前请求正在处理，请稍后整理卡片')
-            self.plans[trip_id] = replace(plan, display=None, display_source_hash=source_hash, display_status='pending')
+            if self._foreground_active(trip_id) and not _committing:
+                raise ValueError('当前请求正在处理，请稍后生成攻略网页')
+            previous = plan.display if plan.display_source_hash == source_hash else None
+            self.plans[trip_id] = replace(plan, display=previous, display_source_hash=source_hash,
+                                          display_status='pending', display_style=style)
             job = self._queue_display(trip_id)
             self._persist()
-        self._notify_display_worker()
+        if not _committing:
+            self._notify_display_worker()
         return job
 
-    def cancel_display_jobs(self, trip_id, reason='卡片整理已取消，完整文字已保留'):
+    def cancel_display_jobs(self, trip_id, reason='攻略网页生成已取消，完整文字已保留'):
         with self._lock:
             plan = self.plans.get(trip_id)
             changed = False
@@ -144,7 +160,7 @@ class DisplayTasks:
             changed = False
             for job in self.display_jobs.values():
                 if job['status'] in DISPLAY_ACTIVE:
-                    job.update(status='interrupted', updated_at=now(), reason='服务重启使卡片整理中断，完整文字已保留')
+                    job.update(status='interrupted', updated_at=now(), reason='服务重启使攻略网页生成中断，完整文字已保留')
                     job.pop('result', None)
                     changed = True
             for tid, plan in self.plans.items():
@@ -174,11 +190,11 @@ class DisplayTasks:
         status = result.get('display_status', 'fallback')
         try:
             if not self.display_enabled():
-                raise ValueError('卡片整理已关闭')
+                raise ValueError('攻略网页生成已关闭')
             if result.get('display_source_hash') != job['source_hash']:
                 raise ValueError('展示与当前原文不一致')
             if status == 'ready':
-                display = validate_display(display, dates_from_snapshot(job['requirements_snapshot']))
+                display = validate_guide_display(display, dates_from_snapshot(job['requirements_snapshot']))
             else:
                 display = None
         except Exception as exc:
@@ -186,6 +202,8 @@ class DisplayTasks:
             result.update(error_type=type(exc).__name__, reason=str(exc)[:300])
         # Replace only the derivative; preserve the current confirmation state,
         # prose, evidence, requirements basis and plan identity.
+        if status != 'ready' and plan.display_source_hash == job['source_hash']:
+            display = plan.display
         self.plans[job['trip_id']] = replace(plan, display=deepcopy(display),
             display_source_hash=job['source_hash'], display_status=status)
         job.update(status='succeeded' if status == 'ready' else 'failed', updated_at=now(),
@@ -242,10 +260,11 @@ class DisplayTasks:
         try:
             dates = dates_from_snapshot(basis)
             result = agent_client.generate_plan_display(source, dates, trip_id=trip_id,
+                style_instruction=job.get('style_instruction', ''),
                 cancelled=lambda: not self._display_job_current(job_id), retry_allowed=retry_allowed)
         except Exception as exc:
             result = {'display': None, 'display_status': 'fallback', 'display_source_hash': text_hash(source),
-                      'error_type': type(exc).__name__, 'reason': '卡片整理未完成，完整文字已保留'}
+                      'error_type': type(exc).__name__, 'reason': '攻略网页未生成，完整文字已保留'}
         with self._lock:
             job = self.display_jobs.get(job_id)
             if not job or job['status'] != 'running':
@@ -288,7 +307,7 @@ class DisplayTasks:
                 if job['status'] in DISPLAY_ACTIVE:
                     job.update(status='waiting_publish', updated_at=now(), result={
                         'display': None, 'display_status': 'fallback', 'display_source_hash': job['source_hash'],
-                        'error_type': 'DisplayQueueError', 'reason': '卡片整理暂不可用，完整文字已保留'})
+                        'error_type': 'DisplayQueueError', 'reason': '攻略网页生成暂不可用，完整文字已保留'})
                     self._publish_display(job)
             self._display_changed.notify_all()
         try:

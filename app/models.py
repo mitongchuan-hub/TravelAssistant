@@ -176,6 +176,7 @@ class TripPlan:
     display: dict | None = None
     display_source_hash: str = ""
     display_status: str = "not_requested"
+    display_style: str = ""
     requirements_snapshot: dict = field(default_factory=dict)
     lodging_snapshot: dict = field(default_factory=dict)
 

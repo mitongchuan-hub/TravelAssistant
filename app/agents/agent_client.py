@@ -257,7 +257,7 @@ def generate_task_proposal(request_context, execution_context, *, cancelled=None
         trace.write()
 
 
-def generate_plan_display(source_text: str, source_dates, trip_id: str, *, cancelled=None, retry_allowed=None) -> dict:
+def generate_plan_display(source_text: str, source_dates, trip_id: str, *, style_instruction='', cancelled=None, retry_allowed=None) -> dict:
     """Convert only saved prose with an independent budget; never run a business loop."""
     from app.agents.agent_runtime import TravelAgentRuntime, TurnBudget
     from app.services.plan_display import text_hash
@@ -273,7 +273,7 @@ def generate_plan_display(source_text: str, source_dates, trip_id: str, *, cance
         budget = TurnBudget(max_models=2, max_tools=0, max_external=0,
             seconds=float(os.getenv('TRAVEL_DISPLAY_TIMEOUT_SECONDS', '180')), cancelled=cancelled)
         runtime = TravelAgentRuntime(client, os.getenv('OPENAI_MODEL') or os.getenv('MODEL_ID') or 'qwen-plus',
-            {'source_dates': deepcopy(source_dates), 'cancelled': cancelled,
+            {'source_dates': deepcopy(source_dates), 'style_instruction': style_instruction, 'cancelled': cancelled,
              'display_retry_allowed': retry_allowed or (lambda: True)}, trace=trace,
             cache={'_budget': budget}, request=_create_chat_completion)
         reply = runtime.convert_display(AgentReply(source_text, None, [], plan_text=source_text))
