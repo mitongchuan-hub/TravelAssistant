@@ -1,5 +1,7 @@
 """Guide previews and downloads are owned, version-bound, isolated documents."""
 from copy import deepcopy
+from html import unescape
+import re
 
 import pytest
 from fastapi.testclient import TestClient
@@ -101,6 +103,30 @@ def test_latest_guide_remains_readable_during_failed_style_refresh(guide):
     store.plans[TRIP].display_status = 'fallback'
     response = client.get(f'/workspace/{TRIP}/guide', params=params(store))
     assert response.status_code == 200
+
+
+@pytest.mark.parametrize('status', ['ready', 'pending', 'fallback'])
+def test_preview_fragment_supplies_current_download_binding(guide, status):
+    store, client, _ = guide
+    store.plans[TRIP].display_status = status
+    response = client.get(f'/workspace/{TRIP}/display/partial', params={
+        key: params(store)[key] for key in ('plan_id', 'source_hash')
+    })
+    assert response.status_code == 200
+    match = re.search(r'data-download-url="([^"]+)"', response.text)
+    assert match is not None
+    download = client.get(unescape(match[1]))
+    assert download.status_code == 200
+    assert download.headers['content-disposition'].startswith('attachment;')
+
+
+def test_new_source_hides_download_until_its_guide_is_available(guide):
+    store, client, _ = guide
+    store.plans[TRIP].text += ' 18:00 返回住处。'
+    response = client.get(f'/workspace/{TRIP}?tab=chat')
+    assert response.status_code == 200
+    assert 'data-download-url=""' in response.text
+    assert 'data-guide-download download hidden' in response.text
 
 
 def test_legacy_structured_plan_remains_readable_without_replanning(guide):

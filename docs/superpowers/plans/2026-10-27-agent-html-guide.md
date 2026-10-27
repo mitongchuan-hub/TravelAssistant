@@ -66,9 +66,22 @@ stage.retry_display(trip_id, plan.id, source_hash, style_instruction=payload['st
 - [x] 聊天页加入攻略区域与入口按钮、原文后备、确认表单和状态；旧行程 tab 渲染聊天并打开攻略。已有业务链接保持兼容。
 - [x] iframe `sandbox="allow-popups allow-popups-to-escape-sandbox"`，禁止脚本与同源；宿主提供下载、打开、关闭和重试。生成 HTML 永不插入宿主 `innerHTML`。
 - [x] JavaScript 轮询沿用 plan-state，计划 ID 变化时更新版本绑定，重新请求受鉴权的片段；有风格重生成任务时也更新状态。隐藏页暂停轮询，重新可见后恢复。
-- [x] 桌面聊天与攻略并排；手机攻略作为可关闭的独立面板，键盘焦点回到打开按钮；避免双重横向滚动。
+- [x] 攻略作为可关闭的独立面板，键盘焦点回到打开按钮；避免双重横向滚动。
 - [x] 运行全套：`$env:TRAVEL_PERSISTENCE='0'; & E:/anaconda/envs/TravelAssistant/python.exe -m pytest tests/automated -q`，并运行 `git diff --check`。
 - [x] 对桌面和手机做一轮浏览器检查；检查预览、下载、旧链接和关闭后的聊天恢复。记录真实模型验证是否完成及局限。
+
+## Task 4：手机布局与顶部下载入口
+
+**Goal:** 按用户补充要求统一手机交互，攻略顶部提供当前页面的 HTML 下载入口。
+
+**Files:** 修改 `app/static/guide.css`、`app/static/guide.js`、`app/templates/workspace.html`、`app/templates/partials/display_panel.html`、`app/prompts/agents/display.txt`、`app/main.py`、`tests/automated/test_guide_polling.py`，同步 README、PRODUCT、DESIGN。
+
+**Interfaces:** 服务端片段用 `data-download-url` 携带可下载网页的已绑定 URL，无网页时为空。`guide.js` 在首次加载和片段更新后同步顶部下载链接；所有屏幕使用相同的打开、关闭、inert 和焦点恢复行为。
+
+- [x] 先运行实际控制器的失败用例：宽屏也从聊天打开预览，Esc 返回聊天；下载链接随新片段更新，没有网页时隐藏。
+- [x] 将预览显示规则合并为 `.guide-preview[data-open="true"]`，沿用 430px 手机外壳；顶部使用“返回聊天／旅行攻略／下载”三列布局，操作区至少 44px，处理安全区域。
+- [x] 服务端提供 `data-download-url`；客户端同步 `hidden` 与 `href`，删除屏幕宽度判断。保留既有轮询竞态和 iframe 连续性保护。网页 Agent 默认按 320–430px 手机单列排版，更新静态资源版本。
+- [x] 运行自动化、Node 语法与 diff 检查；用隔离 Chrome 检查 320px、390px、430px 和宽屏浏览器下的同一手机布局、下载和返回聊天。更新验证记录并保存本地提交。
 
 ## 完成记录
 
@@ -81,3 +94,12 @@ stage.retry_display(trip_id, plan.id, source_hash, style_instruction=payload['st
 - 审查：独立代码审查发现的 HTML 头部顺序、旧来源绑定及按钮状态竞态已修复；回归通过。`git diff --check` 通过。
 
 本地合成示例、浏览器报告及截图保留在被 Git 忽略的 `.cache/v2-guide-check/`，不提交模型凭证、正式用户数据或运行数据库。
+
+### 手机端调整验收
+
+按用户补充要求将工作区统一为最多 430px 的手机布局，攻略顶部提供返回聊天、标题和当前 HTML 下载。产品、视觉规范及网页 Agent 提示词已同步；展示参数只用于 CSS，不作为网页文案。
+
+- 自动化 199 项通过；包含宽屏使用同一手机交互、下载链接随片段更新、无可用网页时隐藏入口、风格生成中保留上一版下载等回归。Node 语法与 `git diff --check` 通过，独立代码审查未发现阻塞问题。
+- 隔离 Chrome 验证 320×740、390×844、430×932；宽屏浏览器维持同一 430px 手机界面。顶部控件顺序、44px 点击区域、关闭后的焦点恢复正常，宿主与生成网页无横向溢出。点击顶部下载按钮实际保存了带 UTF-8 和 CSP 的 HTML；轮询切换版本、保留当前网页及隐藏失效链接均通过。此项为浏览器尺寸模拟，尚未在实体手机验证。
+- 手机提示词真实模型复测成功，最终合成示例耗时 48.1 秒、输出 7408 UTF-8 字节；页面未再展示被指定的像素宽度。该结果只验证单个示例的网页生成和显示，不构成完整行程语义或现实可执行性评测。
+- 本轮示例、报告、下载文件和截图保存在被忽略的 `.cache/mobile-guide-check/`，使用独立测试数据及数据库。

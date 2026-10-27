@@ -7,35 +7,42 @@
   const chat = workspace.querySelector('.chat-screen');
   const opener = workspace.querySelector('[data-guide-open]');
   const closer = preview.querySelector('[data-guide-close]');
-  const mobile = matchMedia('(max-width: 899px)');
+  const download = preview.querySelector('[data-guide-download]');
   let panel = controller.querySelector('[data-display-panel]');
   let version = panel.dataset.version, polling = false, retrying = false, stopped = false, timer;
   function show(open, focus = true) {
     preview.dataset.open = String(open);
-    opener?.setAttribute('aria-expanded', String(open || !mobile.matches));
-    chat.inert = open && mobile.matches;
-    if (open && mobile.matches) {
+    opener?.setAttribute('aria-expanded', String(open));
+    chat.inert = open;
+    if (open) {
       preview.setAttribute('role', 'dialog');
       preview.setAttribute('aria-modal', 'true');
       if (focus) closer.focus();
     } else {
       preview.removeAttribute('role');
       preview.removeAttribute('aria-modal');
-      if (focus && mobile.matches) opener?.focus();
+      if (focus) opener?.focus();
     }
   }
   opener?.addEventListener('click', () => show(true));
   closer?.addEventListener('click', () => show(false));
   preview.addEventListener('keydown', event => {
-    if (event.key === 'Escape' && mobile.matches) show(false);
-    if (event.key !== 'Tab' || !mobile.matches || preview.dataset.open !== 'true') return;
+    if (event.key === 'Escape') show(false);
+    if (event.key !== 'Tab' || preview.dataset.open !== 'true') return;
     const elements = [...preview.querySelectorAll('button:not(:disabled), a[href], summary, iframe')]
       .filter(element => element.getClientRects().length);
     const first = elements[0], last = elements.at(-1);
     if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   });
-  mobile.addEventListener('change', () => show(preview.dataset.open === 'true', false));
+  function syncDownload() {
+    if (!download) return;
+    const url = panel.dataset.downloadUrl;
+    download.hidden = !url;
+    if (url) download.setAttribute('href', url);
+    else download.removeAttribute('href');
+  }
+  syncDownload();
   show(preview.dataset.initialOpen === 'true', false);
   function schedule() {
     clearTimeout(timer);
@@ -78,6 +85,7 @@
     workspace.dataset.sourceHash = panel.dataset.sourceHash;
     workspace.dataset.requirementsRevision = panel.dataset.requirementsRevision;
     if (focusedRetry) (panel.querySelector('[data-display-retry], .guide-source summary') || closer).focus();
+    syncDownload();
     syncRetryButtons();
   }
   function syncRetryButtons() {

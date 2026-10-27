@@ -10,7 +10,7 @@
 4. 行程正文保存后，网页 Agent 在后台生成 HTML/CSS 攻略；聊天页点击“攻略”预览，也可以打开独立网页或下载 HTML。
 5. 通过聊天修改方案；只想换颜色、字号或排版时可直接说“把攻略改成手账风”。纯风格修改保持行程内容与确认状态，内容修改后重新生成网页。设置变化不会自动重排行程。
 
-默认聊天，底栏为“想法／聊天”；桌面聊天与攻略并排，手机打开攻略后可返回聊天。旧行程链接仍会打开攻略预览。每日从同一住宿出发并返回，未知地点保持待核实；网页只复用正文已提供的 HTTPS 链接。查询耗时只是查询时估算，不保证未来开放、班次、票价或现实可执行性。
+产品面向手机浏览器，工作区采用最多 430px 的单列布局。默认聊天，底栏为“想法／聊天”；点击“攻略”进入预览，顶部左侧返回聊天、右侧下载当前 HTML，网页可用时显示下载入口。宽屏浏览器使用相同的手机交互。旧行程链接仍会打开攻略预览。每日从同一住宿出发并返回，未知地点保持待核实；网页只复用正文已提供的 HTTPS 链接。查询耗时只是查询时估算，不保证未来开放、班次、票价或现实可执行性。
 
 项目只提供从住宿出发并返回的同城游玩。历史记录的需求、聊天和行程可查看；继续生成或调整前，须在游玩设置中确认住宿并保存。每趟行程只保留一份当前方案，没有方案历史恢复入口。
 
@@ -24,10 +24,12 @@
 - 可访问的 OpenAI 兼容模型服务及 API Key。
 - 高德地图 Web 服务 Key，用于住宿匹配、地点和路线查询。天气使用 Open-Meteo，无需额外 Key。
 
+本机开发固定使用 `E:/anaconda/envs/TravelAssistant/python.exe`。PATH 中的默认 `python` 指向无效的空文件，`py` 也未指向项目环境；安装依赖和启动服务均使用下面的完整路径。其他机器请替换为实际的项目 Python 解释器路径。
+
 在项目根目录运行：
 
 ```powershell
-python -m pip install -r requirements.txt
+& E:/anaconda/envs/TravelAssistant/python.exe -m pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
@@ -63,7 +65,7 @@ TRAVEL_DISPLAY_ENABLED=1
 ## 启动
 
 ```powershell
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+& E:/anaconda/envs/TravelAssistant/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 打开 <http://127.0.0.1:8000>，健康检查为 <http://127.0.0.1:8000/health>。当前不支持多 worker 或多进程部署，不要增加 `--workers`。

@@ -1,10 +1,10 @@
 {% set available = display_state.guide_available %}
 {% set guide_url = '/workspace/' ~ trip.id ~ '/guide?plan_id=' ~ (plan.id | urlencode) ~ '&source_hash=' ~ display_state.source_hash ~ '&version=' ~ display_state.guide_version %}
-<div class="guide-panel" data-display-panel data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash }}" data-requirements-revision="{{ trip.requirements.revision }}" data-display-status="{{ plan.display_status }}" data-business-busy="{{ 'true' if display_state.busy else 'false' }}" data-version="{{ display_state.version }}">
+<div class="guide-panel" data-display-panel data-plan-id="{{ plan.id }}" data-source-hash="{{ display_state.source_hash }}" data-requirements-revision="{{ trip.requirements.revision }}" data-display-status="{{ plan.display_status }}" data-business-busy="{{ 'true' if display_state.busy else 'false' }}" data-version="{{ display_state.version }}" data-download-url="{{ guide_url ~ '&download=1' if available else '' }}">
   {% if plan.text %}
     <div class="guide-toolbar">
       <span class="guide-plan-status">{{ plan.status }}</span>
-      {% if available %}<a href="{{ guide_url }}" target="_blank" rel="noopener noreferrer">打开网页</a><a class="guide-download" href="{{ guide_url }}&download=1">下载 HTML</a>{% endif %}
+      {% if available %}<a href="{{ guide_url }}" target="_blank" rel="noopener noreferrer">打开网页</a>{% endif %}
       {% if plan.status != '已确认' %}<form action="/workspace/{{ trip.id }}/plan/confirm" method="post"><input type="hidden" name="expected_plan_id" value="{{ plan.id }}"><input type="hidden" name="source_hash" value="{{ display_state.source_hash }}"><input type="hidden" name="expected_requirements_revision" value="{{ trip.requirements.revision }}"><button type="submit"{% if display_state.busy %} disabled{% endif %}>确认行程</button></form>{% endif %}
     </div>
     {% if display_state.basis_status in ['stale', 'unknown'] %}<p class="guide-notice" role="status"><span>{% if display_state.basis_status == 'stale' %}游玩设置已更新，请在聊天中更新行程。{% else %}这份行程的住宿依据尚未确认，可到<a href="/workspace/{{ trip.id }}/requirements">游玩设置</a>核对。{% endif %}</span></p>{% endif %}
