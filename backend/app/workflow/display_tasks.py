@@ -11,8 +11,8 @@ from uuid import uuid4
 from app.core.config import boolean
 from app.services.itinerary.plan_display import text_hash, dates_from_snapshot
 from app.services.itinerary.guide_html import validate_guide_display
-from app.workflow.tasks import ACTIVE, now
-from app.services.itinerary.freshness import plan_freshness
+from app.application.execution import ACTIVE, now
+from app.domain.itinerary.freshness import plan_freshness
 
 DISPLAY_ACTIVE = {'queued', 'running', 'waiting_publish'}
 logger = logging.getLogger(__name__)
@@ -239,7 +239,7 @@ class DisplayTasks:
         return None
 
     def run_display_job(self, job_id):
-        from app.agents import agent_client
+        from app.agents import entrypoints
         with self._lock:
             job = self.display_jobs.get(job_id)
             if not job or job['status'] != 'running' or not self._job_matches_plan(job):
@@ -258,7 +258,7 @@ class DisplayTasks:
         started = monotonic()
         try:
             dates = dates_from_snapshot(basis)
-            result = agent_client.generate_plan_display(source, dates, trip_id=trip_id,
+            result = entrypoints.generate_plan_display(source, dates, trip_id=trip_id,
                 cancelled=lambda: not self._display_job_current(job_id), retry_allowed=retry_allowed)
         except Exception as exc:
             result = {'display': None, 'display_status': 'fallback', 'display_source_hash': text_hash(source),

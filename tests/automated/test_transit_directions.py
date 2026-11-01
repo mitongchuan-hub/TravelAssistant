@@ -9,8 +9,8 @@ import json
 
 import pytest
 
-from app.agents.task_runtime import transit_detail_guard
-from app.models import Trip, TripPlan, TripRequirements, User
+from app.agents.travel_runtime import transit_detail_guard
+from app.domain.models import Trip, TripPlan, TripRequirements, User
 from app.services.itinerary.plan_display import text_hash
 from app.services.maps import routes
 from app.views.display_presentation import display_view

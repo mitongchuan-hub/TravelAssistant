@@ -15,7 +15,7 @@ def response(content=None, name=None, arguments=None):
 
 @pytest.mark.parametrize('structured', [False, True])
 def test_scope_eval_exercises_real_readonly_terminal_without_business_changes(monkeypatch, structured):
-    monkeypatch.setattr(scope_eval, '_create_chat_completion', lambda *a, **kw: response('Hello'))
+    monkeypatch.setattr(scope_eval, 'request_completion', lambda *a, **kw: response('Hello'))
     result = scope_eval.run_case(('greeting', 'Hello', 'Greeting'), None, 'offline', structured)
     assert not result['failed'], result['errors']
     assert result['answer'] == 'Hello'
@@ -47,7 +47,7 @@ def test_all_fact_tools_are_stubbed_before_live_providers(monkeypatch, name, arg
         assert '未取得新事实' in result['reason']
         return response('外部查询不可用，相关事实仍未知。')
 
-    monkeypatch.setattr(scope_eval, '_create_chat_completion', request)
+    monkeypatch.setattr(scope_eval, 'request_completion', request)
     result = scope_eval.run_case(('facts', '查询游玩信息', 'Unknown facts stay unknown'), None, 'offline')
     assert not result['failed'], result['errors']
     assert result['unchanged'] and result['selected'] == []
@@ -59,7 +59,7 @@ def test_direct_requirements_submission_is_captured_but_not_committed(monkeypatc
         return response(name='submit_changes', arguments={
             'user_quote': '人数改成2人', 'requirements_patch': {'travelers': 2}})
 
-    monkeypatch.setattr(scope_eval, '_create_chat_completion', request)
+    monkeypatch.setattr(scope_eval, 'request_completion', request)
     result = scope_eval.run_case(('requirements', '人数改成2人', 'Only travelers'), None, 'offline')
     assert not result['failed'], result['errors']
     assert result['unchanged']

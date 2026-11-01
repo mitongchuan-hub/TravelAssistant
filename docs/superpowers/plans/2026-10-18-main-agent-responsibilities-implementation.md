@@ -63,8 +63,8 @@
 | 文件 | 本次职责 |
 | --- | --- |
 | 新建 `app/agents/main_results.py` | 仅管理本轮业务结果引用及候选依赖展开，不做语义分类、持久化或自动批准 |
-| 修改 [agent_roles.py](../../../app/agents/agent_roles.py) | 主工具合同收敛，保持九个工具及本地参数校验 |
-| 修改 [task_runtime.py](../../../app/agents/task_runtime.py) | 接入结果映射、追问保留、任务操作封装和失败结束 |
+| 修改 [roles.py](../../../app/agents/roles.py) | 主工具合同收敛，保持九个工具及本地参数校验 |
+| 修改 [travel_runtime.py](../../../app/agents/travel_runtime.py) | 接入结果映射、追问保留、任务操作封装和失败结束 |
 | 修改 [main_input.py](../../../app/agents/main_input.py) | 主控结果投影；保留判断任务、授权、追问和条件所需信息 |
 | 按需修改 [agent_runtime.py](../../../app/agents/agent_runtime.py) | 让绑定答案产生的业务候选携带服务器生成的答案消费依赖 |
 | 修改 [main.txt](../../../app/prompts/agents/main.txt) | 分工、工具用法、插话规则及提交状态表达；保留已实施的业务范围 |
@@ -106,9 +106,9 @@ from uuid import uuid4
 import json
 
 from app.agents.agent_protocol import RequestContext, plan_basis
-from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
-from app.models import Message, Trip, TripPlan, TripRequirements, User
-from app.workflow.task_context import add_task, empty_workflow, set_active_question
+from app.agents.travel_runtime import TaskExecutionContext, TaskExecutionRuntime
+from app.domain.models import Message, Trip, TripPlan, TripRequirements, User
+from app.storage.legacy.workflow import add_task, empty_workflow, set_active_question
 
 
 def prose_reply(text):
@@ -325,7 +325,7 @@ class MainResultRegistry:
 
 ## 6. Task 3：接入主工具，移走手工采用步骤
 
-**文件：** 修改 `agent_roles.py`、`task_runtime.py`、`main_input.py`、按需修改 `agent_runtime.py`；扩展 `test_main_agent_responsibilities.py`、`test_main_results.py`。
+**文件：** 修改 `roles.py`、`travel_runtime.py`、`main_input.py`、按需修改 `agent_runtime.py`；扩展 `test_main_agent_responsibilities.py`、`test_main_results.py`。
 
 **接口：** 保持内部 `CapabilityResult`、`Artifact`、`TerminalProposal`、`CommitReceipt` 的权威合同。Runtime 新增 `self.main_results: MainResultRegistry`、`_fail_closed(reason: str) -> TerminalProposal`、`_build_failure_workflow(safe_artifact_ids) -> dict`。
 
@@ -422,7 +422,7 @@ create / resume / complete 按其既有状态转换重放，只有安全集合�
 
 ## 7. Task 4：允许插话保留，维持答案绑定
 
-**文件：** 修改 `task_runtime.py` 的 `run`、`_unsettled_base_question`、`_terminal`、`_can_finish_prose`、`_ask`、`_bind_active_answer`，以及 `main.txt`；扩展 `test_main_agent_responsibilities.py`。
+**文件：** 修改 `travel_runtime.py` 的 `run`、`_unsettled_base_question`、`_terminal`、`_can_finish_prose`、`_ask`、`_bind_active_answer`，以及 `main.txt`；扩展 `test_main_agent_responsibilities.py`。
 
 **接口：** 新增 `_validate_preserved_question(final_workflow, preserve_question_ref) -> None`。这个方法验证结构和前置，不负责自然语言分类。
 
@@ -476,7 +476,7 @@ def _validate_preserved_question(self, final_workflow, preserve_question_ref):
 
 ```python
 from app.store import DemoStore
-from app.workflow.task_context import normalize_workflow
+from app.storage.legacy.workflow import normalize_workflow
 from app.workflow.turn_workspace import TurnWorkspace
 
 
@@ -502,7 +502,7 @@ def make_commit_case(body):
 - [ ] 先测试真实效果与最终消息一致，包含需求独立成功、行程被拒绝的部分成功。提交测试应调用真正的 `commit_turn`，不能把回执直接 mock 成成功。
 
 ```python
-from app.services.requirements import chat_changes
+from app.domain.requirements import chat_changes
 from tests.automated.main_agent_fixtures import make_commit_case
 
 
@@ -535,7 +535,7 @@ def test_requirements_saved_but_invalid_itinerary_not_reported_as_updated():
 - [ ] 删除主提示词中让主控提前宣告“需求已保存”的要求，替换为“说明行程未完成等业务限制；保存结果由提交程序补充”。确认、取消同样不得在候选阶段宣告提交成功。
 - [ ] 复用 `commit_turn` 现有 `effect_lines`，以实际发生的需求变化、行程采用、确认和取消生成状态。遇到版本冲突、候选拒绝或持久化失败，不能发布该效果的成功消息。
 - [ ] 补齐：候选生成但未选择；需求没有实际变化；版本冲突；独立需求成功而规划运行失败；行程候选提交被拒绝；确认失败；取消失败；相同 request 重复提交；持久化异常不发布任何暂存业务状态或成功消息。
-- [ ] 持久化失败用例使用临时路径和 monkeypatch `app.workflow.turn_commit.save_snapshot` 抛出异常；断言 `TurnPersistenceError`、发布前后的业务状态一致，不连接实际数据库。
+- [ ] 持久化失败用例使用临时路径和 monkeypatch `app.application.execution.save_snapshot` 抛出异常；断言 `TurnPersistenceError`、发布前后的业务状态一致，不连接实际数据库。
 - [ ] 同时检查 `receipt.accepted_artifact_ids`、`rejected_artifacts`、真实业务状态和最终用户消息。必要时最小修改提交逻辑；如果现有程序已满足，保留实现并补回归。运行 `-m pytest tests/automated/test_main_agent_commit_truth.py -q`，检查差异后单独提交。
 
 ## 9. Task 6：保持业务范围，完成跨入口语义验收

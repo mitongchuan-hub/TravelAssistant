@@ -2,7 +2,7 @@
 
 目标：按已确认的职责分组整理 Python 模块，保持业务行为及 app.main:app 启动入口。
 
-- agents：agent_client、agent_roles、agent_runtime、agent_protocol、model_transport、main_input、task_runtime。
+- agents：entrypoints、roles、agent_runtime、agent_protocol、model_transport、main_input、travel_runtime。
 - workflow：tasks、task_context、turn_workspace、turn_commit、display_tasks。
 - services：requirements、planning、planning_evidence、city_outings、places、plan_display。
 - views：presentation、chat_presentation、display_presentation、route_view、trip_welcome。

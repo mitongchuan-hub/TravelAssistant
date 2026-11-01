@@ -1,9 +1,9 @@
 """Agent terminal tool: validate one complete change package without saving it."""
 from copy import deepcopy
 
-from app.services.requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
-from app.services.agent_crud import prepare_changes
-from app.workflow.execution import ExecutionResult
+from app.domain.requirements import BASIC_FIELDS, LIST_FIELDS, PROFILE_FIELDS
+from app.domain.changes import prepare_changes
+from app.application.contracts import ExecutionResult
 
 
 def _object(properties, required=()):

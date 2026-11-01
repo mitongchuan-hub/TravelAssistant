@@ -6,11 +6,11 @@ from threading import RLock
 
 import pytest
 
-from app.models import Trip, TripDay, TripPlan, TripRequirements, User
+from app.domain.models import Trip, TripDay, TripPlan, TripRequirements, User
 from app.services.itinerary import freshness
 from app.services.itinerary.plan_display import text_hash
 from app.views import route_view
-from app.workflow.display_tasks import DisplayTasks
+from app.application.guide import DisplayTasks
 
 
 BASIS_NOTE = '站点为方案顺序，不是地图几何；历史路线仅为查询时估算，不证明开放、免费、门票、预约或遮蔽条件。'

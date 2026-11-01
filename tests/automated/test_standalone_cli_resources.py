@@ -17,7 +17,7 @@ def test_scope_default_is_offline(monkeypatch, capsys, runner):
     monkeypatch.setattr(config, 'load_environment', forbidden)
     monkeypatch.setattr(resources, 'client_scope', forbidden)
     monkeypatch.setattr(resources, 'borrow_client', forbidden)
-    monkeypatch.setattr(scope_eval, '_create_chat_completion', forbidden)
+    monkeypatch.setattr(scope_eval, 'request_completion', forbidden)
     monkeypatch.setattr(sys, 'argv', [runner.__name__])
     runner.main()
     assert capsys.readouterr().out
@@ -95,9 +95,9 @@ def test_scope_live_owns_client_until_all_cases_finish(monkeypatch, tmp_path, ru
     client = object()
     state = {'owner': False, 'borrowed': False}
     root = scope_suite.DATASET.resolve().parents[2]
-    prompt = root / 'backend/app/agents/prompts/main.txt'
+    prompt = root / 'backend/app/agents/prompts/travel.txt'
     # Runner output goes only into this temporary fixture, not the project cache.
-    isolated_prompt = tmp_path / 'backend/app/agents/prompts/main.txt'
+    isolated_prompt = tmp_path / 'backend/app/agents/prompts/travel.txt'
     isolated_prompt.parent.mkdir(parents=True)
     isolated_prompt.write_text(prompt.read_text(encoding='utf-8'), encoding='utf-8')
     monkeypatch.setattr(runner, 'PROMPT_PATH', isolated_prompt)
@@ -177,7 +177,7 @@ def test_benchmark_live_releases_owner_after_request_failures(monkeypatch, tmp_p
 
     monkeypatch.setattr(resources, 'client_scope', owner)
     monkeypatch.setattr(resources, 'borrow_client', borrow)
-    monkeypatch.setattr(benchmark, '_create_chat_completion', fail_request)
+    monkeypatch.setattr(benchmark, 'request_completion', fail_request)
     monkeypatch.setattr(sys, 'argv', ['bench_agent_latency.py', '--live', '--runs', '1'])
     assert benchmark.main() == 0
     assert events == ['bootstrap', 'owner', 'borrow', 'returned', 'closed']

@@ -70,7 +70,7 @@ def test_replaced_html_invalidates_previous_download_url(guide):
 
 def test_unauthenticated_and_other_owner_cannot_read_guide(guide, monkeypatch):
     store, client, deps = guide
-    from app.models import User
+    from app.domain.models import User
 
     binding = params(store)
     monkeypatch.setattr(deps, 'current_user', lambda request: None)

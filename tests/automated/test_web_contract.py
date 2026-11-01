@@ -193,7 +193,7 @@ def test_shared_dependency_seam_and_owner_isolation(monkeypatch):
     from app.main import app
     from app.storage.store import DemoStore
     from app.api import dependencies as deps
-    from app.models import User
+    from app.domain.models import User
     first = DemoStore(persistence_enabled=False, display_worker_enabled=False)
     second = DemoStore(persistence_enabled=False, display_worker_enabled=False)
     second.trips.pop('trip-hangzhou')

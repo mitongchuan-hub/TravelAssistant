@@ -30,10 +30,10 @@
 
 | 文件 | 模块 | 覆盖要点 |
 | --- | --- | --- |
-| `test_requirements_service.py` | `app.services.requirements` | 预算文本归一化（人均/总额/两位小数/歧义保留）、`clean_list` 去重与 300 字/100 条边界、人数 1–100 边界、日期↔天数一致性、出门/返回时间 HH:MM 校验、`chat_changes` 证据与增删语义 |
+| `test_requirements_service.py` | `app.domain.requirements` | 预算文本归一化（人均/总额/两位小数/歧义保留）、`clean_list` 去重与 300 字/100 条边界、人数 1–100 边界、日期↔天数一致性、出门/返回时间 HH:MM 校验、`chat_changes` 证据与增删语义 |
 | `test_csrf_security.py` | `app.auth.csrf` | token 确定性（64 位、绑定 cookie）、`same_origin` 的子域/后缀注入/端口/协议/userinfo/路径拒绝、`valid_csrf` 的长度/ASCII/cookie/来源综合门禁 |
 | `test_turn_budget.py` | `app.agents.budget` | `tools` 严格 int 校验、模型/外部次数耗尽、令牌限额仅在**超过**时抛错、bool/负数/小数令牌忽略、取消与超时（负秒数即时触发，免 sleep） |
-| `test_places_binding.py` | `app.services.places` | `collect_places` 仅保留 status-available、可信来源、坐标在界内的候选；`resolve_place` 绑定+时间戳、拒绝 area 作用域与非字符串 poi_id |
+| `test_places_binding.py` | `app.domain.lodging` | `collect_places` 仅保留 status-available、可信来源、坐标在界内的候选；`resolve_place` 绑定+时间戳、拒绝 area 作用域与非字符串 poi_id |
 | `test_display_parsing.py` | `app.services.itinerary.plan_display` | `parse_display_output` 的 JSON/YAML、代码围栏、重复键、YAML 别名/标签、非字符串键、日期保持文本；`dates_from_snapshot` 含端点/不完整/非法；`display_format` 天数与日期枚举 |
 | `test_tools_weather_food.py` | `app.agents.tools.weather/food` | 天气日期在界内/超界/格式错误/缺城市、穿衣建议分支与 50% 降雨阈值；`_clamp_max_results`、`_to_float`、`_summarize_poi`、未配置/缺城市的失败态 |
 

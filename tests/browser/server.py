@@ -47,8 +47,8 @@ socket.socket.connect_ex = _local_connect(_original_connect_ex)
 
 from app.main import app
 from app.api import dependencies as deps, trips
-from app.agents import agent_client
-from app.agents.task_runtime import TaskExecutionRuntime
+from app.agents import entrypoints
+from app.agents.travel_runtime import TaskExecutionRuntime
 from app.services.itinerary.guide_html import build_guide_display
 from app.services.itinerary.plan_display import dates_from_snapshot
 from app.agents.tools import registry
@@ -120,7 +120,7 @@ def generate(context, execution, *, cancelled=None, on_progress=None):
     runtime = TaskExecutionRuntime(None, 'offline-browser-model', context, execution,
         ScriptedModel(context, execution))
     return runtime.run()
-agent_client.generate_task_result = generate
+entrypoints.generate_task_result = generate
 
 
 def display(source_text, source_dates, trip_id, **kwargs):
@@ -128,7 +128,7 @@ def display(source_text, source_dates, trip_id, **kwargs):
     from app.services.itinerary.plan_display import text_hash
     return {'display': build_guide_display(GUIDE_HTML, source_dates),
             'display_source_hash': text_hash(source_text), 'display_status': 'ready'}
-agent_client.generate_plan_display = display
+entrypoints.generate_plan_display = display
 
 # Keep the real API/auth/SQLite/task/display composition; serve only the built SPA.
 DIST = ROOT / 'frontend' / 'dist'

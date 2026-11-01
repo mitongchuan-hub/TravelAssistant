@@ -11,7 +11,7 @@ import re
 from types import SimpleNamespace
 from uuid import uuid4
 
-from app.services.itinerary.plan_basis import plan_basis
+from app.domain.itinerary.identity import plan_basis
 from app.workflow.execution import serialize
 from app.models import IdeaCard, TripPlan
 from app.services.maps.evidence import evidence_kind, evidence_result, place_messages
@@ -347,7 +347,13 @@ def apply_changes(stage, context, payload):
     target = None
     if task.get('kind') == 'revision':
         from app.workflow.tasks import resolve_display_target
-        target = resolve_display_target(stage.plans[trip_id], task.get('payload', {}))
+        raw_payload = task.get('payload', {})
+        supplied = raw_payload.get('display_target')
+        target = (resolve_display_target(stage.plans[trip_id], raw_payload)
+                  if not isinstance(supplied, dict) or set(supplied) == {'day_index', 'item_index'}
+                  else supplied)
+        if isinstance(supplied, dict) and set(supplied) != {'day_index', 'item_index'}:
+            target = supplied
     execution = SimpleNamespace(trip=stage.trips[trip_id], plan=stage.plans[trip_id],
                                 idea_cards=cards, display_target=target)
     verified = prepare_changes(payload['args'], context, execution, payload['evidence'])

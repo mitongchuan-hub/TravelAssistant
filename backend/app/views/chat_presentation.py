@@ -1,5 +1,5 @@
 """Read-only chat presentation: safe Markdown, complete previews and time breaks."""
-from app.models import AgentAction
+from app.domain.models import AgentAction
 from markdown_it import MarkdownIt
 from markupsafe import Markup
 import re

@@ -16,14 +16,15 @@ import sys
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / 'backend'))
-PROMPT_PATH = PROJECT_ROOT / 'backend/app/agents/prompts/main.txt'
+PROMPT_PATH = PROJECT_ROOT / 'backend/app/agents/prompts/travel.txt'
 
 from app.core import config, resources
-from app.agents.agent_client import _create_chat_completion
-from app.workflow.execution import RequestContext, serialize as thaw
-from app.services.itinerary.plan_basis import plan_basis
-from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
-from app.models import Message, Trip, TripPlan, TripRequirements, User
+from app.agents.model_client import request_completion
+from app.application.contracts import RequestContext, serialize as thaw
+from app.domain.itinerary.identity import plan_basis
+from app.agents.inputs.execution import TaskExecutionContext
+from app.agents.travel_runtime import TaskExecutionRuntime
+from app.domain.models import Message, Trip, TripPlan, TripRequirements, User
 
 
 CASES = [
@@ -97,7 +98,7 @@ def run_case(case, client, model, structured=False):
             messages = deepcopy(messages)
             messages[0]['content'] += ('\n按本轮原话决定是否提交业务变更；无写入授权时普通回复，'
                                       '不输出虚构保存结果。')
-        result = _create_chat_completion(client, model, messages, **kwargs)
+        result = request_completion(client, model, messages, **kwargs)
         assistant = result.choices[0].message
         for call in assistant.tool_calls or []:
             calls.append({'name': call.function.name, 'arguments': json.loads(call.function.arguments)})

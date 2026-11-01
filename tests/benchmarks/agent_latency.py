@@ -27,12 +27,13 @@ sys.path.insert(0, str(APP_DIR / 'backend'))
 
 from app.core import config, resources
 
-from app.agents.agent_client import _create_chat_completion
-from app.services.itinerary.plan_basis import PlanBasis
-from app.workflow.execution import RequestContext
-from app.agents.agent_roles import display_role, role_reasoning_effort, travel_role
-from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
-from app.models import TripRequirements
+from app.agents.model_client import request_completion
+from app.domain.itinerary.identity import PlanBasis
+from app.application.contracts import RequestContext
+from app.agents.roles import display_role, role_reasoning_effort, travel_role
+from app.agents.inputs.execution import TaskExecutionContext
+from app.agents.travel_runtime import TaskExecutionRuntime
+from app.domain.models import TripRequirements
 
 USER_MSG = ('帮我安排11月1日开始、在杭州玩2天的行程，住西湖边的酒店，2个人，'
             '预算3000元，想逛西湖和吃杭帮菜。')
@@ -115,7 +116,7 @@ def main() -> int:
                 outcome = None
                 usage = {}
                 try:
-                    response = _create_chat_completion(
+                    response = request_completion(
                         client, model, messages, tools=agent['tools'],
                         response_format=agent['response_format'],
                         reasoning_effort=effort, agent_role=agent['name'])

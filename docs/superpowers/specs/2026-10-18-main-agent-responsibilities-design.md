@@ -25,9 +25,9 @@ MainAgent 是同城游玩服务的业务主控：判断请求是否受理、理�
 | --- | --- | --- |
 | 决策流程从理解完整请求开始，缺少明确的业务受理规则 | [main.txt](../../../app/prompts/agents/main.txt)，第 28 行附近 | 身份名称不足以限定实际受理范围 |
 | 允许“纯闲聊”直接自然回复，但未定义闲聊范围 | 同上，第 96 行附近 | 无关实质性问答可能被当成闲聊 |
-| 无工具调用时可直接将模型正文送入 `workspace.finish`；`_can_finish_prose` 只检查本轮候选和工作流候选 | [task_runtime.py](../../../app/agents/task_runtime.py)，`run`、`_can_finish_prose` | 没有调用工具不代表回答属于业务范围 |
-| `finish_turn.reply` 接收自由文本，`TurnWorkspace.finish` 检查类型、长度、引用与状态 | [task_runtime.py](../../../app/agents/task_runtime.py)，`_terminal`；[turn_workspace.py](../../../app/workflow/turn_workspace.py)，`finish` | 结构化结束本身不证明回复内容合规 |
-| 旧活动追问必须消费，或取消、挂起所属任务，才允许结束本轮 | [main.txt](../../../app/prompts/agents/main.txt)，第 80 行附近；[task_runtime.py](../../../app/agents/task_runtime.py)，`_unsettled_base_question`、`_terminal` | 临时插话被迫影响任务生命周期 |
+| 无工具调用时可直接将模型正文送入 `workspace.finish`；`_can_finish_prose` 只检查本轮候选和工作流候选 | [travel_runtime.py](../../../app/agents/travel_runtime.py)，`run`、`_can_finish_prose` | 没有调用工具不代表回答属于业务范围 |
+| `finish_turn.reply` 接收自由文本，`TurnWorkspace.finish` 检查类型、长度、引用与状态 | [travel_runtime.py](../../../app/agents/travel_runtime.py)，`_terminal`；[turn_workspace.py](../../../app/workflow/turn_workspace.py)，`finish` | 结构化结束本身不证明回复内容合规 |
+| 旧活动追问必须消费，或取消、挂起所属任务，才允许结束本轮 | [main.txt](../../../app/prompts/agents/main.txt)，第 80 行附近；[travel_runtime.py](../../../app/agents/travel_runtime.py)，`_unsettled_base_question`、`_terminal` | 临时插话被迫影响任务生命周期 |
 | 一处要求主控说“需求已保存”，另一处要求不要声称候选已落库；提交程序已添加保存状态 | [main.txt](../../../app/prompts/agents/main.txt)，第 54、108 行附近；[turn_commit.py](../../../app/workflow/turn_commit.py)，`commit_turn` | 主控不应提前预测实际提交结果 |
 
 [已有越界问题记录](../../known-issues/2026-10-18-off-scope-answers.md)报告过 12 个样例中 7 个提供越界实质性回答，并指出不调用工具的回答仍可通过机器检查。该记录是已有证据，不是本方案的验证结果。当前工作树中未找到记录引用的 `tests/datasets/main_agent_scope_v1/cases.json`，实施时需要核对或补齐评测材料。
@@ -175,8 +175,8 @@ MainAgent 可以判断需要更新需求，但正式需求候选由需求能力�
 | 文件 | 需要核对和调整的内容 |
 | --- | --- |
 | [app/prompts/agents/main.txt](../../../app/prompts/agents/main.txt) | 主控定义、受理规则、直接回答范围、决策顺序、插话保留、保存状态表达 |
-| [app/agents/task_runtime.py](../../../app/agents/task_runtime.py) | `run`、`_can_finish_prose`、`_unsettled_base_question`、`_terminal`、`_ask`、`_bind_active_answer` 及快捷路径之间的一致性 |
-| [app/agents/agent_roles.py](../../../app/agents/agent_roles.py) | 工具说明与结束合同是否准确表达职责；必要的协议调整保持本地校验 |
+| [app/agents/travel_runtime.py](../../../app/agents/travel_runtime.py) | `run`、`_can_finish_prose`、`_unsettled_base_question`、`_terminal`、`_ask`、`_bind_active_answer` 及快捷路径之间的一致性 |
+| [app/agents/roles.py](../../../app/agents/roles.py) | 工具说明与结束合同是否准确表达职责；必要的协议调整保持本地校验 |
 | [app/agents/main_input.py](../../../app/agents/main_input.py) | 主控能否看到判断范围、追问归属和任务保留所需的信息；维持按需投影 |
 | [app/workflow/task_context.py](../../../app/workflow/task_context.py) | 保留等待中的追问和任务；真正切换时继续遵守唯一活动追问及合法状态转换 |
 | [app/workflow/turn_workspace.py](../../../app/workflow/turn_workspace.py) | 无业务变更结束与既有工作流保留的兼容；候选、来源、条件及依赖检查继续有效 |

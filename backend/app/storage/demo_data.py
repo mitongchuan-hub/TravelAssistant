@@ -1,7 +1,7 @@
 """演示数据纯工厂：每次返回新的业务对象，不创建 Store、不读写数据库。"""
 from collections.abc import Mapping, Sequence
 
-from app.models import AgentAction, AgentCard, IdeaCard, Message, TripDay, TripItem, TripPlan, User
+from app.domain.models import AgentAction, AgentCard, IdeaCard, Message, TripDay, TripItem, TripPlan, User
 
 
 def seed_messages(users: Mapping[str, User]) -> list[Message]:

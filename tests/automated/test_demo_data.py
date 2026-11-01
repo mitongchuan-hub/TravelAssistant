@@ -1,7 +1,7 @@
 """Exact demo fixtures and lifecycle boundaries of the pure seed factories."""
 from dataclasses import asdict
 
-from app.models import User
+from app.domain.models import User
 from app.storage import demo_data
 from app.storage import store as store_module
 
@@ -176,7 +176,7 @@ def test_restored_persisted_state_takes_precedence_over_demo_seeds(tmp_path, mon
     monkeypatch.setattr(store_module, 'USERS', dict(USERS))
     path = str(tmp_path / 'demo-state.sqlite3')
     original = make_store(db_path=path, persistence_enabled=True)
-    from app.workflow.task_context import empty_workflow
+    from app.storage.legacy.workflow import empty_workflow
     original.trips['trip-hangzhou'].workflow_state = empty_workflow()
     original.trips['trip-hangzhou'].destination = '保留的目的地'
     original.messages['trip-hangzhou'][0].body = '保留的消息'

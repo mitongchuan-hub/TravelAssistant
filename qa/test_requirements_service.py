@@ -1,4 +1,4 @@
-"""Regression tests for app.services.requirements (previously not unit-tested).
+"""Regression tests for app.domain.requirements (previously not unit-tested).
 
 Locks in the intended validation of durable traveler requirements: budget
 normalization, day-count/date consistency, people/time bounds, and the
@@ -7,8 +7,8 @@ failure here indicates a behavior change, not a test bug.
 """
 import pytest
 
-from app.models import Trip, TripRequirements, User
-from app.services.requirements import (
+from app.domain.models import Trip, TripRequirements, User
+from app.domain.requirements import (
     chat_changes, clean_list, initial_requirements, update_requirements,
 )
 

@@ -3,7 +3,7 @@ from typing import Literal, Required, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
 
-from app.core.message_input import MAX_MESSAGE_LENGTH, normalize_message_text
+from app.domain.message import MAX_MESSAGE_LENGTH, normalize_message_text
 
 
 class UserDTO(TypedDict):

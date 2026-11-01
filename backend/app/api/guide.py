@@ -10,7 +10,7 @@ from app.api.schemas import BasisInput, DisplayInput
 from app.api.serializers import workspace_snapshot
 from app.services.itinerary.guide_html import GUIDE_CSP, GUIDE_SANDBOX, guide_document, validate_guide_display
 from app.services.itinerary.plan_display import dates_from_snapshot
-from app.workflow.tasks import TaskConflict, validate_task_basis
+from app.application.execution import TaskConflict, validate_task_basis
 
 router = APIRouter(prefix='/api/trips/{trip_id}', tags=['guide'])
 

@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from app.models import (
+from app.domain.models import (
     AgentAction,
     AgentCard,
     IdeaCard,
@@ -28,7 +28,7 @@ from app.models import (
 )
 
 from app.services.itinerary.plan_display import migrate_stored_display
-from app.services.requirements import initial_requirements
+from app.domain.requirements import initial_requirements
 
 SNAPSHOT_KEY = "demo_store_v1"
 CURRENT_SCHEMA_VERSION = 6
@@ -116,10 +116,11 @@ def ensure_relational_schema(db_path: str | Path) -> None:
         trip_columns = {
             row[1] for row in connection.execute("PRAGMA table_info(trips)").fetchall()
         }
+        # Preserve legacy business tables during this reversible phase. Add the
+        # minimum ownership column in place instead of dropping trips or related
+        # tables; destructive migration is never performed at startup.
         if trip_columns and "owner_id" not in trip_columns:
-            connection.execute("DROP TABLE trips")
-        connection.execute("DROP TABLE IF EXISTS trip_members")
-        connection.execute("DROP TABLE IF EXISTS plan_versions")
+            connection.execute("ALTER TABLE trips ADD COLUMN owner_id TEXT NOT NULL DEFAULT 'u1'")
         connection.executescript(
             """
             CREATE TABLE IF NOT EXISTS users (
@@ -347,8 +348,8 @@ def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) 
     store.display_jobs = {jid: deepcopy(job) for jid, job in snapshot.get('display_jobs', {}).items()
                           if job.get('trip_id') in store.trips}
 
-    from app.services.itinerary.plan_basis import plan_basis
-    from app.workflow.task_context import normalize_workflow
+    from app.domain.itinerary.identity import plan_basis
+    from app.storage.legacy.workflow import normalize_workflow
     for trip_id, trip in store.trips.items():
         trip.workflow_state = normalize_workflow(
             trip.workflow_state,

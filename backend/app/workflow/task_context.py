@@ -12,7 +12,7 @@ from dataclasses import asdict, is_dataclass
 from typing import Any, Callable
 from uuid import uuid4
 
-from app.services.itinerary.plan_basis import PlanBasis
+from app.domain.itinerary.identity import PlanBasis
 from app.workflow.execution import serialize
 
 
@@ -531,7 +531,7 @@ def _coerce_plan_basis(raw: Any, plan: Any) -> PlanBasis | None:
         except ValueError as exc:
             raise WorkflowError("current plan_basis is invalid") from exc
     if plan is not None:
-        from app.services.itinerary.plan_basis import plan_basis as make_plan_basis
+        from app.domain.itinerary.identity import plan_basis as make_plan_basis
         return make_plan_basis(plan)
     return None
 

@@ -13,7 +13,7 @@ from itertools import count
 
 from app.core.config import boolean, database_path
 from app.storage.demo_data import seed_idea_cards, seed_messages, seed_plan
-from app.models import (
+from app.domain.models import (
     AgentAction,
     AgentCard,
     IdeaCard,
@@ -22,10 +22,13 @@ from app.models import (
     TripPlan,
     User,
 )
+# Keep the legacy workflow classes as explicit compatibility bases while the
+# application functions are migrated incrementally. They remain preserved and
+# are still the active implementation for this store during this phase.
 from app.workflow.display_tasks import DisplayTasks
 from app.workflow.tasks import ACTIVE, TravelTasks, validate_display_target_metadata
 from app.workflow.turn_commit import TurnCommit, TurnPersistenceError
-from app.services.requirements import chat_changes, initial_requirements, update_requirements
+from app.domain.requirements import chat_changes, initial_requirements, update_requirements
 from app.views.trip_welcome import trip_welcome
 from app.storage.persistence import CURRENT_SCHEMA_VERSION, backup_database, ensure_relational_schema, load_snapshot, restore_state, save_snapshot, serialize_state
 
@@ -100,7 +103,7 @@ def _state_locked(method):
 
 
 class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
-    def __init__(self, db_path: str | None = None, persistence_enabled: bool | None = None, *, display_worker_enabled: bool | None = None) -> None:
+    def __init__(self, db_path: str | None = None, persistence_enabled: bool | None = None, *, display_worker_enabled: bool | None = None, seed_demo: bool = True) -> None:
         self.db_path = db_path or database_path()
         self.persistence_enabled = self._resolve_persistence_enabled(persistence_enabled)
         self._lock = RLock()
@@ -108,24 +111,31 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         self.tasks: dict[str, dict] = {}
         self._agent_locks: dict[str, RLock] = {}
         self._init_display_tasks(display_worker_enabled)
-        self.trips: dict[str, Trip] = {
-            "trip-hangzhou": Trip(
-                id="trip-hangzhou",
-                destination="杭州周末旅行",
-                date_range="8月24日 - 8月26日",
-                budget="人均 1500",
-                style="轻松、少排队、适合慢慢逛",
-                note="想轻松一点，少排队，多留自由时间。",
-                owner=USERS["u1"],
-                status="草案",
-                last_activity="Agent 已生成初版行程",
-            )
-        }
-        self.messages: dict[str, list[Message]] = {"trip-hangzhou": seed_messages(USERS)}
-        self.plans: dict[str, TripPlan] = {"trip-hangzhou": seed_plan()}
-        self.idea_cards: dict[str, list[IdeaCard]] = {"trip-hangzhou": seed_idea_cards(IDEA_ROTATIONS)}
-        for trip in self.trips.values():
-            trip.requirements = initial_requirements(trip.budget, trip.style)
+        # Demo content is opt-in for isolated demos/tests. Production starts
+        # with empty business collections and only restores an existing snapshot.
+        self.trips: dict[str, Trip] = {}
+        self.messages: dict[str, list[Message]] = {}
+        self.plans: dict[str, TripPlan] = {}
+        self.idea_cards: dict[str, list[IdeaCard]] = {}
+        if seed_demo:
+            self.trips = {
+                "trip-hangzhou": Trip(
+                    id="trip-hangzhou",
+                    destination="杭州周末旅行",
+                    date_range="8月24日 - 8月26日",
+                    budget="人均 1500",
+                    style="轻松、少排队、适合慢慢逛",
+                    note="想轻松一点，少排队，多留自由时间。",
+                    owner=USERS["u1"],
+                    status="草案",
+                    last_activity="Agent 已生成初版行程",
+                )
+            }
+            self.messages = {"trip-hangzhou": seed_messages(USERS)}
+            self.plans = {"trip-hangzhou": seed_plan()}
+            self.idea_cards = {"trip-hangzhou": seed_idea_cards(IDEA_ROTATIONS)}
+            for trip in self.trips.values():
+                trip.requirements = initial_requirements(trip.budget, trip.style)
         self._load_persisted_state()
         if self.persistence_enabled:
             ensure_relational_schema(self.db_path)
@@ -248,7 +258,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             trip = update_requirements(trip, requirements)
             if mode == 'city':
                 trip.lodging = self._validated_lodging(lodging, trip.requirements.city)
-            from app.services.itinerary.planning import planning_brief
+            from app.domain.itinerary.prerequisites import planning_brief
             _, question = planning_brief(trip, require_all=True)
             if question:
                 raise ValueError(question)
@@ -271,7 +281,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
 
     @staticmethod
     def _validated_lodging(lodging, city):
-        from app.services.places import collect_places
+        from app.domain.lodging import collect_places
         trusted = collect_places([{'role': 'tool', 'name': 'search_places', 'content':
             json.dumps({'status': 'available', 'candidates': [lodging]}, ensure_ascii=False)}])
         if not trusted or not city or lodging['city'] != city:
@@ -306,7 +316,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         return updated
 
     def clear_chat(self, trip_id: str) -> None:
-        from app.workflow.task_context import clear_workflow
+        from app.storage.legacy.workflow import clear_workflow
         with self._lock:
             stage = self._stage_turn(trip_id)
             stage.trips[trip_id].workflow_state = clear_workflow(stage.trips[trip_id].workflow_state)
@@ -344,7 +354,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         return message, self.start_agent_task(trip_id)
 
     def start_agent_task(self, trip_id: str) -> Message:
-        from app.workflow.task_progress import new_progress
+        from app.application.progress import new_progress
         with self._lock:
             thinking_message = Message(
                 id=f"m-{next(_id_counter)}",
@@ -401,7 +411,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             if thinking_message_id:
                 for index, message in enumerate(self.messages[trip_id]):
                     if message.id == thinking_message_id:
-                        from app.workflow.task_progress import finish_progress
+                        from app.application.progress import finish_progress
                         error_message.execution_progress = finish_progress(message.execution_progress, 'failed')
                         self.messages[trip_id][index] = error_message
                         break
@@ -704,4 +714,6 @@ def _normalize_idea_text(value: str) -> str:
     return "".join(value.lower().split())
 
 
-store = DemoStore()
+# Production singleton is empty on a fresh database; demo fixtures opt in via
+# DemoStore(seed_demo=True), preserving the legacy test/demo constructor.
+store = DemoStore(seed_demo=False)

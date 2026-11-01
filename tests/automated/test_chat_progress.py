@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-from app.workflow.task_progress import advance_progress, finish_progress, new_progress
+from app.application.progress import advance_progress, finish_progress, new_progress
 
 
 def test_model_lifecycle_does_not_publish_prompt_or_response():
@@ -99,9 +99,9 @@ def test_progress_write_failure_restores_message_without_affecting_task(store, m
 
 
 def test_committed_reply_and_snapshot_keep_execution_history(store, monkeypatch):
-    from app.agents import agent_client
+    from app.agents import entrypoints
     from app.storage.persistence import _message
-    from app.workflow.execution import ExecutionResult
+    from app.application.contracts import ExecutionResult
     from dataclasses import asdict
 
     def generate(context, execution, *, cancelled, on_progress):
@@ -109,7 +109,7 @@ def test_committed_reply_and_snapshot_keep_execution_history(store, monkeypatch)
         on_progress('模型响应', {'agent_role': 'main_execution'})
         return ExecutionResult(answer='已处理你的消息。')
 
-    monkeypatch.setattr(agent_client, 'generate_task_result', generate)
+    monkeypatch.setattr(entrypoints, 'generate_task_result', generate)
     task, _ = store.submit_task('trip-hangzhou', 'chat', {'body': '你好'}, 'commit-test')
     receipt = store.run_task(task['id'])
     assert receipt.committed
@@ -121,21 +121,41 @@ def test_committed_reply_and_snapshot_keep_execution_history(store, monkeypatch)
 
 
 def test_trace_sink_failure_does_not_interrupt_model_logging():
-    from app.agents.agent_client import ConversationTrace
+    from app.agents.trace import ConversationTrace
     trace = ConversationTrace('r', '2026-10-23T10:00:00', 't', 'hello',
         on_progress=lambda *_: (_ for _ in ()).throw(RuntimeError('observer failed')))
     trace.add('模型请求', {'agent_role': 'main_execution'})
     assert len(trace.records) == 1
 
 
+def test_trace_write_is_once_and_persistence_failure_is_nonfatal(monkeypatch):
+    from datetime import datetime
+    from app.agents import trace as trace_module
+
+    calls = []
+
+    def fail(trace, *, error=None):
+        calls.append((trace, error))
+        raise OSError('offline disk failure')
+
+    monkeypatch.setattr(trace_module, 'record_agent_run', fail)
+    trace = trace_module.ConversationTrace('r', datetime.now().isoformat(), 't', 'synthetic')
+    error = RuntimeError('synthetic')
+    trace.write(error)
+    trace.write()
+    assert calls == [(trace, error)]
+    assert trace.written
+    assert trace.records == [{'title': '调用异常', 'value': 'RuntimeError: synthetic'}]
+
+
 def test_real_model_request_adapter_publishes_progress_before_response(store, monkeypatch):
     from types import SimpleNamespace
-    from app.agents import agent_client
+    from app.agents import model_client, trace as trace_module
     from app.core import config
 
     monkeypatch.setenv('OPENAI_API_KEY', 'test-only-key')
     monkeypatch.setattr(config, 'llm_enabled', lambda: True)
-    monkeypatch.setattr(agent_client, 'record_agent_run', lambda *args, **kwargs: None)
+    monkeypatch.setattr(trace_module, 'record_agent_run', lambda *args, **kwargs: None)
     task, _ = store.submit_task('trip-hangzhou', 'chat', {'body': '你好'}, 'adapter-test')
 
     def completion(*args):
@@ -143,8 +163,8 @@ def test_real_model_request_adapter_publishes_progress_before_response(store, mo
         assert message.execution_progress['steps'][-1]['status'] == 'running'
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='你好！', tool_calls=[]))], usage=None)
 
-    monkeypatch.setattr(agent_client, 'create_completion', completion)
-    from app.core.resources import client_scope
+    monkeypatch.setattr(model_client, 'create_completion', completion)
+    from app.core.model_resources import client_scope
     with client_scope(client_factory=lambda **kwargs: SimpleNamespace(close=lambda: None)):
         assert store.run_task(task['id']).committed
     message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
@@ -152,8 +172,8 @@ def test_real_model_request_adapter_publishes_progress_before_response(store, mo
 
 
 def test_message_context_omits_ui_execution_history():
-    from app.agents.main_input import project_messages
-    from app.models import Message, User
+    from app.agents.inputs.context import project_messages
+    from app.domain.models import Message, User
     message = Message('m', User('u', 'user', 'u'), 'agent', '正文', '10:00',
                       execution_progress={'steps': ['UI-ONLY']})
     result = project_messages([message])
@@ -162,7 +182,7 @@ def test_message_context_omits_ui_execution_history():
 
 
 def test_completed_progress_dto_is_inactive_and_does_not_expose_private_fields():
-    from app.models import Message, User
+    from app.domain.models import Message, User
     from app.views.chat_presentation import chat_progress_view
     from app.api.serializers import message_to_dict
     progress = advance_progress(new_progress(timestamp=0), '工具开始', {
@@ -185,7 +205,7 @@ def test_completed_progress_dto_is_inactive_and_does_not_expose_private_fields()
 @pytest.mark.parametrize('terminal', ['reply', 'submit'])
 def test_run_record_reads_current_model_and_budget_events(terminal):
     from datetime import datetime
-    from app.agents.agent_client import ConversationTrace, _agent_run_row
+    from app.agents.trace import ConversationTrace, _agent_run_row
     trace = ConversationTrace('request', datetime.now().isoformat(), 'trip', '用户消息')
     trace.add('模型请求', {'model': 'primary'})
     trace.add('模型响应', {'content': None, 'tool_calls': [{'name': 'read_context'}],

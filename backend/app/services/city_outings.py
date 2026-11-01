@@ -5,8 +5,8 @@ from threading import Lock
 from time import monotonic
 from uuid import uuid4
 
-from app.models import Trip, User
-from app.services.requirements import update_requirements
+from app.domain.models import Trip, User
+from app.domain.requirements import update_requirements
 
 CITY_FORM_FIELDS = {'lodging_address', 'city_hint', 'start_date', 'day_count', 'outing_start_time',
                    'outing_end_time', 'travelers', 'budget_amount', 'budget_scope', 'pace',

@@ -4,7 +4,7 @@
 
 ## 本地检查
 
-- `app/agents/agent_client.py` 的 `Path(__file__).resolve().parents[2]` 正确指向项目根目录，加载项目 `.env`。
+- `app/agents/entrypoints.py` 的 `Path(__file__).resolve().parents[2]` 正确指向项目根目录，加载项目 `.env`。
 - 41 个 Python 模块均可实际导入，所有本地延迟导入目标及符号可解析。
 - `app/agents/model_transport.py` 与 Git HEAD 的迁移前版本相比，函数 AST 未变化。
 - 模型配置为 `qwen3.8:27b`，`http://172.25.17.131:18080/v1`，协议 `chat_completions`。

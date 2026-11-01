@@ -12,11 +12,12 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.agents.budget import TurnBudget
-from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
+from app.agents.inputs.execution import TaskExecutionContext
+from app.agents.travel_runtime import TaskExecutionRuntime
 from app.services.itinerary.plan_display import text_hash
 from app.storage.store import DemoStore
-from app.workflow.tasks import resolve_display_target
-from app.workflow.turn_commit import TurnPersistenceError
+from app.application.execution import resolve_display_target
+from app.application.execution import TurnPersistenceError
 
 
 TRIP = 'trip-hangzhou'
@@ -179,7 +180,7 @@ def test_scripted_persistence_failure_never_publishes_or_reloads_subset(store, m
     before = deepcopy((store.trips, store.plans, store.idea_cards, store.messages, store.tasks))
     def fail(*args, **kwargs):
         raise OSError('offline simulated disk full')
-    monkeypatch.setattr('app.workflow.turn_commit.save_snapshot', fail)
+    monkeypatch.setattr('app.application.execution.save_snapshot', fail)
     with pytest.raises(TurnPersistenceError):
         store.commit_turn(runtime.request_context, proposal)
     assert (store.trips, store.plans, store.idea_cards, store.messages, store.tasks) == before
@@ -306,7 +307,7 @@ def test_missing_transit_details_cannot_publish_fabricated_terminal_itinerary(st
 def test_web_message_background_task_runs_real_runtime_and_commit(store, monkeypatch):
     from app import main
     from app.api import dependencies as deps
-    from app.agents import agent_client
+    from app.agents import entrypoints
     calls = []
     def generate(context, execution, **kwargs):
         model = ScriptedModel(('read_context', {'section': 'ideas'}),
@@ -316,7 +317,7 @@ def test_web_message_background_task_runs_real_runtime_and_commit(store, monkeyp
         proposal = runtime.run()
         calls.append(runtime)
         return proposal
-    monkeypatch.setattr(agent_client, 'generate_task_result', generate)
+    monkeypatch.setattr(entrypoints, 'generate_task_result', generate)
     monkeypatch.setattr(deps, 'store', store)
     monkeypatch.setattr(deps, 'current_user', lambda request: store.trips[TRIP].owner)
     from tests.automated.test_web_contract import csrf_headers

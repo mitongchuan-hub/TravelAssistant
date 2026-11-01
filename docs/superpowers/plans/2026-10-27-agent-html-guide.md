@@ -19,7 +19,7 @@
 
 ## Task 1：HTML 合同与网页生成 Agent
 
-**Files:** 新建 `app/services/guide_html.py`、`tests/automated/test_guide_html.py`；修改 `app/services/plan_display.py`、`app/agents/agent_runtime.py`、`app/agents/agent_client.py`、`app/prompts/agents/display.txt`。
+**Files:** 新建 `app/services/guide_html.py`、`tests/automated/test_guide_html.py`；修改 `app/services/plan_display.py`、`app/agents/agent_runtime.py`、`app/agents/entrypoints.py`、`app/prompts/agents/display.txt`。
 
 **Interfaces:** `build_guide_display(raw: str, dates: list[str] | None) -> dict` 接收模型原始输出，返回含 `schema_version`、`html`、`title` 和 `dates` 的字典；`validate_guide_display(data: dict, dates=None) -> dict` 验证保存和发布合同；`guide_document(data: dict) -> str` 为预览与下载插入 CSP。
 
@@ -39,7 +39,7 @@ def test_html_output_is_supported():
 
 ## Task 2：展示偏好、候选提交与后台版本
 
-**Files:** 修改 `app/models.py`、`app/persistence.py`、`app/agents/agent_protocol.py`、`app/agents/agent_roles.py`、`app/agents/task_runtime.py`、`app/workflow/turn_workspace.py`、`app/workflow/turn_commit.py`、`app/workflow/display_tasks.py`、`app/store.py`、`app/prompts/agents/main.txt`；新建 `tests/automated/test_guide_workflow.py`。
+**Files:** 修改 `app/models.py`、`app/persistence.py`、`app/agents/agent_protocol.py`、`app/agents/roles.py`、`app/agents/travel_runtime.py`、`app/workflow/turn_workspace.py`、`app/workflow/turn_commit.py`、`app/workflow/display_tasks.py`、`app/store.py`、`app/prompts/agents/main.txt`；新建 `tests/automated/test_guide_workflow.py`。
 
 **Interfaces:** `TripPlan.display_style: str = ''` 持久化展示偏好。工具 `restyle_itinerary(plan_ref: str, instruction: str)` 仅为当前有正文的行程注册 `presentation` 候选，payload 为 `plan_ref/style_instruction`；Commit 后才安排展示任务。
 

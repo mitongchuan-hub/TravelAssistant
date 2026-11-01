@@ -95,7 +95,7 @@ Task Execution结果: failed=True
 
 ### 3. 逐请求诊断记录
 
-已修改 `backend/app/agents/agent_client.py`。每次真实模型请求现在会记录：
+已修改 `backend/app/agents/entrypoints.py`。每次真实模型请求现在会记录：
 
 - `request_id`
 - `request_index`

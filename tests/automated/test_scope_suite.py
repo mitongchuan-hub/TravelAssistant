@@ -22,7 +22,7 @@ def test_special_contexts_run_without_fixture_contract_errors(monkeypatch, conte
     def request(*args, **kwargs):
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='Hello', tool_calls=[]))])
 
-    monkeypatch.setattr(scope_eval, '_create_chat_completion', request)
+    monkeypatch.setattr(scope_eval, 'request_completion', request)
     result = scope_eval.run_case(case, None, 'offline')
     assert not result['errors']
     assert result['unchanged']
@@ -52,7 +52,7 @@ def test_every_dataset_context_has_valid_runtime_contract(monkeypatch, case):
     def request(*args, **kwargs):
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='Hello', tool_calls=[]))])
 
-    monkeypatch.setattr(scope_eval, '_create_chat_completion', request)
+    monkeypatch.setattr(scope_eval, 'request_completion', request)
     result = scope_eval.run_case(case, None, 'offline')
     assert not result['errors'], result['errors']
     assert result['unchanged']

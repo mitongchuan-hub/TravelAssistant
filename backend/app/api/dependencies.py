@@ -4,11 +4,13 @@ from threading import Lock
 from fastapi import HTTPException, Request
 
 from app.auth import AuthStore, SESSION_COOKIE_NAME
-from app.models import User
+from app.domain.models import User
 from app.services.city_outings import LodgingChoices
 from app.storage.store import IDEA_WALL_LIMIT, USERS, store
 
 
+# Compatibility facade for existing routers. Lifespan can replace these objects
+# with app-owned resources before serving requests.
 auth = AuthStore(store.db_path, store.persistence_enabled)
 registration_lock = Lock()
 lodging_choices = LodgingChoices()

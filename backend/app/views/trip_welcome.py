@@ -1,5 +1,5 @@
 """Create a welcome message from the new trip's saved requirements."""
-from app.models import AgentCard
+from app.domain.models import AgentCard
 
 
 def trip_welcome(trip):

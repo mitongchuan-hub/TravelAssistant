@@ -26,11 +26,11 @@ class ConfigurationError(ValueError):
 
 # 由启动入口显式调用，线程安全地只加载一次项目 .env。
 def load_environment() -> None:
-    """Load .env once without replacing process environment; failed loads may retry."""
+    """Load project .env once, overriding process values; failed loads may retry."""
     global _environment_loaded
     with _environment_lock:
         if not _environment_loaded:
-            load_dotenv(PROJECT_ROOT / '.env', override=False)
+            load_dotenv(PROJECT_ROOT / '.env', override=True)
             _environment_loaded = True
 
 

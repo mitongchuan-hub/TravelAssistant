@@ -14,6 +14,17 @@ from typing import Any, Callable, Iterator
 
 from app.core import config
 
+# Canonical lifecycle implementation remains in the preserved module; this
+# module is the stable compatibility import for new callers.
+from app.core.model_resources import (ResourceUnavailable, client_scope, borrow_client)
+
+
+def __getattr__(name):
+    if name in {'_owner', '_condition'}:
+        from app.core import model_resources
+        return getattr(model_resources, name)
+    raise AttributeError(name)
+
 
 class ResourceUnavailable(RuntimeError):
     """The shared model client is disabled, not started, or shutting down."""
@@ -111,3 +122,11 @@ def borrow_client() -> Iterator[Any]:
             owner.borrowers -= 1
             if not owner.borrowers:
                 _condition.notify_all()
+
+
+# Canonicalize the compatibility module after its preserved implementation so
+# both historical and new imports share one owner and one lifecycle lock.
+from app.core import model_resources as _model_resources
+ResourceUnavailable = _model_resources.ResourceUnavailable
+client_scope = _model_resources.client_scope
+borrow_client = _model_resources.borrow_client

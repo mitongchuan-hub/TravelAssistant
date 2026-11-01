@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services.agent_crud import prepare_changes, exact_edit
+from app.domain.changes import prepare_changes, exact_edit
 from app.storage.store import DemoStore
-from app.workflow.turn_commit import TurnPersistenceError
-from app.workflow.execution import ExecutionResult
+from app.application.execution import TurnPersistenceError
+from app.application.contracts import ExecutionResult
 
 
 def test_delete_trip_cleans_model_runs_and_rejects_late_model_log(tmp_path):
@@ -191,7 +191,7 @@ def test_staging_failure_does_not_publish_business_subset(store, monkeypatch):
         'ideas': [{'action': 'update', 'idea_id': 'idea-place-2', 'changes': {'title': '慢游龙井'}}],
     })
     before = deepcopy((store.trips, store.plans, store.idea_cards, store.messages, store.tasks))
-    monkeypatch.setattr('app.workflow.turn_commit.save_snapshot', lambda *a, **kw: (_ for _ in ()).throw(OSError('disk full')))
+    monkeypatch.setattr('app.application.execution.save_snapshot', lambda *a, **kw: (_ for _ in ()).throw(OSError('disk full')))
     store.persistence_enabled = True
     with pytest.raises(TurnPersistenceError):
         store.commit_turn(context, candidate)
@@ -385,8 +385,8 @@ def test_direct_changes_cannot_be_committed_under_another_request(store, field, 
 
 
 def test_historic_workflow_and_receipt_are_readable_but_cannot_be_authored(store):
-    from app.workflow.execution import serialize
-    from app.workflow.task_context import normalize_workflow
+    from app.application.contracts import serialize
+    from app.storage.legacy.workflow import normalize_workflow
     key = 'trip-hangzhou'
     source = store.messages[key][0].id
     history = normalize_workflow({'schema_version': 2, 'revision': 4, 'sequence': 0,
@@ -417,7 +417,7 @@ def test_direct_change_mutation_and_current_plan_conflict_are_rejected(store):
 
 
 def test_historic_receipt_replay_keeps_rejected_artifact_details(store):
-    from app.workflow.execution import CommitReceipt, serialize
+    from app.application.contracts import CommitReceipt, serialize
     context, candidate = proposal(store, '记录西湖', {'ideas': [
         {'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '西湖'}]})
     receipt = store.commit_turn(context, candidate)

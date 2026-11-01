@@ -464,10 +464,10 @@ Schema 只能验证结构，不保证地点存在、预算足够、餐厅营业�
 | 当前部分 | 推荐处理 |
 |---|---|
 | `model_transport.py` | 保留模型协议适配和完整响应检查 |
-| `agent_client.py` | 保留客户端、调用配置与必要轨迹，减少夹杂编排职责 |
-| `agent_roles.py` | 收敛为单角色提示词、工具注册与 Schema |
+| `entrypoints.py` | 保留客户端、调用配置与必要轨迹，减少夹杂编排职责 |
+| `roles.py` | 收敛为单角色提示词、工具注册与 Schema |
 | `main_input.py` | 复用安全上下文投影、分页和版本绑定 |
-| `task_runtime.py` / `agent_runtime.py` | 提取成一套循环，移除主/子委派的重复机制 |
+| `travel_runtime.py` / `agent_runtime.py` | 提取成一套循环，移除主/子委派的重复机制 |
 | `TurnBudget` | 保留必要计数、时间和取消，明确预检与实际调用 |
 | `TurnWorkspace` | 视现有提交依赖内部复用/简化，不再要求模型进行复杂候选编排 |
 | `TurnCommit` | 保留唯一提交口、版本复验和事务保护 |

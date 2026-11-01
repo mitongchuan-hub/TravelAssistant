@@ -5,8 +5,9 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services.itinerary.plan_basis import plan_basis
-from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
+from app.domain.itinerary.identity import plan_basis
+from app.agents.inputs.execution import TaskExecutionContext
+from app.agents.travel_runtime import TaskExecutionRuntime
 from app.services.itinerary.plan_display import text_hash
 from app.storage.store import DemoStore
 
@@ -75,7 +76,7 @@ def test_style_submission_cannot_mutate_a_stale_plan(store):
 
 
 def test_late_result_cannot_publish_for_superseded_default_job(store, monkeypatch):
-    from app.agents import agent_client
+    from app.agents import entrypoints
     from app.services.itinerary.guide_html import build_guide_display
 
     source_hash = text_hash(store.plans[TRIP].text)
@@ -87,7 +88,7 @@ def test_late_result_cannot_publish_for_superseded_default_job(store, monkeypatc
         return {'display': build_guide_display(HTML), 'display_status': 'ready',
                 'display_source_hash': source_hash}
 
-    monkeypatch.setattr(agent_client, 'generate_plan_display', generate)
+    monkeypatch.setattr(entrypoints, 'generate_plan_display', generate)
     store.run_display_job(job_id)
     assert store.plans[TRIP].display_style == '轻松、愉悦'
     assert store.plans[TRIP].display is not None
@@ -95,7 +96,7 @@ def test_late_result_cannot_publish_for_superseded_default_job(store, monkeypatc
 
 
 def test_failed_default_style_generation_keeps_previous_guide(store, monkeypatch):
-    from app.agents import agent_client
+    from app.agents import entrypoints
     from app.services.itinerary.guide_html import build_guide_display
 
     plan = store.plans[TRIP]
@@ -104,7 +105,7 @@ def test_failed_default_style_generation_keeps_previous_guide(store, monkeypatch
     plan.display_status = 'ready'
     previous = deepcopy(plan.display)
     store.retry_display(TRIP, plan.id, text_hash(plan.text))
-    monkeypatch.setattr(agent_client, 'generate_plan_display', lambda *a, **kw: {
+    monkeypatch.setattr(entrypoints, 'generate_plan_display', lambda *a, **kw: {
         'display': None, 'display_status': 'fallback', 'display_source_hash': text_hash(plan.text)})
     store.run_pending_display_jobs()
     assert store.plans[TRIP].display == previous
@@ -136,7 +137,7 @@ def test_busy_and_confirmation_changes_refresh_preview_actions(store):
 
 
 def test_retry_cannot_rebind_stale_html_to_current_prose(store, monkeypatch):
-    from app.agents import agent_client
+    from app.agents import entrypoints
     from app.services.itinerary.guide_html import build_guide_display
 
     plan = store.plans[TRIP]
@@ -146,7 +147,7 @@ def test_retry_cannot_rebind_stale_html_to_current_prose(store, monkeypatch):
     assert not store.get_display_state(TRIP)['guide_available']
     store.retry_display(TRIP, plan.id, text_hash(plan.text))
     assert not store.get_display_state(TRIP)['guide_available']
-    monkeypatch.setattr(agent_client, 'generate_plan_display', lambda *a, **kw: {
+    monkeypatch.setattr(entrypoints, 'generate_plan_display', lambda *a, **kw: {
         'display': None, 'display_status': 'fallback', 'display_source_hash': text_hash(plan.text)})
     store.run_pending_display_jobs()
     assert not store.get_display_state(TRIP)['guide_available']

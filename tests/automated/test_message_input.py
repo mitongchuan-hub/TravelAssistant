@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.message_input import MAX_MESSAGE_LENGTH
+from app.domain.message import MAX_MESSAGE_LENGTH
 from app.storage.store import DemoStore
 from tests.automated.test_web_contract import csrf_headers
 

@@ -1,5 +1,5 @@
 """Agent tool for reading the current turn's authorized context snapshot."""
-from app.agents.main_input import project_main_read_context
+from app.agents.inputs.context import project_main_read_context
 
 
 READ_CONTEXT_TOOL_SPEC = {

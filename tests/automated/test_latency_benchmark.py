@@ -11,7 +11,7 @@ def test_current_agents_and_default_offline(monkeypatch, capsys):
     monkeypatch.setattr(benchmark.config, 'load_environment', forbidden)
     monkeypatch.setattr(benchmark.resources, 'client_scope', forbidden)
     monkeypatch.setattr(benchmark.resources, 'borrow_client', forbidden)
-    monkeypatch.setattr(benchmark, '_create_chat_completion', forbidden)
+    monkeypatch.setattr(benchmark, 'request_completion', forbidden)
     monkeypatch.setenv('OPENAI_API_KEY', 'offline-test-key')
     agents = benchmark.build_agents()
     assert [agent['name'] for agent in agents] == ['travel_agent', 'display']

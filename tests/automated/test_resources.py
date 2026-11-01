@@ -81,8 +81,8 @@ def test_environment_load_is_explicit_once_and_thread_safe(monkeypatch, tmp_path
                 future.result(timeout=10)
         config.load_environment()
         assert config.PROJECT_ROOT == Path(__file__).resolve().parents[2]
-        assert calls == [(config.PROJECT_ROOT / '.env', False)]
-        assert os.environ['RESOURCE_EXISTING'] == 'from-process'
+        assert calls == [(config.PROJECT_ROOT / '.env', True)]
+        assert os.environ['RESOURCE_EXISTING'] == 'from-file'
         assert os.environ['RESOURCE_NEW'] == 'from-file'
     finally:
         os.environ.pop('RESOURCE_NEW', None)

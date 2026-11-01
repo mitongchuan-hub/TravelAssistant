@@ -1,4 +1,4 @@
-"""Regression tests for app.services.places (previously not unit-tested).
+"""Regression tests for app.domain.lodging (previously not unit-tested).
 
 collect_places builds the POI catalog only from real search_places tool results
 that are status-available and carry a valid, in-range, trusted-source place;
@@ -7,7 +7,7 @@ non-string POI ids, and stamps a selected_at.
 """
 import json
 
-from app.services.places import collect_places, resolve_place
+from app.domain.lodging import collect_places, resolve_place
 
 STAMP = '2026-01-01T00:00:00+00:00'
 

@@ -93,7 +93,7 @@ def test_dates_from_snapshot_incomplete_returns_none(snapshot):
 
 def test_dates_from_snapshot_malformed_raises_and_callers_guard():
     # Pure behavior: malformed ISO raises. All production callers wrap this in
-    # try/except (main_input._snapshot_dates, store, display_tasks) -> None.
+    # try/except (inputs.context._snapshot_dates, store, display_tasks) -> None.
     with pytest.raises(ValueError):
         dates_from_snapshot({'start_date': 'bad', 'end_date': '2026-10-03'})
 

@@ -4,7 +4,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from typing import Any
 
 from app.core.message_input import validate_message_text
-from app.services.itinerary.plan_basis import PlanBasis
+from app.domain.itinerary.identity import PlanBasis
 
 
 def serialize(value):

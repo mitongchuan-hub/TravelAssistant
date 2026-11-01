@@ -16,7 +16,7 @@ colors:
 - 聊天工作区是任务型 **Operate** 界面，攻略网页以 **Read** 为主。
 - 用户已确认 V2 用最后一个网页 Agent 生成的 HTML/CSS 攻略替换固定行程界面。
 - 沿用中文、雾蓝和现有聊天视觉。网页固定使用“轻松、愉悦”默认风格与同一配色。
-- 主界面迁移为 Vue 3，视觉依据仍为 `frontend/src/assets/` 中沿用的 styles/palette/chat/guide 样式和现有手机布局；交互由 Vue 组件负责。生成页面依据 `backend/app/agents/prompts/display.txt`，布局由模型产物决定；本次前后端分离不授权视觉改版。
+- 主界面迁移为 Vue 3，视觉依据仍为 `frontend/src/assets/` 中沿用的 styles/palette/chat/guide 样式和现有手机布局；交互由 Vue 组件负责。生成页面依据 `backend/app/agents/prompts/guide.txt`，布局由模型产物决定；本次前后端分离不授权视觉改版。
 
 ## Colors and Typography
 

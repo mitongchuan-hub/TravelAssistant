@@ -52,6 +52,19 @@ TravelAssistant/
 
 后端公开返回结构集中在 `backend/app/api/schemas.py`，由 serializers 的白名单投影生成；这些 TypedDict 只明确类型，不替代请求运行时校验或自动补值。行程依据是否过期统一由 `services/itinerary/freshness.py` 判断，工作流不依赖展示模块。演示消息、卡片和行程的纯工厂位于 `storage/demo_data.py`，Store 仍负责状态和持久化协调。
 
+Agent 入口与模型基础设施职责如下（运行器和工具的业务行为不变）：
+
+| 文件（`backend/app/agents/`） | 职责 |
+| --- | --- |
+| `entrypoints.py` | `generate_task_result` / `generate_plan_display`，装配本轮轨迹、预算、客户端借用与备用模型配置 |
+| `trace.py` | `ConversationTrace`、进度回调和运行记录持久化 |
+| `model_client.py` | `request_completion`，固定参数发送、请求 ID、预算计时、usage 与单请求 429 备用 |
+| `model_transport.py` | Chat Completions / Responses 线协议适配 |
+| `inputs/execution.py` | 执行数据装配：定义 `TaskExecutionContext`，从显式业务对象深复制本轮快照、仅保留 sent 消息，不接收 Store |
+| `inputs/context.py` | 模型输入装配：将执行快照投影为主 Agent 与 `read_context` 可见的上下文，不授予写入权限 |
+
+`workflow/turn_commit.py::execute_turn()` 在锁内解析展示目标并调用执行装配，固定本轮 payload 对应的条目与目标；可信 `RequestContext`、授权与版本冲突检查、取消/进度回调和最终原子保存仍留在 workflow 外层。`inputs/` 不反向依赖 workflow 任务执行器。
+
 ## 环境与安装
 
 - Python 3.11 或更高版本，建议使用虚拟环境。
@@ -93,11 +106,13 @@ TRAVEL_COOKIE_SECURE=0
 - `OPENAI_WIRE_API` 必须明确填写 `responses` 或 `chat_completions`，不自动选择协议。`OPENAI_STORE_RESPONSES` 必须明确填写 `true` 或 `false`。
 - 模型与地图超时必须是有限正数；地图超时不超过 120 秒。开启网页生成时，必须填写展示超时。
 - 进程环境变量可代替 `.env` 文件；启动错误只报告变量名称和规则，不回显密钥或连接地址。
-- `OPENAI_FALLBACK_MODEL` 不填或留空均关闭备用模型；配置后在主模型限流时最多切换一次。`MODEL_ID` 不再作为主模型的隐式别名。
+- `OPENAI_FALLBACK_MODEL` 不填或留空均关闭备用模型；配置后每个失败的主模型 HTTP 429 请求最多使用备用模型重试一次，并非整轮只能切换一次；仍受共享预算约束，不重放已执行的工具。`MODEL_ID` 不再作为主模型的隐式别名。
+- 固定模型参数（包括 `reasoning_effort`、工具和 `response_format`）被端点拒绝时直接报错，不静默删除、替换参数或降低响应格式后重试。
+- `OPENAI_MAIN_ENABLE_THINKING` 仅对 `chat_completions` 的主旅行 Agent 生效，通过 `chat_template_kwargs.enable_thinking` 显式控制；`responses` 不发送该开关。未配置时保留服务端默认思考行为。
 - `AMAP_MAPS_API_KEY` 非空时优先于 `AMAP_MAP_KEY`；凭证仅由服务端使用。
 - `TRAVEL_DISPLAY_ENABLED=0` 关闭后台网页生成，正文仍可交付。
 - `TRAVEL_PERSISTENCE=0` 不持久保存状态，仅适合隔离调试；正常使用保持开启。
-- 其他配置项见 `.env.example`；实际参数处理以 `backend/app/agents/agent_roles.py`、`backend/app/agents/model_transport.py` 和 `backend/app/services/maps/amap_mcp.py` 为准。
+- 其他配置项见 `.env.example`；实际参数处理以 `backend/app/agents/roles.py`、`backend/app/agents/model_transport.py` 和 `backend/app/services/maps/amap_mcp.py` 为准。
 
 配置由 `backend/app/core/config.py::load_environment()` 在入口显式加载一次，已有进程环境变量优先（`override=False`）；配置模块及模型/地图适配器的导入本身不读取 `.env`。Web 入口先加载并严格验证配置，再创建全局 Store，模型客户端在 FastAPI lifespan 中创建并供聊天与 HTML 生成复用，关闭时等待活跃借用结束后统一释放。每轮消息、预算、工作区和轨迹仍独立。
 

@@ -4,11 +4,11 @@ from datetime import datetime, timezone
 import os
 from uuid import uuid4
 
-from app.core.message_input import normalize_message_text
-from app.services.itinerary.plan_basis import PlanBasis, plan_basis
+from app.domain.message import normalize_message_text
+from app.domain.itinerary.identity import PlanBasis, plan_basis
 from app.services.itinerary.plan_display import text_hash
-from app.workflow.task_context import advance_request, normalize_workflow
-from app.workflow.task_progress import advance_progress, finish_progress
+from app.storage.legacy.workflow import advance_request, normalize_workflow
+from app.application.progress import advance_progress, finish_progress
 
 ACTIVE = {'queued', 'running'}
 BASIS_FIELDS = {'expected_plan_id', 'source_hash', 'expected_requirements_revision'}
@@ -171,7 +171,9 @@ class TravelTasks:
                 payload['feedback'] = feedback.strip()
                 if not self.plans[trip_id].has_content:
                     raise ValueError('请先生成行程')
-                resolve_display_target(self.plans[trip_id], payload)
+                if 'display_target' in payload:
+                    resolved_target = resolve_display_target(self.plans[trip_id], payload)
+                    payload['display_target'] = resolved_target
                 target = payload.get('item_id')
                 if target is not None and not isinstance(target, str):
                     raise ValueError('旧行程条目标识应为文本')
@@ -337,7 +339,7 @@ class TravelTasks:
             with self._agent_lock(trip_id):
                 return self.execute_turn(task_id)
         except Exception as exc:
-            from app.workflow.turn_commit import TurnPersistenceError
+            from app.application.execution import TurnPersistenceError
             if isinstance(exc, TurnPersistenceError):
                 return None
             try:

@@ -5,7 +5,7 @@ import json
 import os
 from time import monotonic
 
-from app.agents.agent_roles import display_role, role_reasoning_effort
+from app.agents.roles import display_role, role_reasoning_effort
 from app.agents.budget import TurnBudget
 from app.services.itinerary.guide_html import build_guide_display
 from app.services.itinerary.plan_display import text_hash

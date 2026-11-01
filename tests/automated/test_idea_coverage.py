@@ -4,11 +4,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.workflow.execution import RequestContext
-from app.services.itinerary.plan_basis import plan_basis
-from app.agents.task_runtime import TaskExecutionContext
-from app.models import IdeaCard, Trip, TripPlan, TripRequirements, User
-from app.services.agent_crud import prepare_changes
+from app.application.contracts import RequestContext
+from app.domain.itinerary.identity import plan_basis
+from app.agents.inputs.execution import TaskExecutionContext
+from app.domain.models import IdeaCard, Trip, TripPlan, TripRequirements, User
+from app.domain.changes import prepare_changes
 
 
 def snapshot():

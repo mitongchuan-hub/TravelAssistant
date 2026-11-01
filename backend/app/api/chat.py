@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from app.api import dependencies as deps
 from app.api.schemas import EmptyInput, MessageInput, RetryInput, TaskInput
 from app.api.serializers import message_to_dict, task_to_dict, workspace_snapshot
-from app.workflow.tasks import TaskConflict
+from app.application.execution import TaskConflict
 
 router = APIRouter(prefix='/api/trips/{trip_id}', tags=['chat'])
 

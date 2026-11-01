@@ -5,12 +5,13 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from app.workflow.execution import RequestContext
-from app.services.itinerary.plan_basis import plan_basis
+from app.application.contracts import RequestContext
+from app.domain.itinerary.identity import plan_basis
 from app.agents.budget import AgentBudgetError, TurnBudget
-from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
+from app.agents.inputs.execution import TaskExecutionContext
+from app.agents.travel_runtime import TaskExecutionRuntime
 from app.agents.model_transport import responses_input
-from app.models import Trip, TripRequirements, User
+from app.domain.models import Trip, TripRequirements, User
 
 
 def call(name, args, ident='call-1'):

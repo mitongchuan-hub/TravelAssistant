@@ -8,7 +8,7 @@ from app.api.schemas import (
     AgentCardDTO, DisplayStateDTO, IdeaDTO, MessageDTO, MetricsDTO, PlaceDTO,
     PlanDTO, ProgressDTO, TaskDTO, TripDTO, UserDTO, WorkspaceDTO,
 )
-from app.models import Message, Trip, TripPlan, User
+from app.domain.models import Message, Trip, TripPlan, User
 from app.services.city_outings import CITY_FORM_FIELDS
 
 

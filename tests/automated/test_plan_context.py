@@ -5,13 +5,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.workflow.execution import RequestContext
-from app.services.itinerary.plan_basis import plan_basis
-from app.agents.main_input import project_main_context, project_main_read_context, project_plan, project_requirements
-from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
-from app.models import IdeaCard, Message, Trip, TripPlan, User
+from app.application.contracts import RequestContext
+from app.domain.itinerary.identity import plan_basis
+from app.agents.inputs.context import project_main_context, project_main_read_context, project_plan, project_requirements
+from app.agents.inputs.execution import TaskExecutionContext
+from app.agents.travel_runtime import TaskExecutionRuntime
+from app.domain.models import IdeaCard, Message, Trip, TripPlan, User
 from app.services.itinerary.plan_display import text_hash
-from app.workflow.task_context import empty_workflow
+from app.storage.legacy.workflow import empty_workflow
 
 
 @pytest.fixture

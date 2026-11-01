@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 
 from app.core.config import load_environment, validate_configuration
-from app.core.message_input import MessageValidationError
+from app.domain.message import MessageValidationError
 from app.core.resources import client_scope
 
 load_environment()
@@ -19,13 +19,18 @@ validate_configuration('web')
 
 from app.api import auth, chat, dependencies as deps, guide, ideas, trips
 from app.auth.csrf import valid_csrf
-from app.workflow.tasks import TaskConflict
+from app.application.execution import TaskConflict
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(application):
+    # The compatibility dependency module remains importable, but application
+    # ownership is explicit for every running FastAPI instance.
+    application.state.store = deps.store
+    application.state.auth = deps.auth
+    application.state.registration_lock = deps.registration_lock
     resources = client_scope()
     await run_in_threadpool(resources.__enter__)
     try:

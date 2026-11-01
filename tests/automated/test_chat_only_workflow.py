@@ -5,9 +5,9 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from app.services.agent_crud import prepare_changes
+from app.domain.changes import prepare_changes
 from app.storage.store import DemoStore
-from app.workflow.execution import ExecutionResult
+from app.application.contracts import ExecutionResult
 from tests.automated.test_web_contract import csrf_headers
 
 

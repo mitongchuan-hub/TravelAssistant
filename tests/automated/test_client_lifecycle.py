@@ -13,8 +13,8 @@ from types import SimpleNamespace
 import pytest
 
 from app.core import config, resources
-from app.agents import agent_client
-from app.agents.task_runtime import TaskExecutionContext
+from app.agents import entrypoints, model_client, trace as trace_module
+from app.agents.inputs.execution import TaskExecutionContext
 
 
 HTML = ('<!doctype html><html><head><title>杭州攻略</title></head>'
@@ -48,7 +48,7 @@ def offline(monkeypatch):
     monkeypatch.setenv('OPENAI_MODEL', 'offline-first')
     monkeypatch.setenv('OPENAI_FALLBACK_MODEL', '')
     runs = []
-    monkeypatch.setattr(agent_client, 'record_agent_run',
+    monkeypatch.setattr(trace_module, 'record_agent_run',
                         lambda trace, *, error=None: runs.append((trace, error)))
     return runs
 
@@ -92,7 +92,7 @@ def test_proposals_and_display_share_owner_not_turn_state(monkeypatch, contexts,
         assert client.close_calls == 0
         return response(HTML if len(requests) == 3 else '你好！')
 
-    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    monkeypatch.setattr(model_client, 'create_completion', completion)
     budgets = []
     from app.agents.budget import TurnBudget
     real_model = TurnBudget.model
@@ -104,10 +104,10 @@ def test_proposals_and_display_share_owner_not_turn_state(monkeypatch, contexts,
 
     monkeypatch.setattr(TurnBudget, 'model', count_model)
     with resources.client_scope(client_factory=factory):
-        first = agent_client.generate_task_result(*contexts('first'))
+        first = entrypoints.generate_task_result(*contexts('first'))
         monkeypatch.setenv('OPENAI_MODEL', 'offline-second')
-        second = agent_client.generate_task_result(*contexts('second'))
-        display = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+        second = entrypoints.generate_task_result(*contexts('second'))
+        display = entrypoints.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
         assert not first.failed and not second.failed
         assert display['display_status'] == 'ready'
         assert len(clients) == 1 and clients[0].close_calls == 0
@@ -141,9 +141,9 @@ def test_display_primary_rate_limit_uses_fallback_once(monkeypatch, offline):
             raise RateLimitError('private provider details')
         return response(HTML)
 
-    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    monkeypatch.setattr(model_client, 'create_completion', completion)
     with resources.client_scope(client_factory=lambda **settings: FakeClient(**settings)):
-        result = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+        result = entrypoints.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
 
     assert result['display_status'] == 'ready'
     assert calls == ['offline-first', 'offline-fallback']
@@ -167,9 +167,9 @@ def test_display_fallback_failure_does_not_get_a_third_model_call(monkeypatch, o
         calls.append(params['model'])
         raise RateLimitError('private provider details')
 
-    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    monkeypatch.setattr(model_client, 'create_completion', completion)
     with resources.client_scope(client_factory=lambda **settings: FakeClient(**settings)):
-        result = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+        result = entrypoints.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
 
     assert result['display_status'] == 'fallback'
     assert calls == ['offline-first', 'offline-fallback']
@@ -193,9 +193,9 @@ def test_display_non_rate_limit_error_does_not_use_fallback(monkeypatch, offline
         calls.append(params['model'])
         raise BadRequestError('private provider details')
 
-    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    monkeypatch.setattr(model_client, 'create_completion', completion)
     with resources.client_scope(client_factory=lambda **settings: FakeClient(**settings)):
-        result = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+        result = entrypoints.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
 
     assert result['display_status'] == 'fallback'
     assert calls == ['offline-first']
@@ -215,9 +215,9 @@ def test_display_budget_boundary_does_not_attempt_correction_after_fallback(monk
             raise RateLimitError('private provider details')
         return response('<h1>截断的页面')
 
-    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    monkeypatch.setattr(model_client, 'create_completion', completion)
     with resources.client_scope(client_factory=lambda **settings: FakeClient(**settings)):
-        result = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+        result = entrypoints.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
 
     assert result['display_status'] == 'fallback'
     assert calls == ['offline-first', 'offline-fallback']
@@ -232,12 +232,12 @@ def test_error_or_cancel_releases_lease_without_closing_owner(monkeypatch, conte
         calls.append(None)
         raise RuntimeError('offline model failure')
 
-    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    monkeypatch.setattr(model_client, 'create_completion', completion)
     client = FakeClient()
     cancelled = (lambda: True) if failure == 'cancelled' else None
     with resources.client_scope(client_factory=lambda **settings: client):
-        proposal = agent_client.generate_task_result(*contexts(failure), cancelled=cancelled)
-        display = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'],
+        proposal = entrypoints.generate_task_result(*contexts(failure), cancelled=cancelled)
+        display = entrypoints.generate_plan_display('上午西湖。', ['2030-05-01'],
                                                       'trip-hangzhou', cancelled=cancelled)
         assert proposal.failed
         assert display['display_status'] == 'fallback'
@@ -257,11 +257,11 @@ def test_missing_owner_fails_closed_without_unmanaged_construction(monkeypatch, 
         pytest.fail('request constructed or called an unmanaged model client')
 
     monkeypatch.setattr(openai, 'OpenAI', forbidden)
-    monkeypatch.setattr(agent_client, 'create_completion', forbidden)
+    monkeypatch.setattr(model_client, 'create_completion', forbidden)
     monkeypatch.setattr(config, 'llm_enabled', lambda: enabled)
     assert resources._owner is None
-    proposal = agent_client.generate_task_result(*contexts('no-owner'))
-    display = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+    proposal = entrypoints.generate_task_result(*contexts('no-owner'))
+    display = entrypoints.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
     assert proposal.failed and not proposal.changes
     assert display['display'] is None and display['display_status'] == 'fallback'
     assert len(offline) == 2 and all(trace.written for trace, _ in offline)
@@ -275,11 +275,11 @@ def test_default_offline_fixture_never_constructs_or_calls_model(monkeypatch, co
         pytest.fail('default pytest path reached the network client')
 
     monkeypatch.setattr(openai, 'OpenAI', forbidden)
-    monkeypatch.setattr(agent_client, 'create_completion', forbidden)
+    monkeypatch.setattr(model_client, 'create_completion', forbidden)
     assert not config.llm_enabled()
     with resources.client_scope():
-        assert agent_client.generate_task_result(*contexts('pytest-guard')).failed
-        assert agent_client.generate_plan_display('上午西湖。', [], 'trip-hangzhou')['display_status'] == 'fallback'
+        assert entrypoints.generate_task_result(*contexts('pytest-guard')).failed
+        assert entrypoints.generate_plan_display('上午西湖。', [], 'trip-hangzhou')['display_status'] == 'fallback'
     assert len(offline) == 2
 
 
@@ -471,8 +471,8 @@ importlib.import_module(module)
 assert 'app.main' not in sys.modules
 assert 'app.storage.store' not in sys.modules
 assert 'app.api.dependencies' not in sys.modules
-assert 'app.agents.agent_client' not in sys.modules
-assert 'app.agents.task_runtime' not in sys.modules
+assert 'app.agents.entrypoints' not in sys.modules
+assert 'app.agents.travel_runtime' not in sys.modules
 assert 'app.agents.budget' not in sys.modules
 assert 'app.agents.tools.registry' not in sys.modules
 if module.startswith('app.api'):
@@ -497,7 +497,7 @@ def forbidden(*args, **kwargs):
 dotenv.load_dotenv = forbidden
 openai.OpenAI = forbidden
 logging.basicConfig = forbidden
-from app.agents import agent_client
+from app.agents import entrypoints
 from app.services.maps import amap_mcp
 from app.core import resources
 assert 'app.main' not in sys.modules

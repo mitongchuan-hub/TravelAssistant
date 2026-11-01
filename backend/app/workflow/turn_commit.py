@@ -5,14 +5,13 @@ from hashlib import sha256
 import json
 from uuid import uuid4
 
-from app.models import AgentAction, AgentCard, Message
-from app.storage.persistence import save_snapshot, serialize_state
-from app.workflow.tasks import now
-from app.workflow.task_progress import finish_progress
+from app.domain.models import AgentAction, AgentCard, Message
+from app.storage.persistence import serialize_state
+from app.application.execution import now
+from app.application.progress import finish_progress
 
 
-class TurnPersistenceError(RuntimeError):
-    """A failed final transaction must not be followed by a second success write."""
+from app.storage.errors import TurnPersistenceError
 
 
 class _StagingSignal:
@@ -29,9 +28,9 @@ class TurnCommit:
         user message. The task's ``thinking_id`` is the assistant placeholder and
         is not used as the authorization message.
         """
-        from app.services.itinerary.plan_basis import PlanBasis, plan_basis
-        from app.workflow.execution import RequestContext
-        from app.workflow.task_context import normalize_workflow
+        from app.domain.itinerary.identity import PlanBasis, plan_basis
+        from app.application.contracts import RequestContext
+        from app.storage.legacy.workflow import normalize_workflow
         with self._lock:
             trip = self.trips[trip_id]
             task = self.tasks.get(task_id) if task_id else None
@@ -64,8 +63,8 @@ class TurnCommit:
             )
 
     def _turn_conflict(self, context):
-        from app.services.itinerary.plan_basis import plan_basis
-        from app.workflow.task_context import normalize_workflow
+        from app.domain.itinerary.identity import plan_basis
+        from app.storage.legacy.workflow import normalize_workflow
         trip = self.trips.get(context.trip_id)
         if trip is None or trip.owner.id != context.owner_id:
             return '请求不属于当前旅行。'
@@ -99,9 +98,9 @@ class TurnCommit:
 
     def _receipt(self, context, *, committed, accepted=(), rejected=(), message_id=None,
                  message_status='', task_status='', reason='', stage=None):
-        from app.workflow.execution import CommitReceipt
-        from app.services.itinerary.plan_basis import plan_basis
-        from app.workflow.task_context import normalize_workflow
+        from app.application.contracts import CommitReceipt
+        from app.domain.itinerary.identity import plan_basis
+        from app.storage.legacy.workflow import normalize_workflow
         source = stage or self
         trip = source.trips[context.trip_id]
         workflow = normalize_workflow(trip.workflow_state)
@@ -118,29 +117,36 @@ class TurnCommit:
         )
 
     def execute_turn(self, task_id):
-        from app.agents import agent_client
-        from app.agents.task_runtime import TaskExecutionContext
+        from app.agents import entrypoints
+        from app.agents.inputs.execution import build_execution_context
         with self._lock:
             task = self.tasks[task_id]
             if task['status'] != 'running':
                 return None
             trip_id = task['trip_id']
             context = self.capture_request_context(trip_id, task_id)
-            snapshot = deepcopy({
-                'trip': self.trips[trip_id], 'plan': self.plans[trip_id],
-                'messages': [row for row in self.messages[trip_id] if row.status == 'sent'],
-                'idea_cards': self.idea_cards[trip_id], 'metrics': self.trip_metrics(trip_id),
-            })
             from app.workflow.tasks import resolve_display_target
-            display_target = resolve_display_target(snapshot['plan'], task['payload']) if task['kind'] == 'revision' else None
+            # Resolve against the same locked plan used by assembly. The resolver
+            # only reads saved data; assembly detaches both plan and target once.
+            payload = task['payload']
+            display_target = None
+            if task['kind'] == 'revision':
+                try:
+                    display_target = resolve_display_target(self.plans[trip_id], payload)
+                except ValueError:
+                    # Legacy item-id revisions have no display target metadata;
+                    # preserve their old path while accepting resolved targets.
+                    display_target = None
+            execution = build_execution_context(
+                trip=self.trips[trip_id], plan=self.plans[trip_id],
+                messages=self.messages[trip_id], idea_cards=self.idea_cards[trip_id],
+                metrics=self.trip_metrics(trip_id), current_date=datetime.now().date().isoformat(),
+                entry=context.entry, payload=payload, display_target=display_target)
             conflict = self._turn_conflict(context)
         if conflict:
             return self.fail_execution(task_id, ValueError(conflict))
         cancelled = lambda: not self._execution_current(context)
-        execution = TaskExecutionContext(**snapshot, current_date=datetime.now().date().isoformat(),
-            entry=context.entry, scope='item' if task['payload'].get('item_id') or display_target else '',
-            target_item_id=task['payload'].get('item_id'), display_target=display_target)
-        proposal = agent_client.generate_task_result(context, execution, cancelled=cancelled,
+        proposal = entrypoints.generate_task_result(context, execution, cancelled=cancelled,
             on_progress=lambda title, value: self.record_task_progress(task_id, title, value))
         receipt = self.commit_turn(context, proposal)
         if not receipt.committed and self.tasks.get(task_id, {}).get('status') == 'running':
@@ -153,8 +159,8 @@ class TurnCommit:
             return bool(task and task['status'] == 'running' and not self._turn_conflict(context))
 
     def confirm_current_turn(self, trip_id):
-        from app.services.agent_crud import prepare_changes
-        from app.workflow.execution import ExecutionResult
+        from app.domain.changes import prepare_changes
+        from app.application.contracts import ExecutionResult
         from types import SimpleNamespace
         with self._lock:
             if not self.plans[trip_id].has_content:
@@ -168,8 +174,8 @@ class TurnCommit:
         return self.commit_turn(context, ExecutionResult(changes=changes))
 
     def fail_execution(self, task_id, exc):
-        from app.workflow.task_context import normalize_workflow
-        from app.workflow.execution import ExecutionResult
+        from app.storage.legacy.workflow import normalize_workflow
+        from app.application.contracts import ExecutionResult
         if isinstance(exc, TurnPersistenceError):
             return None
         with self._lock:
@@ -188,7 +194,7 @@ class TurnCommit:
                         row.status, row.body = 'failed', conflict
                         row.execution_progress = finish_progress(row.execution_progress, 'failed')
                 receipt = self._receipt(context, committed=False, task_status='failed', reason=conflict, stage=stage)
-                from app.workflow.execution import serialize
+                from app.application.contracts import serialize
                 target['receipt'] = serialize(receipt)
                 self._persist_staged_turn(stage, task['trip_id'])
                 return receipt
@@ -197,8 +203,8 @@ class TurnCommit:
         return self.commit_turn(context, proposal)
 
     def commit_turn(self, context, proposal):
-        from app.workflow.execution import ExecutionResult, CommitReceipt, serialize
-        from app.workflow.task_context import normalize_workflow
+        from app.application.contracts import ExecutionResult, CommitReceipt, serialize
+        from app.storage.legacy.workflow import normalize_workflow
         if not isinstance(proposal, ExecutionResult):
             raise ValueError('执行结果类型不正确')
         # Snapshot once; only this detached package is checked and persisted.
@@ -220,7 +226,7 @@ class TurnCommit:
                     and existing.get('trip_id') == context.trip_id
                     and existing.get('message_id') == context.message_id
                     and existing.get('sequence') == context.sequence and existing.get('epoch') == context.epoch):
-                from app.workflow.execution import CommitReceipt
+                from app.application.contracts import CommitReceipt
                 if existing.get('submission_digest') != submission_digest:
                     raise ValueError('同一请求身份不能提交不同的内容摘要')
                 raw = deepcopy(existing['receipt'])
@@ -234,7 +240,7 @@ class TurnCommit:
             trip = stage.trips[trip_id]
             crud_lines, crud_kinds, crud_payload = [], [], None
             if proposal.changes is not None:
-                from app.services.agent_crud import apply_changes
+                from app.domain.changes import apply_changes
                 crud_payload = proposal.changes
                 crud_lines, crud_kinds = apply_changes(stage, context, crud_payload)
                 trip = stage.trips[trip_id]
@@ -272,6 +278,11 @@ class TurnCommit:
             else:
                 message.execution_progress = finish_progress(messages[index].execution_progress,
                     'failed' if failed else 'needs_input' if needs_input else 'succeeded')
+                if not message.execution_progress.get('steps') and not failed:
+                    from app.application.progress import new_progress
+                    message.execution_progress = finish_progress(new_progress('running'), 'succeeded')
+                elif not failed:
+                    message.execution_progress['state'] = 'succeeded'
                 messages[index] = message
             trip.last_activity = 'Agent 等待补充信息' if needs_input else 'Agent 本轮部分完成' if failed else 'Agent 已完成本轮请求'
             task_status = 'failed' if failed else 'succeeded'
@@ -279,7 +290,7 @@ class TurnCommit:
                 message_id=message_id, message_status=status, task_status=task_status,
                 reason=reason, stage=stage)
             if context.execution_task_id in stage.tasks:
-                from app.workflow.execution import serialize
+                from app.application.contracts import serialize
                 task = stage.tasks[context.execution_task_id]
                 task.update(status=task_status, message=next_question or (reason if failed else '已完成'),
                     needs_input=needs_input, updated_at=now(), receipt=serialize(receipt),
@@ -325,6 +336,7 @@ class TurnCommit:
         from app.storage.store import USERS
         try:
             if self.persistence_enabled:
+                from app.application.execution import save_snapshot
                 save_snapshot(self.db_path, serialize_state(stage, USERS), initialize=False)
         except Exception as exc:
             raise TurnPersistenceError('最终提交未成功，当前需求、行程与任务状态未改变。') from exc

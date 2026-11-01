@@ -76,7 +76,7 @@ def main():
         os.environ['TRAVEL_PERSISTENCE'] = '1'
         config.validate_configuration(scope='system')
         with resources.client_scope():
-            from app.agents import agent_client, budget as budget_module
+            from app.agents import entrypoints, budget as budget_module
             from app.storage.store import DemoStore
             from app.services.city_outings import city_requirements
             from app.agents.tools.registry import run_tool
@@ -137,7 +137,7 @@ def main():
                     budgets.append(self)
 
             budget_module.TurnBudget = SmokeBudget
-            original_generate = agent_client.generate_task_result
+            original_generate = entrypoints.generate_task_result
             active = {}
 
             def generate(context, execution, **kw):
@@ -147,7 +147,7 @@ def main():
                     'change_operations': list(proposal.changes['args']) if proposal.changes else []}
                 return proposal
 
-            agent_client.generate_task_result = generate
+            entrypoints.generate_task_result = generate
             original_progress = store.record_task_progress
 
             def progress(task_id, title, value):

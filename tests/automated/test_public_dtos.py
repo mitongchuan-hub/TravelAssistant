@@ -7,7 +7,7 @@ import pytest
 
 from app.api import dependencies as deps
 from app.api import schemas, serializers
-from app.models import AgentAction, AgentCard, Message, Trip, TripDay, TripItem, TripPlan, User
+from app.domain.models import AgentAction, AgentCard, Message, Trip, TripDay, TripItem, TripPlan, User
 from app.storage.store import DemoStore
 
 

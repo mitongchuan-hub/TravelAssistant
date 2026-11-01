@@ -9,8 +9,8 @@ import math
 import re
 from urllib.parse import urlencode
 
-from app.models import PlaceDetails, Trip, TripPlan
-from app.services.places import collect_places
+from app.domain.models import PlaceDetails, Trip, TripPlan
+from app.domain.lodging import collect_places
 from app.services.itinerary.plan_display import text_hash
 from app.services.itinerary.freshness import (
     BASIS_NOTE,

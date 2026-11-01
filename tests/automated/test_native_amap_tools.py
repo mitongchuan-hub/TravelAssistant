@@ -6,8 +6,8 @@ import pytest
 from app.agents.tools import registry
 from app.agents.tools.weather import query_weather, WEATHER_TOOL_SPEC
 from app.services.maps import amap_mcp
-from app.services.agent_crud import prepare_changes
-from app.workflow.execution import ExecutionResult
+from app.domain.changes import prepare_changes
+from app.application.contracts import ExecutionResult
 from tests.automated.test_readonly_chat_runtime import runtime, Script
 
 
@@ -68,7 +68,8 @@ def test_returned_detail_must_match_the_requested_id(monkeypatch):
 
 def test_native_detail_evidence_can_save_lodging_without_model_coordinates(monkeypatch):
     from app.storage.store import DemoStore
-    from app.agents.task_runtime import TaskExecutionRuntime, TaskExecutionContext
+    from app.agents.inputs.execution import TaskExecutionContext
+    from app.agents.travel_runtime import TaskExecutionRuntime
     store = DemoStore(persistence_enabled=False, display_worker_enabled=False)
     key = 'trip-hangzhou'
     context = store.capture_request_context(key, body='我住测试酒店西湖店')
