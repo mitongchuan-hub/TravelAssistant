@@ -5,18 +5,15 @@ Other routes are synthetic fixtures and make no claims about real services.
 """
 from copy import deepcopy
 from dataclasses import asdict
-from html.parser import HTMLParser
-from pathlib import Path
+import json
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
 import pytest
 
-from app.agents.agent_runtime import transit_detail_guard
+from app.agents.task_runtime import transit_detail_guard
 from app.models import Trip, TripPlan, TripRequirements, User
-from app.services.plan_display import text_hash
-from app.tools import routes
+from app.services.itinerary.plan_display import text_hash
+from app.agents.tools import routes
 from app.views.display_presentation import display_view
-from app.views.presentation import day_date_label
 from app.views.route_view import build_route_view
 
 
@@ -207,66 +204,31 @@ def itinerary(result):
     return trip, plan
 
 
-def render(trip, plan):
-    env = Environment(loader=FileSystemLoader(Path(__file__).resolve().parents[2] / 'app' / 'templates'),
-        autoescape=select_autoescape(['html']))
-    env.filters['day_date_label'] = day_date_label
-    env.globals['place_query_time'] = lambda value: '2026年10月21日'
-    return env.get_template('partials/display_itinerary.html').render(
-        trip=trip, plan=plan, display=display_view(plan.display), route_view=build_route_view(trip, plan))
-
-
-class CardText(HTMLParser):
-    def __init__(self):
-        super().__init__()
-        self.depth = 0
-        self.all = []
-        self.unfolded = []
-
-    def handle_starttag(self, tag, attrs):
-        if tag == 'details':
-            self.depth += 1
-
-    def handle_endtag(self, tag):
-        if tag == 'details':
-            self.depth -= 1
-
-    def handle_data(self, data):
-        self.all.append(data)
-        if self.depth == 0:
-            self.unfolded.append(data)
-
-
-def test_subway_line_is_visible_without_opening_location_details(monkeypatch, direct_payload):
+def test_subway_route_dto_keeps_line_stations_and_duration(monkeypatch, direct_payload):
+    import json
     trip, plan = itinerary(query(monkeypatch, direct_payload))
-    parsed = CardText()
-    parsed.feed(render(trip, plan))
-    assert '地铁1号线' in ''.join(parsed.unfolded)
-    assert '火车东站' in ''.join(parsed.unfolded)
-    assert '龙翔桥' in ''.join(parsed.unfolded)
-    assert '16分钟' in ''.join(parsed.all)
+    content = json.dumps(build_route_view(trip, plan), ensure_ascii=False)
+    assert '地铁1号线' in content
+    assert '火车东站' in content
+    assert '龙翔桥' in content
+    assert '16' in content
 
 
-def test_unspecified_cost_is_shown_once_instead_of_as_a_card_fact(monkeypatch, direct_payload):
+def test_unspecified_cost_is_single_view_flag_not_card_fact(monkeypatch, direct_payload):
     trip, plan = itinerary(query(monkeypatch, direct_payload))
     plan.display['days'][0]['items'][0]['cost_text'] = '费用未提供，不代表免费'
-    content = render(trip, plan)
-    assert 'class="display-cost"' not in content
-    assert content.count('费用未提供，不代表免费') == 1
+    view = display_view(plan.display)
+    assert view['has_unprovided_cost'] is True
+    assert view['days'][0]['items'][0]['cost_text'] is None
 
 
-def test_rendering_preserves_alternatives_and_explicit_transfer(monkeypatch, transfer_payload):
+def test_route_dto_preserves_alternatives_and_explicit_transfer(monkeypatch, transfer_payload):
+    import json
     trip, plan = itinerary(query(monkeypatch, transfer_payload))
-    html = render(trip, plan)
-    text = CardText()
-    text.feed(html)
-    content = ''.join(text.all)
-    assert '28路(甲站--乙站)' in content
-    assert '28路区间(甲站--乙站)' in content
-    assert '或' in content
-    assert '换乘' in content
-    assert '沿站前路步行至甲站' in content
-    assert 'B口' in content
+    content = json.dumps(build_route_view(trip, plan), ensure_ascii=False)
+    for value in ('28路(甲站--乙站)', '28路区间(甲站--乙站)', '沿站前路步行至甲站', 'B口'):
+        assert value in content
+    assert 'transfer' in content or '换乘' in content
 
 
 @pytest.mark.parametrize('gap', [
@@ -304,19 +266,17 @@ def test_unrelated_route_cannot_supply_card_line(monkeypatch, direct_payload, mi
         plan.text += '\n正文已修改'
     else:
         plan.display['days'][0]['items'][0]['location'] = '未匹配地点'
-    assert '地铁1号线' not in render(trip, plan)
+    assert '地铁1号线' not in json.dumps(build_route_view(trip, plan), ensure_ascii=False)
 
 
 def test_legacy_estimate_shows_missing_line_details(monkeypatch, direct_payload):
     result = query(monkeypatch, direct_payload)
     result.pop('transit_steps', None)
     trip, plan = itinerary(result)
-    parsed = CardText()
-    parsed.feed(render(trip, plan))
-    content = ''.join(parsed.all)
-    assert '16分钟' in content
-    assert '线路明细未提供' in content
-    assert '地铁1号线' not in content
+    incoming = build_route_view(trip, plan)['days'][0]['items'][0]['incoming']
+    assert '16分钟' in incoming['summary']
+    assert incoming['missing_transit_details']
+    assert not incoming.get('transit_steps')
 
 
 def test_same_place_needs_no_missing_transit_warning():
@@ -328,12 +288,12 @@ def test_same_place_needs_no_missing_transit_warning():
     incoming = build_route_view(trip, plan)['days'][0]['items'][0]['incoming']
     assert incoming['status'] == 'available'
     assert not incoming['missing_transit_details']
-    assert '线路明细未提供' not in render(trip, plan)
+    assert not incoming.get('transit_steps')
 
 
-def test_provider_instruction_is_escaped_when_rendered(monkeypatch, direct_payload):
-    direct_payload['route']['transits'][0]['segments'][0]['bus']['buslines'][0]['name'] = '<script>alert(1)</script>路'
+def test_provider_instruction_is_plain_dto_data_not_interpolated_markup(monkeypatch, direct_payload):
+    value = '<script>alert(1)</script>路'
+    direct_payload['route']['transits'][0]['segments'][0]['bus']['buslines'][0]['name'] = value
     trip, plan = itinerary(query(monkeypatch, direct_payload))
-    html = render(trip, plan)
-    assert '<script>alert(1)</script>' not in html
-    assert '&lt;script&gt;alert(1)&lt;/script&gt;路' in html
+    assert value in json.dumps(build_route_view(trip, plan), ensure_ascii=False)
+    # Frontend text rendering owns DOM escaping, not destructive DTO rewriting.

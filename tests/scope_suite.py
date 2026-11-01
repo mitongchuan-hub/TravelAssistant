@@ -7,11 +7,18 @@ import json
 import os
 from pathlib import Path
 from uuid import uuid4
+import sys
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PROJECT_ROOT / 'backend'))
+sys.path.insert(1, str(PROJECT_ROOT))
+PROMPT_PATH = PROJECT_ROOT / 'backend/app/agents/prompts/chat.txt'
+
+from app.core import config, resources
 from tests.scope_eval import run_case
 
-DATASET = Path('tests/datasets/scope_comprehensive.json')
-BUSINESS = {'research', 'prepare_requirements', 'draft_itinerary', 'revise_itinerary', 'confirm_itinerary'}
+DATASET = PROJECT_ROOT / 'tests/datasets/scope_comprehensive.json'
+BUSINESS = {'query_weather', 'search_places', 'search_food', 'query_route', 'submit_changes'}
 
 
 def load_cases():
@@ -27,22 +34,20 @@ def mechanical_checks(case, result):
     if 'error' in result:
         return {'execution_completed': False}
     names = {call['name'] for call in result['calls']}
-    checks = {'execution_completed': not result['failed'], 'input_snapshot_unchanged': result['unchanged'],
-              'no_selected_business_effects': not result['selected']}
+    checks = {'execution_completed': not result['failed'], 'input_snapshot_unchanged': result['unchanged']}
     if case.get('forbid_business'):
-        checks['no_business_delegation'] = not bool(names & BUSINESS)
+        checks['no_business_tools'] = not bool(names & BUSINESS)
+        checks['no_selected_business_effects'] = not result['selected']
     if case.get('require_any'):
-        checks['expected_delegation_attempted'] = bool(names & set(case['require_any']))
+        checks['expected_tool_attempted'] = bool(names & set(case['require_any']))
     if case.get('preserve_question'):
-        initial = result['initial_workflow']
-        proposed = result['proposed_workflow']
-        checks['waiting_question_preserved'] = bool(proposed and
-            initial['active_question'] == proposed.get('active_question') and
-            initial['tasks'] == proposed.get('tasks'))
+        # A prior question is conversational evidence, not a durable task to
+        # cancel or adopt. An unrelated/ambiguous answer must not write guesses.
+        checks['no_unrequested_changes'] = not result['selected']
     if case['id'] == 'Q04':
-        checks['answer_bound_to_question'] = any(
-            call['arguments'].get('answer_question_ref') == 'pending-question' and
-            call['arguments'].get('task_ref') == 'pending-trip' for call in result['calls'])
+        patches = [args.get('requirements_patch', {}) for args in result.get('submitted', [])]
+        checks['short_answer_only_updates_travelers'] = bool(patches) and all(
+            patch == {'travelers': 2} for patch in patches)
     # These are contracts, never semantic pass/fail. Human review is mandatory.
     return checks
 
@@ -66,16 +71,17 @@ def main():
         print(json.dumps(dict(count=len(cases), categories=Counter(case['category'] for case in cases),
                               levels=Counter(case['level'] for case in cases)), ensure_ascii=False, indent=2))
         return
-    from openai import OpenAI
-    model = os.getenv('OPENAI_MODEL') or os.getenv('MODEL_ID') or 'qwen-plus'
-    prompt = Path('app/prompts/agents/main.txt').read_text(encoding='utf-8')
+    config.load_environment()
+    config.validate_configuration(scope='model')
+    model = config.model_name()
+    prompt = PROMPT_PATH.read_text(encoding='utf-8')
     prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
     output = Path('.cache/scope_eval') / f'{args.label}-{uuid4().hex[:8]}.json'
     output.parent.mkdir(parents=True, exist_ok=True)
     report = dict(model=model, wire_api=os.getenv('OPENAI_WIRE_API'),
         started_at=datetime.now(timezone.utc).isoformat(), prompt=prompt, prompt_sha256=prompt_hash,
         dataset_sha256=hashlib.sha256(DATASET.read_bytes()).hexdigest(), dataset=str(DATASET),
-        capability_mode='unavailable; optional untrusted summary injection', results=[])
+        fact_tool_mode='unavailable; optional untrusted tool summary injection', results=[])
 
     def evaluate(case, attempt):
         try:
@@ -87,8 +93,8 @@ def main():
         result['mechanical_checks'] = mechanical_checks(case, result)
         return result
 
-    with OpenAI(api_key=os.getenv('OPENAI_API_KEY'), base_url=os.getenv('OPENAI_BASE_URL') or None,
-                timeout=60, max_retries=0) as client, ThreadPoolExecutor(max_workers=args.workers) as pool:
+    with resources.client_scope(timeout_seconds=60), resources.borrow_client() as client, \
+            ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures = [pool.submit(evaluate, case, attempt + 1)
                    for case in cases for attempt in range(args.repeat)]
         for future in as_completed(futures):
@@ -103,7 +109,7 @@ def main():
                 reason=result.get('reason'), runtime_errors=result.get('errors')), ensure_ascii=False), flush=True)
     report['finished_at'] = datetime.now(timezone.utc).isoformat()
     report['prompt_unchanged_during_run'] = hashlib.sha256(
-        Path('app/prompts/agents/main.txt').read_text(encoding='utf-8').encode()).hexdigest() == prompt_hash
+        PROMPT_PATH.read_text(encoding='utf-8').encode()).hexdigest() == prompt_hash
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     print(output, flush=True)
 

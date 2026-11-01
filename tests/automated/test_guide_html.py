@@ -3,7 +3,7 @@ from html import unescape
 
 import pytest
 
-from app.services.plan_display import validate_display
+from app.services.itinerary.plan_display import validate_display
 
 
 DATES = ['2026-10-28']
@@ -14,7 +14,7 @@ HTML = ('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
 
 
 def test_html_guide_preserves_source_content_and_dates():
-    from app.services.guide_html import build_guide_display
+    from app.services.itinerary.guide_html import build_guide_display
 
     result = build_guide_display('```html\n' + HTML + '\n```', DATES)
     assert result['schema_version'] == '2.0'
@@ -36,7 +36,7 @@ def test_html_guide_preserves_source_content_and_dates():
     '<style>@import "https://example.com/x.css";</style>',
 ])
 def test_active_or_remote_content_is_rejected(content):
-    from app.services.guide_html import build_guide_display
+    from app.services.itinerary.guide_html import build_guide_display
 
     with pytest.raises(ValueError):
         build_guide_display(HTML.replace('</body>', content + '</body>'), DATES)
@@ -45,14 +45,14 @@ def test_active_or_remote_content_is_rejected(content):
 @pytest.mark.parametrize('raw', ['', '<h1>攻略</h1>', HTML[:-7], HTML + HTML,
                                      HTML.replace('北京攻略</h1>', '北京攻略</h2>')])
 def test_incomplete_or_multiple_documents_are_rejected(raw):
-    from app.services.guide_html import build_guide_display
+    from app.services.itinerary.guide_html import build_guide_display
 
     with pytest.raises(ValueError):
         build_guide_display(raw, DATES)
 
 
 def test_download_document_enforces_csp_and_safe_navigation():
-    from app.services.guide_html import build_guide_display, guide_document
+    from app.services.itinerary.guide_html import build_guide_display, guide_document
 
     source = HTML.replace('</body>', '<a href="https://uri.amap.com/marker?x=1&amp;y=2">地图</a></body>')
     document = guide_document(build_guide_display(source, DATES))
@@ -64,7 +64,7 @@ def test_download_document_enforces_csp_and_safe_navigation():
 
 
 def test_export_declares_utf8_before_any_author_content():
-    from app.services.guide_html import build_guide_display, guide_document
+    from app.services.itinerary.guide_html import build_guide_display, guide_document
 
     source = '<!doctype html><html><head><title>中文攻略</title></head><body><p>西湖</p></body></html>'
     document = guide_document(build_guide_display(source))
@@ -80,7 +80,7 @@ def test_export_declares_utf8_before_any_author_content():
     HTML.replace('color: #112d4e', 'background-image:image-set("https://example.com/x" 1x)'),
 ])
 def test_security_metadata_and_styles_stay_in_valid_head(source):
-    from app.services.guide_html import build_guide_display
+    from app.services.itinerary.guide_html import build_guide_display
 
     with pytest.raises(ValueError):
         build_guide_display(source)
@@ -88,23 +88,26 @@ def test_security_metadata_and_styles_stay_in_valid_head(source):
 
 def test_display_runtime_generates_html_and_repairs_once():
     from app.agents.agent_client import AgentReply
-    from app.agents.agent_runtime import TravelAgentRuntime, TurnBudget
+    import json
+    from types import SimpleNamespace
 
-    runtime = object.__new__(TravelAgentRuntime)
-    runtime.snapshot = {'source_dates': DATES, 'style_instruction': '简洁手账风'}
-    runtime.trace = None
-    runtime.cache = {}
-    runtime.budget = TurnBudget()
+    from app.agents.budget import TurnBudget
+    from app.agents.display_runtime import DisplayRuntime
+
     outputs = iter(['<h1>截断的页面', HTML])
     payloads = []
 
-    def model_node(role, payload, **kwargs):
-        assert role == 'display'
+    def request(client, model, messages, **kwargs):
+        assert kwargs['agent_role'] == 'display'
+        assert kwargs['tools'] is None
         assert not kwargs.get('response_format')
-        payloads.append(dict(payload))
-        return next(outputs)
+        kwargs['budget'].model()
+        payloads.append(json.loads(messages[-1]['content']))
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+            content=next(outputs), tool_calls=[]))])
 
-    runtime.model_node = model_node
+    runtime = DisplayRuntime(None, 'offline', DATES, request=request,
+                             budget=TurnBudget(max_models=2), style_instruction='简洁手账风')
     result = runtime.convert_display(AgentReply('行程', None, [], plan_text='09:00 香山，票价待核实。'))
     assert result.display_status == 'ready'
     assert result.display['html'] == HTML

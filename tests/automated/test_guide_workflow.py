@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.agents.agent_protocol import plan_basis
+from app.services.itinerary.plan_basis import plan_basis
 from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
-from app.services.plan_display import text_hash
-from app.store import DemoStore
+from app.services.itinerary.plan_display import text_hash
+from app.storage.store import DemoStore
 
 
 TRIP = 'trip-hangzhou'
@@ -24,40 +24,46 @@ def store(monkeypatch):
     return value
 
 
-def runtime(store):
-    context = store.capture_request_context(TRIP, body='把攻略改成简洁手账风')
+def runtime(store, request, *, body='把攻略改成简洁手账风'):
+    context = store.capture_request_context(TRIP, body=body)
     execution = TaskExecutionContext(deepcopy(store.trips[TRIP]), deepcopy(store.messages[TRIP]),
         [], deepcopy(store.plans[TRIP]), store.trip_metrics(TRIP), '2026-10-27')
-    return TaskExecutionRuntime(None, 'test', context, execution, request=None)
+    return TaskExecutionRuntime(None, 'test', context, execution, request=request)
 
 
-def call(name, **args):
-    return SimpleNamespace(function=SimpleNamespace(name=name, arguments=json.dumps(args)))
+def response(content=None, **changes):
+    calls = []
+    if changes:
+        calls = [SimpleNamespace(id='submit', type='function', function=SimpleNamespace(
+            name='submit_changes', arguments=json.dumps(changes, ensure_ascii=False)))]
+    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content, tool_calls=calls))])
 
 
-def restyle(value, plan_ref):
-    result, _ = value._execute_call(call('restyle_itinerary', plan_ref=plan_ref, instruction='简洁手账风'))
-    assert result['status'] == 'ok'
-    return result['artifact_ref']
-
-
-def test_style_change_requires_explicit_adoption(store):
-    value = runtime(store)
-    restyle(value, store.plans[TRIP].id)
-    _, proposal = value._execute_call(call('finish_turn', reply='暂不修改'))
+def test_style_request_without_submission_does_not_mutate(store):
+    before = deepcopy(store.plans[TRIP])
+    value = runtime(store, lambda *a, **kw: response('暂不修改'))
+    proposal = value.run()
     store.commit_turn(value.request_context, proposal)
-    assert store.plans[TRIP].display_style == ''
+    assert store.plans[TRIP] == before
     assert not store.display_jobs
 
 
-def test_adopted_style_keeps_business_content_and_confirmation(store):
+def test_submitted_style_keeps_business_content_and_confirmation(store):
     before = deepcopy(store.plans[TRIP])
-    value = runtime(store)
-    ref = restyle(value, before.id)
-    _, proposal = value._execute_call(call('finish_turn', reply='正在更新攻略页面', adopt_refs=[ref]))
+    calls = []
+
+    def request(*args, **kwargs):
+        calls.append(kwargs['agent_role'])
+        return response(user_quote='把攻略改成简洁手账风', presentation={'style_instruction': '简洁手账风'})
+
+    value = runtime(store, request)
+    proposal = value.run()
+    assert not proposal.failed
+    assert store.plans[TRIP] == before  # A validated terminal proposal is not a write.
     receipt = store.commit_turn(value.request_context, proposal)
     after = store.plans[TRIP]
     assert receipt.committed
+    assert len(calls) == 1  # No delegation or reply-review model.
     assert after.id == before.id
     assert after.text == before.text and after.evidence == before.evidence
     assert after.status == '已确认'
@@ -67,16 +73,23 @@ def test_adopted_style_keeps_business_content_and_confirmation(store):
     assert next(iter(store.display_jobs.values()))['style_instruction'] == '简洁手账风'
 
 
-def test_invalid_plan_reference_cannot_restyle(store):
-    value = runtime(store)
-    output, _ = value._execute_call(call('restyle_itinerary', plan_ref='old', instruction='手账风'))
-    assert output['status'] == 'unavailable'
-    assert not value.workspace.artifacts
+def test_stale_plan_cannot_receive_a_prepared_style(store):
+    before = deepcopy(store.plans[TRIP])
+    value = runtime(store, lambda *a, **kw: response(
+        user_quote='把攻略改成简洁手账风', presentation={'style_instruction': '简洁手账风'}))
+    proposal = value.run()
+    assert not proposal.failed
+    store._apply_text_plan(TRIP, '10:00 灵隐寺，费用待核实。')
+    current = deepcopy(store.plans[TRIP])
+    receipt = store.commit_turn(value.request_context, proposal)
+    assert not receipt.committed
+    assert store.plans[TRIP] == current
+    assert store.plans[TRIP].display_style == before.display_style
 
 
 def test_late_result_for_old_style_cannot_publish(store, monkeypatch):
     from app.agents import agent_client
-    from app.services.guide_html import build_guide_display
+    from app.services.itinerary.guide_html import build_guide_display
 
     source_hash = text_hash(store.plans[TRIP].text)
     store.retry_display(TRIP, store.plans[TRIP].id, source_hash, style_instruction='旧风格')
@@ -96,7 +109,7 @@ def test_late_result_for_old_style_cannot_publish(store, monkeypatch):
 
 def test_failed_restyle_keeps_previous_guide(store, monkeypatch):
     from app.agents import agent_client
-    from app.services.guide_html import build_guide_display
+    from app.services.itinerary.guide_html import build_guide_display
 
     plan = store.plans[TRIP]
     plan.display = build_guide_display(HTML)
@@ -113,10 +126,10 @@ def test_failed_restyle_keeps_previous_guide(store, monkeypatch):
 
 
 def test_style_persists_and_survives_content_revision(store):
-    from app.persistence import serialize_state, restore_state
+    from app.storage.persistence import serialize_state, restore_state
 
     store.plans[TRIP].display_style = '手账风'
-    from app.store import USERS
+    from app.storage.store import USERS
     snapshot = serialize_state(store, USERS)
     restored = DemoStore(persistence_enabled=False, display_worker_enabled=False)
     restore_state(restored, snapshot, USERS)
@@ -137,7 +150,7 @@ def test_busy_and_confirmation_changes_refresh_preview_actions(store):
 
 def test_retry_cannot_rebind_stale_html_to_current_prose(store, monkeypatch):
     from app.agents import agent_client
-    from app.services.guide_html import build_guide_display
+    from app.services.itinerary.guide_html import build_guide_display
 
     plan = store.plans[TRIP]
     plan.display = build_guide_display(HTML)

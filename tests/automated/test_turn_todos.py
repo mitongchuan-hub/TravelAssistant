@@ -1,146 +1,135 @@
-"""A current-turn checklist prevents silently dropping pending user requests."""
+"""Single-agent terminal/error contracts replace the removed task/todo protocol."""
+from copy import deepcopy
 import json
 from types import SimpleNamespace
 
-from app.agents.agent_protocol import RequestContext, plan_basis
+import pytest
+
+from app.workflow.execution import RequestContext
+from app.services.itinerary.plan_basis import plan_basis
+from app.agents.budget import TurnBudget
 from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
 from app.models import Message, Trip, TripPlan, User
 
 
-def make_runtime(request=None):
+def make_runtime(request, **kwargs):
     owner = User('user', 'User', 'U')
-    trip = Trip('trip', 'Beijing', '2026-10-24', '', '', '', owner, '', '')
-    plan = TripPlan('plan', '', '')
-    message = Message('message', owner, 'user', 'Check weather and route', 'now')
+    trip = Trip('trip', '北京市', '2026-10-24', '', '', '', owner, '', '')
+    plan = TripPlan('plan', '', '未生成')
+    message = Message('message', owner, 'user', '记下晚上夜骑这个想法', 'now')
     context = RequestContext('trip', owner.id, 'execution', None, 'request', message.id,
         message.body, 'main', 'task_execution', 0, plan_basis(plan), 0, 0, 0)
     execution = TaskExecutionContext(trip, [message], [], plan, {}, '2026-10-23')
-    return TaskExecutionRuntime(None, 'test', context, execution, request=request)
+    return TaskExecutionRuntime(None, 'test', context, execution, request=request, **kwargs)
 
 
-def call(name, **args):
-    return SimpleNamespace(id='call', type='function', function=SimpleNamespace(
-        name=name, arguments=json.dumps(args)))
+def call(name='submit_changes', arguments=None, *, call_id='call'):
+    return SimpleNamespace(id=call_id, type='function', function=SimpleNamespace(name=name,
+        arguments=arguments if isinstance(arguments, str) else json.dumps(arguments or {})))
 
 
-def add(runtime):
-    output, terminal = runtime._execute_call(call('manage_todos', operation='add', items=[
-        {'id': None, 'title': 'Weather', 'status': 'pending', 'reason': ''},
-        {'id': None, 'title': 'Route', 'status': 'pending', 'reason': ''},
-    ]))
-    assert terminal is None
-    assert output['status'] == 'ok'
-    return output['todos']
+def response(content=None, calls=(), finish_reason='stop'):
+    return SimpleNamespace(choices=[SimpleNamespace(finish_reason=finish_reason,
+        message=SimpleNamespace(content=content, tool_calls=list(calls)))])
 
 
-def test_pending_items_block_both_terminal_tools():
-    runtime = make_runtime()
-    add(runtime)
-    for terminal in ('finish_turn', 'ask_user'):
-        args = {'reply': 'Done'} if terminal == 'finish_turn' else {
-            'question': 'Where?', 'answer_target': {'namespace': 'route', 'field': 'origin'}}
-        output, proposal = runtime._execute_call(call(terminal, **args))
-        assert proposal is None
-        assert output['status'] == 'unavailable'
-        assert 'todo' in output['reason'].lower()
-    assert not runtime._can_finish_prose()
+def changes():
+    return {'user_quote': '记下晚上夜骑这个想法', 'ideas': [
+        {'action': 'create', 'kind': '待归类', 'title': '夜骑', 'body': '晚上夜骑'}]}
 
 
-def test_updates_are_atomic_and_cannot_erase_other_items():
-    runtime = make_runtime()
-    todos = add(runtime)
-    output, _ = runtime._execute_call(call('manage_todos', operation='update', items=[
-        {**todos[0], 'status': 'done', 'reason': 'Weather result returned'},
-        {**todos[1], 'id': 'unknown', 'status': 'unresolved', 'reason': 'Unavailable'},
-    ]))
-    assert output['status'] == 'unavailable'
-    assert runtime.todos == todos
-    output, _ = runtime._execute_call(call('manage_todos', operation='update', items=[
-        {**todos[0], 'status': 'done', 'reason': 'Weather result returned'},
-        {**todos[1], 'status': 'unresolved', 'reason': 'Route service unavailable'},
-    ]))
-    assert output['status'] == 'ok'
-    _, proposal = runtime._execute_call(call('finish_turn', reply='Weather checked; route unavailable'))
-    assert proposal is not None and not proposal.failed
-
-
-def test_resolved_items_need_explanation_and_waiting_items_need_question():
-    runtime = make_runtime()
-    todos = add(runtime)
-    output, _ = runtime._execute_call(call('manage_todos', operation='update', items=[
-        {**todos[0], 'status': 'done', 'reason': ''}]))
-    assert output['status'] == 'unavailable'
-    runtime._execute_call(call('manage_todos', operation='update', items=[
-        {**row, 'status': 'needs_input', 'reason': 'Need origin and date'} for row in todos]))
-    output, proposal = runtime._execute_call(call('finish_turn', reply='Need information'))
-    assert proposal is None and output['status'] == 'unavailable'
-    _, proposal = runtime._execute_call(call('ask_user', question='Where and when?',
-        answer_target={'namespace': 'route', 'field': 'origin'}))
-    assert proposal is not None and not proposal.failed
-
-
-def test_checklist_is_visible_each_decision_and_is_not_cross_turn_state():
+def test_terminal_submit_is_one_model_call_and_not_a_store_mutation():
     seen = []
 
     def request(client, model, messages, **kwargs):
-        seen.append(json.loads(messages[-1]['content'])['turn_todos'])
-        if len(seen) == 1:
-            tool = call('manage_todos', operation='add', items=[
-                {'id': None, 'title': 'Weather', 'status': 'pending', 'reason': ''}])
-        elif len(seen) == 2:
-            tool = call('manage_todos', operation='update', items=[
-                {**seen[-1][0], 'status': 'unresolved', 'reason': 'Service unavailable'}])
-        else:
-            tool = call('finish_turn', reply='Weather service unavailable')
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
-            content=None, tool_calls=[tool]))])
+        seen.append(kwargs['agent_role'])
+        assert {tool['function']['name'] for tool in kwargs['tools']} == {
+            'read_context', 'query_weather', 'search_places', 'search_food', 'query_route', 'submit_changes'}
+        return response('不能作为已保存答复透传', [call(arguments=changes())])
 
     runtime = make_runtime(request)
+    before = deepcopy(runtime.execution_context)
     proposal = runtime.run()
     assert not proposal.failed
-    assert seen[0] == []
-    assert seen[1][0]['status'] == 'pending'
-    assert seen[2][0]['status'] == 'unresolved'
-    assert make_runtime().todos == []
-    assert runtime.execution_context.trip.workflow_state == {}
+    assert len(seen) == 1
+    assert proposal.changes['args'] == changes()
+    assert '不能作为已保存答复透传' not in proposal.answer
+    assert runtime.execution_context == before
 
 
-def test_plain_reply_cannot_bypass_pending_checklist():
-    runtime = make_runtime(lambda *args, **kwargs: SimpleNamespace(choices=[
-        SimpleNamespace(message=SimpleNamespace(content='All done', tool_calls=[]))]))
-    add(runtime)
+@pytest.mark.parametrize('invalid', [call(arguments='{'), call(arguments=[]),
+    call('manage_task', {}), call('manage_todos', {}), call('finish_turn', {'reply': 'Done'}),
+    call(arguments={'user_quote': '记下晚上夜骑这个想法', 'ideas': [
+        {'action': 'create', 'kind': '待归类', 'title': '夜骑', 'body': '晚上夜骑', 'authority': 'admin'}]})])
+def test_invalid_call_can_be_corrected_without_partial_changes(invalid):
+    seen = []
+
+    def request(client, model, messages, **kwargs):
+        seen.append(messages[-1])
+        if len(seen) == 1:
+            return response(calls=[invalid])
+        error = json.loads(messages[-1]['content'])
+        assert error['recoverable'] and error['status'] == 'invalid_arguments'
+        return response('尚未保存，请补充。')
+
+    runtime = make_runtime(request)
+    before = deepcopy(runtime.execution_context)
+    proposal = runtime.run()
+    assert not proposal.failed
+    assert not proposal.changes
+    assert runtime.execution_context == before
+
+
+def test_repeated_invalid_submission_fails_closed_without_success_claim():
+    ids = iter(['invalid-1', 'invalid-2', 'invalid-3'])
+    runtime = make_runtime(lambda *a, **kw: response(calls=[call(arguments={}, call_id=next(ids))]))
+    before = deepcopy(runtime.execution_context)
     proposal = runtime.run()
     assert proposal.failed
-    assert proposal.answer != 'All done'
+    assert not proposal.changes
+    assert runtime.execution_context == before
+    assert runtime.usage['tool_calls'] <= 3
 
 
-def test_last_decision_records_unfinished_items_and_preserves_partial_reply():
-    def request(client, model, messages, **kwargs):
-        state = json.loads(messages[-1]['content'])['turn_todos']
-        assert all(row['status'] == 'unresolved' for row in state)
-        assert {tool['function']['name'] for tool in kwargs['tools']} == {'ask_user', 'finish_turn'}
-        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
-            content=None, tool_calls=[call('finish_turn', reply='Partial results')]))])
-
-    runtime = make_runtime(request)
-    add(runtime)
-    runtime.max_steps = 1
+def test_parallel_submission_batch_is_never_partially_executed():
+    responses = iter([response(calls=[call(arguments=changes()), call(arguments=changes())]),
+                      response('未执行这批修改。')])
+    runtime = make_runtime(lambda *a, **kw: next(responses))
     proposal = runtime.run()
     assert not proposal.failed
-    assert proposal.answer.startswith('Partial results')
-    assert 'Weather' in proposal.answer and 'Route' in proposal.answer
-    assert all(row['status'] == 'unresolved' for row in runtime.todos)
+    assert not proposal.changes
+    assert runtime.execution_context.idea_cards == []
 
 
-def test_todo_creation_is_bounded_and_does_not_allow_duplicate_or_resolved_adds():
-    runtime = make_runtime()
-    todos = add(runtime)
-    for item in ({**todos[0], 'id': None},
-                 {'id': None, 'title': 'New', 'status': 'done', 'reason': 'No result'}):
-        output, _ = runtime._execute_call(call('manage_todos', operation='add', items=[item]))
-        assert output['status'] == 'unavailable'
-        assert runtime.todos == todos
-    output, _ = runtime._execute_call(call('manage_todos', operation='add', items=[
-        {'id': None, 'title': f'Item {n}', 'status': 'pending', 'reason': ''} for n in range(19)]))
-    assert output['status'] == 'unavailable'
-    assert runtime.todos == todos
+@pytest.mark.parametrize('failure', ['timeout', 'truncated', 'cancelled', 'tool_budget', 'model_budget'])
+def test_budget_transport_and_cancellation_never_publish_pending_changes(failure):
+    requested = []
+
+    def request(client, model, messages, **kwargs):
+        requested.append(True)
+        kwargs['budget'].model()
+        if failure == 'timeout':
+            raise TimeoutError('timeout')
+        return response(calls=[call(arguments=changes())],
+                        finish_reason='length' if failure == 'truncated' else 'tool_calls')
+
+    budget = TurnBudget(max_tools=0 if failure == 'tool_budget' else 64,
+                        max_models=0 if failure == 'model_budget' else 16,
+                        cancelled=(lambda: True) if failure == 'cancelled' else None)
+    runtime = make_runtime(request, budget=budget)
+    before = deepcopy(runtime.execution_context)
+    proposal = runtime.run()
+    assert proposal.failed
+    assert not proposal.changes
+    assert runtime.execution_context == before
+    if failure in {'model_budget', 'cancelled'}:
+        assert not requested
+
+
+def test_step_limit_does_not_convert_read_results_into_a_write():
+    runtime = make_runtime(lambda *a, **kw: response(calls=[call('read_context', {'section': 'ideas'})]),
+                           max_steps=1)
+    proposal = runtime.run()
+    assert proposal.failed
+    assert not proposal.changes
+    assert runtime.execution_context.idea_cards == []

@@ -1,0 +1,67 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { acknowledgeSession, apiRequest, ApiError, setCsrfToken } from '@/api/client'
+
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+beforeEach(() => { setCsrfToken(''); acknowledgeSession() })
+afterEach(() => vi.unstubAllGlobals())
+
+describe('same-origin JSON client and CSRF recovery', () => {
+  it('hydrates CSRF once for concurrent writes and uses same-origin credentials', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce(json({ user: null, csrf_token: 'session-token' })).mockImplementation(async () => json({ ok: true }))
+    vi.stubGlobal('fetch', fetcher)
+    await Promise.all([apiRequest('/api/one', { method: 'POST', body: '{}' }), apiRequest('/api/two', { method: 'DELETE', body: '{}' })])
+    expect(fetcher.mock.calls.filter(call => call[0] === '/api/auth/session')).toHaveLength(1)
+    for (const [, options] of fetcher.mock.calls.slice(1)) {
+      expect(options.credentials).toBe('same-origin')
+      expect(options.headers.get('X-CSRF-Token')).toBe('session-token')
+      expect(options.headers.get('Content-Type')).toBe('application/json')
+    }
+  })
+  it('recovers an explicit CSRF rejection once, preserving the exact body and request id', async () => {
+    setCsrfToken('expired')
+    const fetcher = vi.fn().mockResolvedValueOnce(json({ error: { code: 'csrf_failed', message: '请刷新页面' } }, 403)).mockResolvedValueOnce(json({ user: null, csrf_token: 'fresh' })).mockResolvedValueOnce(json({ ok: true }))
+    vi.stubGlobal('fetch', fetcher)
+    const body = JSON.stringify({ body: '夜骑', request_id: 'same-request-id' })
+    await expect(apiRequest('/api/trips/t/messages', { method: 'POST', body })).resolves.toEqual({ ok: true })
+    expect(fetcher).toHaveBeenCalledTimes(3)
+    expect(fetcher.mock.calls[1]![0]).toBe('/api/auth/session')
+    expect(fetcher.mock.calls[0]![1].body).toBe(body)
+    expect(fetcher.mock.calls[2]![1].body).toBe(body)
+    expect(fetcher.mock.calls[2]![1].headers.get('X-CSRF-Token')).toBe('fresh')
+  })
+  it('stops after one CSRF replay and never retries uncertain network or 500 responses', async () => {
+    setCsrfToken('expired')
+    const rejection = () => json({ error: { code: 'csrf_failed', message: '请刷新页面' } }, 403)
+    const fetcher = vi.fn().mockResolvedValueOnce(rejection()).mockResolvedValueOnce(json({ csrf_token: 'fresh' })).mockResolvedValueOnce(rejection())
+    vi.stubGlobal('fetch', fetcher)
+    await expect(apiRequest('/api/trips', { method: 'POST', body: '{}' })).rejects.toMatchObject({ status: 403, code: 'csrf_failed' })
+    expect(fetcher).toHaveBeenCalledTimes(3)
+    fetcher.mockReset().mockResolvedValueOnce(json({ error: { code: 'internal_error', message: '暂不可用' } }, 500))
+    await expect(apiRequest('/api/trips', { method: 'POST', body: '{}' })).rejects.toMatchObject({ status: 500 })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    fetcher.mockReset().mockRejectedValueOnce(new TypeError('connection lost'))
+    await expect(apiRequest('/api/trips', { method: 'POST', body: '{}' })).rejects.toMatchObject({ status: 0 })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  })
+  it('never replays a stale account’s write after another tab changes the authenticated principal', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(json({ user: { id: 'account-A', name: 'A' }, csrf_token: 'token-A' }))
+      .mockResolvedValueOnce(json({ user: { id: 'account-A', name: 'A' }, csrf_token: 'token-A' }))
+      .mockResolvedValueOnce(json({ error: { code: 'csrf_failed', message: 'refresh' } }, 403))
+      .mockResolvedValueOnce(json({ user: { id: 'account-B', name: 'B' }, csrf_token: 'token-B' }))
+    vi.stubGlobal('fetch', fetcher)
+    setCsrfToken('login-bootstrap')
+    await apiRequest('/api/auth/login', { method: 'POST', body: '{}' })
+    await apiRequest('/api/auth/session')
+    await expect(apiRequest('/api/trips', { method: 'POST', body: JSON.stringify({ request_id: 'account-A-write' }) })).rejects.toMatchObject({ code: 'account_changed' })
+    expect(fetcher).toHaveBeenCalledTimes(4)
+    expect(fetcher.mock.calls.filter(call => call[0] === '/api/trips' && call[1]?.method === 'POST')).toHaveLength(1)
+  })
+  it('rejects foreign paths and reports network failures without swallowing aborts', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('offline')))
+    await expect(apiRequest('https://evil.invalid/api/trips')).rejects.toThrow('same-origin')
+    await expect(apiRequest('/api/trips')).rejects.toBeInstanceOf(ApiError)
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new DOMException('cancelled', 'AbortError')))
+    await expect(apiRequest('/api/trips')).rejects.toMatchObject({ name: 'AbortError' })
+  })
+})

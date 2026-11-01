@@ -5,11 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.agents.agent_protocol import RequestContext, plan_basis, validate_terminal_proposal
-from app.agents.main_input import project_main_context, project_main_read_context, project_plan
+from app.workflow.execution import RequestContext
+from app.services.itinerary.plan_basis import plan_basis
+from app.agents.main_input import project_main_context, project_main_read_context, project_plan, project_requirements
 from app.agents.task_runtime import TaskExecutionContext, TaskExecutionRuntime
 from app.models import IdeaCard, Message, Trip, TripPlan, User
-from app.services.plan_display import text_hash
+from app.services.itinerary.plan_display import text_hash
 from app.workflow.task_context import empty_workflow
 
 
@@ -32,6 +33,34 @@ def plan():
             }]}],
         },
     )
+
+
+@pytest.mark.parametrize('end,day_count,expected', [
+    ('2026-11-02', 2, ['2026-11-01', '2026-11-02']),
+    ('2026-11-02', 1, None),
+    ('2026-10-31', 1, None),
+    ('', 2, None),
+])
+def test_requirements_include_derived_dates_and_trusted_lodging(end, day_count, expected):
+    trip = Trip('trip', '杭州', '', '', '', '', User('user', '旅客', '旅'), '', '')
+    trip.requirements.start_date = '2026-11-01'
+    trip.requirements.end_date = end
+    trip.requirements.day_count = day_count
+    trip.requirements.city = '杭州'
+    trip.requirements.lodging_address = '测试住宿地址'
+    trip.requirements.outing_start_time = '09:00'
+    trip.lodging = {'poi_id': 'hotel', 'name': '测试酒店', 'longitude': 120.1,
+                    'latitude': 30.2, 'source': '高德地图 POI'}
+    before = deepcopy(trip)
+    view = project_requirements(trip)
+    assert view['known']['dates'] == expected
+    assert view['known']['lodging']['poi_id'] == 'hotel'
+    assert view['known']['lodging']['longitude'] == 120.1
+    assert view['known']['outing_start_time'] == '09:00'
+    assert view['known']['outing_end_time'] == ''
+    assert trip == before
+    read = project_main_read_context('requirements', {'items': []}, trip=trip)
+    assert read['known'] == view['known']
 
 
 def test_text_itinerary_exposes_saved_activities_without_legacy_days(plan):
@@ -122,54 +151,41 @@ def response(content, calls=()):
     return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content, tool_calls=calls))])
 
 
-@pytest.mark.parametrize('structured', [False, True])
-def test_readonly_reply_is_reviewed_before_sealing_and_preserves_plan(plan, structured):
+@pytest.mark.parametrize('include_ideas', [False, True])
+def test_single_agent_reads_current_plan_before_readonly_reply(plan, include_ideas):
     before = deepcopy(plan)
-    unsafe = '晚上骑行还没安排，需要加入吗？'
+    seen = []
 
     def request(client, model, messages, **kwargs):
-        if kwargs['agent_role'] == 'main_reply_review':
-            payload = json.loads(messages[-1]['content'])
-            assert payload['current_plan']['text'] == plan.text
-            assert payload['draft_reply'] == unsafe
-            return response('你好！')
-        if structured:
-            call = SimpleNamespace(id='call-1', type='function', function=SimpleNamespace(
-                name='finish_turn', arguments=json.dumps({'reply': unsafe})))
-            return response(None, [call])
-        return response(unsafe)
+        seen.append(kwargs['agent_role'])
+        payload = json.loads(messages[1]['content'])
+        assert payload['current_plan']['text'] == plan.text
+        assert '若临时管制则改为步行' in payload['current_plan']['text']
+        if include_ideas:
+            assert payload['requirements']['items']['items'][0]['body'] == '晚上骑共享单车'
+        return response('晚上已安排骑行；若临时管制则改为步行。')
 
-    runtime = reply_runtime(plan, request)
+    runtime = reply_runtime(plan, request, include_ideas=include_ideas)
     proposal = runtime.run()
 
-    assert proposal.answer == '你好！'
-    assert not proposal.failed and not proposal.selected_artifact_ids
-    validate_terminal_proposal(proposal, runtime.request_context)
+    assert proposal.answer == '晚上已安排骑行；若临时管制则改为步行。'
+    assert len(seen) == 1  # Correct context replaces the old second-model reviewer.
+    assert not proposal.failed and not proposal.changes
     assert plan == before
 
 
-@pytest.mark.parametrize('review_result', ['timeout', 'empty'])
-def test_unavailable_review_does_not_publish_unverified_reply(plan, review_result):
+@pytest.mark.parametrize('failure', ['timeout', 'empty'])
+def test_unavailable_model_does_not_publish_success_or_change_plan(plan, failure):
+    before = deepcopy(plan)
+
     def request(client, model, messages, **kwargs):
-        if kwargs['agent_role'] == 'main_reply_review':
-            if review_result == 'timeout':
-                raise TimeoutError('回复核对超时')
-            return response('')
-        return response('晚上骑行还没安排，需要加入吗？')
+        if failure == 'timeout':
+            raise TimeoutError('模型超时')
+        return response('')
 
     runtime = reply_runtime(plan, request)
     proposal = runtime.run()
 
     assert proposal.failed
-    assert '需要加入' not in proposal.answer
-    assert not proposal.selected_artifact_ids
-    validate_terminal_proposal(proposal, runtime.request_context)
-
-
-def test_reply_without_idea_wall_does_not_require_extra_review(plan):
-    def request(client, model, messages, **kwargs):
-        assert kwargs['agent_role'] == 'main_execution'
-        return response('你好！')
-
-    proposal = reply_runtime(plan, request, include_ideas=False).run()
-    assert proposal.answer == '你好！' and not proposal.failed
+    assert not proposal.changes
+    assert plan == before

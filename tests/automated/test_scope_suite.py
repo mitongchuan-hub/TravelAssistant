@@ -30,11 +30,21 @@ def test_special_contexts_run_without_fixture_contract_errors(monkeypatch, conte
         assert not result['failed']
 
 
-def test_unfinished_waiter_is_not_scored_as_preserved_success():
-    result = dict(failed=True, unchanged=True, selected=[], calls=[], initial_workflow={}, proposed_workflow=None)
+def test_ambiguous_short_answer_checks_no_guessed_business_changes():
+    result = dict(failed=False, unchanged=True, selected=[], calls=[])
     checks = mechanical_checks(dict(id='waiter', preserve_question=True), result)
-    assert not checks['execution_completed']
-    assert not checks['waiting_question_preserved']
+    assert checks['execution_completed']
+    assert checks['no_unrequested_changes']
+    result['selected'] = ['unauthorized-change']
+    assert not mechanical_checks(dict(id='waiter', preserve_question=True), result)['no_unrequested_changes']
+
+
+def test_short_answer_check_requires_only_the_requested_field():
+    result = dict(failed=False, unchanged=True, selected=['crud'], calls=[], submitted=[
+        {'requirements_patch': {'travelers': 2}}])
+    assert mechanical_checks({'id': 'Q04'}, result)['short_answer_only_updates_travelers']
+    result['submitted'][0]['requirements_patch']['budget_amount'] = '800'
+    assert not mechanical_checks({'id': 'Q04'}, result)['short_answer_only_updates_travelers']
 
 
 @pytest.mark.parametrize('case', load_cases(), ids=lambda case: case['id'])

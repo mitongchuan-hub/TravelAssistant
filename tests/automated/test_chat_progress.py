@@ -66,7 +66,7 @@ def test_projection_is_bounded_and_preserves_running_step():
 @pytest.fixture
 def store(monkeypatch):
     monkeypatch.setenv('TRAVEL_PERSISTENCE', '0')
-    from app.store import DemoStore
+    from app.storage.store import DemoStore
     return DemoStore(persistence_enabled=False, display_worker_enabled=False)
 
 
@@ -100,17 +100,16 @@ def test_progress_write_failure_restores_message_without_affecting_task(store, m
 
 def test_committed_reply_and_snapshot_keep_execution_history(store, monkeypatch):
     from app.agents import agent_client
-    from app.persistence import _message
-    from app.workflow.turn_workspace import TurnWorkspace
+    from app.storage.persistence import _message
+    from app.workflow.execution import ExecutionResult
     from dataclasses import asdict
 
     def generate(context, execution, *, cancelled, on_progress):
         on_progress('模型请求', {'agent_role': 'main_execution'})
         on_progress('模型响应', {'agent_role': 'main_execution'})
-        workspace = TurnWorkspace(context, workflow_state=execution.trip.workflow_state)
-        return workspace.finish('已处理你的消息。', workflow_state=execution.trip.workflow_state)
+        return ExecutionResult(answer='已处理你的消息。')
 
-    monkeypatch.setattr(agent_client, 'generate_task_proposal', generate)
+    monkeypatch.setattr(agent_client, 'generate_task_result', generate)
     task, _ = store.submit_task('trip-hangzhou', 'chat', {'body': '你好'}, 'commit-test')
     receipt = store.run_task(task['id'])
     assert receipt.committed
@@ -144,40 +143,39 @@ def test_real_model_request_adapter_publishes_progress_before_response(store, mo
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='你好！', tool_calls=[]))], usage=None)
 
     monkeypatch.setattr(agent_client, 'create_completion', completion)
-    assert store.run_task(task['id']).committed
+    from app.core.resources import client_scope
+    with client_scope(client_factory=lambda **kwargs: SimpleNamespace(close=lambda: None)):
+        assert store.run_task(task['id']).committed
     message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
     assert message.execution_progress['steps'][-1]['status'] == 'succeeded'
 
 
 def test_message_context_omits_ui_execution_history():
-    from types import SimpleNamespace
-    from app.agents.agent_runtime import TravelAgentRuntime
+    from app.agents.main_input import project_messages
     from app.models import Message, User
     message = Message('m', User('u', 'user', 'u'), 'agent', '正文', '10:00',
                       execution_progress={'steps': ['UI-ONLY']})
-    runtime = SimpleNamespace(trip=None, plan=None, snapshot={'messages': [message]})
-    result = TravelAgentRuntime.read_context(runtime, {'section': 'messages'})
-    assert result['items'][0]['body'] == '正文'
+    result = project_messages([message])
+    assert result['items'][0]['text'] == '正文'
     assert 'execution_progress' not in result['items'][0]
 
 
-def test_completed_progress_is_folded_and_query_details_are_escaped():
-    from types import SimpleNamespace
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
+def test_completed_progress_dto_is_inactive_and_does_not_expose_private_fields():
     from app.models import Message, User
-    from app.views import chat_presentation
-
+    from app.views.chat_presentation import chat_progress_view
+    from app.api.serializers import message_to_dict
     progress = advance_progress(new_progress(timestamp=0), '工具开始', {
         'role': 'research', 'name': 'search_places', 'arguments': {'keywords': '<script>alert(1)</script>'},
     }, timestamp=1)
     progress = finish_progress(progress, 'failed', timestamp=1000)
-    env = Environment(loader=FileSystemLoader('app/templates'), autoescape=select_autoescape())
-    for name in ('chat_time_break', 'chat_reply_view', 'chat_actions', 'chat_supplemental', 'chat_progress_view', 'chat_duration'):
-        env.filters[name] = getattr(chat_presentation, name)
-    html = env.get_template('partials/chat_messages.html').render(
-        messages=[Message('m', User('agent', '助手', 'AI'), 'agent', '本次查询未完成。', '10:00',
-                          'failed', execution_progress=progress)], trip=SimpleNamespace(id='test'))
-    assert '&lt;script&gt;' in html and '<script>' not in html
-    assert 'data-progress-state="failed"' in html
-    assert ' open' not in html
-    assert '本次查询未完成。' in html
+    progress['private_prompt'] = 'SECRET'
+    view = chat_progress_view(progress)
+    assert view['active'] is False and view['state'] == 'failed'
+    message = Message('m', User('agent', '助手', 'AI'), 'agent', '本次查询未完成。', '10:00',
+                      'failed', execution_progress=progress)
+    dto = message_to_dict(message)
+    assert dto['body'] == message.body
+    assert dto['execution_progress']['state'] == 'failed'
+    assert 'SECRET' not in json.dumps(dto)
+    assert '<script>' in dto['execution_progress']['steps'][0]['detail']
+    # Frontend must text-escape query detail and collapse completed execution.
