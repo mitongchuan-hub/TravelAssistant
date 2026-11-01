@@ -4,6 +4,25 @@ import pytest
 from app.core import config
 
 
+pytestmark = pytest.mark.usefixtures('restore_model_configuration')
+
+
+@pytest.mark.parametrize('marker', [None, 'synthetic-test (call)'])
+def test_model_enablement_depends_on_configuration_not_pytest(monkeypatch, marker):
+    if marker is None:
+        monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
+    else:
+        monkeypatch.setenv('PYTEST_CURRENT_TEST', marker)
+    assert config.llm_enabled() is True
+    monkeypatch.setenv('TRAVEL_AGENT_DISABLE_LLM', 'true')
+    assert config.llm_enabled() is False
+
+
+def test_missing_key_disables_model_access(monkeypatch):
+    monkeypatch.delenv('OPENAI_API_KEY')
+    assert config.llm_enabled() is False
+
+
 MODEL_KEYS = ('OPENAI_API_KEY', 'OPENAI_BASE_URL', 'OPENAI_MODEL',
               'OPENAI_TIMEOUT_SECONDS', 'OPENAI_WIRE_API', 'OPENAI_STORE_RESPONSES')
 SYSTEM_KEYS = ('CITY_DB_PATH', 'TRAVEL_PERSISTENCE', 'TRAVEL_DISPLAY_ENABLED',

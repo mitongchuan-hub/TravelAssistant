@@ -25,9 +25,9 @@ def test_scope_eval_exercises_real_readonly_terminal_without_business_changes(mo
 
 @pytest.mark.parametrize('name,arguments', [
     ('query_weather', {'city': '杭州', 'date': '2030-05-01'}),
-    ('search_food', {'city': '杭州', 'keywords': '西湖附近清淡餐厅'}),
-    ('search_places', {'city': '杭州', 'keywords': '西湖'}),
-    ('query_route', {'origin_poi_id': 'unknown', 'destination_poi_id': 'other', 'mode': 'transit'}),
+    ('maps_text_search', {'city': '杭州', 'keywords': '西湖附近清淡餐厅'}),
+    ('maps_search_detail', {'id': 'unknown'}),
+    ('maps_direction_transit_integrated', {'origin': '120,30', 'destination': '121,31', 'city': '杭州', 'cityd': '杭州'}),
 ])
 def test_all_fact_tools_are_stubbed_before_live_providers(monkeypatch, name, arguments):
     from app.agents.tools import registry

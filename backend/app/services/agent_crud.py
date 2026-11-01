@@ -14,11 +14,12 @@ from uuid import uuid4
 from app.services.itinerary.plan_basis import plan_basis
 from app.workflow.execution import serialize
 from app.models import IdeaCard, TripPlan
+from app.services.maps.evidence import evidence_kind, evidence_result, place_messages
 from app.services.itinerary.planning import planning_brief
 from app.services.requirements import chat_changes, update_requirements
 
 _QUOTES = str.maketrans({'“': '"', '”': '"', '‘': "'", '’': "'", '＂': '"', '＇': "'"})
-_OPERATIONS = {'requirements_patch', 'lodging', 'ideas', 'itinerary', 'presentation'}
+_OPERATIONS = {'requirements_patch', 'lodging', 'ideas', 'itinerary'}
 
 
 def canonical_digest(value):
@@ -176,10 +177,7 @@ def prepare_changes(args, request_context, execution_context, evidence=()):
     if args.get('lodging'):
         from app.services.places import collect_places
         _shape(args['lodging'], {'poi_id'}, {'poi_id'})
-        catalog = collect_places([
-            {'role': 'tool', 'name': 'search_places', 'content': json.dumps(row['result'], ensure_ascii=False)}
-            for row in evidence if row.get('tool') == 'search_places' and isinstance(row.get('result'), dict)
-        ])
+        catalog = collect_places(place_messages(evidence))
         lodging = catalog.get(args['lodging']['poi_id'])
         if not lodging or not lodging.get('city'):
             raise ValueError('住宿必须引用本轮地图查询返回的真实地点')
@@ -265,11 +263,11 @@ def prepare_changes(args, request_context, execution_context, evidence=()):
             result_text = _text(itinerary['text'], 'itinerary.text', 100000)
             # 缺少公交线路证据时，不允许通过终止提交绕过只读回复的明细保护。
             missing_transit = any(
-                isinstance(row, dict) and row.get('tool') == 'query_route'
-                and isinstance(row.get('result'), dict)
-                and row['result'].get('mode') == 'transit'
-                and row['result'].get('origin_poi_id') != row['result'].get('destination_poi_id')
-                and not row['result'].get('transit_steps')
+                isinstance(row, dict) and evidence_kind(row) == 'query_route'
+                and isinstance(evidence_result(row), dict)
+                and evidence_result(row).get('mode') == 'transit'
+                and evidence_result(row).get('origin_poi_id') != evidence_result(row).get('destination_poi_id')
+                and not evidence_result(row).get('transit_steps')
                 for row in evidence)
             if missing_transit and re.search(r'\d+号线|\d+路(?:公交|巴士)?|上车|下车|换乘', result_text):
                 raise ValueError('公交线路明细缺少查询依据，不能提交具体线路或上下车安排')
@@ -316,16 +314,8 @@ def prepare_changes(args, request_context, execution_context, evidence=()):
                 raise ValueError('清空行程需要独立、完整、肯定的当前指令')
         else:
             raise ValueError('未知行程操作')
-        if action in {'edit_text', 'confirm', 'clear'} and any(args.get(key) for key in {'requirements_patch', 'lodging', 'ideas', 'presentation'}):
+        if action in {'edit_text', 'confirm', 'clear'} and any(args.get(key) for key in {'requirements_patch', 'lodging', 'ideas'}):
             raise ValueError('精确编辑、确认或清空必须独立提交')
-    if args.get('presentation'):
-        _shape(args['presentation'], {'style_instruction'}, {'style_instruction'})
-        _text(args['presentation']['style_instruction'], 'style_instruction', 2000)
-        _positive(body, ['改成', '改为', '调整', '修改', '换成', '重新生成', '重做', '重试', '生成', '使用', '采用'], '展示调整')
-        if not re.search(r'风格|样式|配色|页面|网页|排版|展示|手账|攻略', body):
-            raise ValueError('展示调整必须明确指向页面样式')
-        if not plan.has_content or any(args.get(key) for key in {'requirements_patch', 'lodging', 'ideas', 'itinerary'}):
-            raise ValueError('展示风格只能独立调整当前已有行程')
     payload = {'args': args, 'normalized_changes': changes, 'expected_idea_hashes': expected,
                'idea_ids': sorted(existing) if itinerary and itinerary['action'] == 'replace' else None,
                'result_text': result_text, 'evidence': deepcopy(serialize(evidence)),
@@ -371,10 +361,7 @@ def apply_changes(stage, context, payload):
         kinds.append('requirements')
     if args.get('lodging'):
         from app.services.places import collect_places
-        catalog = collect_places([
-            {'role': 'tool', 'name': 'search_places', 'content': json.dumps(row['result'], ensure_ascii=False)}
-            for row in payload['evidence'] if row.get('tool') == 'search_places' and isinstance(row.get('result'), dict)
-        ])
+        catalog = collect_places(place_messages(payload['evidence']))
         lodging = catalog[args['lodging']['poi_id']]
         trip = stage.trips[trip_id]
         stage.trips[trip_id] = update_requirements(trip, {
@@ -413,11 +400,4 @@ def apply_changes(stage, context, payload):
         stage._discard_display_jobs(trip_id)
         lines.append('当前行程已清空，旅行需求、想法和聊天记录已保留。')
         kinds.append('clear')
-    if args.get('presentation'):
-        from app.services.itinerary.plan_display import text_hash
-        plan = stage.plans[trip_id]
-        stage.retry_display(trip_id, plan.id, text_hash(plan.text),
-                            style_instruction=args['presentation']['style_instruction'], _committing=True)
-        lines.append('网页展示偏好已保存，正在生成新的攻略页面。')
-        kinds.append('presentation')
     return lines, kinds

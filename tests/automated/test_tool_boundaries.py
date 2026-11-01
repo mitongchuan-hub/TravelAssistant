@@ -1,4 +1,4 @@
-"""Offline contracts for independently owned agent and page map tools."""
+"""Offline contracts for the shared MCP transport and map-result parsing."""
 import asyncio
 from contextlib import asynccontextmanager, contextmanager
 from datetime import datetime
@@ -10,11 +10,11 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from app.agents.tools import amap_mcp as agent_provider, places as agent_places
-from app.api.tools import amap_mcp as web_provider, places as web_places
+from app.services.maps import amap_mcp as agent_provider, places as agent_places
+from app.services.maps import amap_mcp as web_provider, places as web_places
 
 
-PROVIDERS = [agent_provider, web_provider]
+PROVIDERS = [agent_provider]
 TRANSPORT_LOGGERS = ('httpx', 'httpcore', 'mcp.client.streamable_http',
                      'mcp.shared.session', 'mcp.client.session')
 
@@ -35,22 +35,18 @@ def no_connections(monkeypatch):
         monkeypatch.setattr(provider, 'streamable_http_client', forbidden)
 
 
-def test_module_and_patch_ownership_is_independent(monkeypatch):
-    assert agent_provider is not web_provider
-    assert agent_places is not web_places
-    assert agent_places.amap_mcp is agent_provider
-    assert web_places.amap_mcp is web_provider
-    assert agent_provider.AmapMCPError is not web_provider.AmapMCPError
-    assert agent_provider._phase_context is not web_provider._phase_context
-    original_web_search = web_provider.search_pois
-    monkeypatch.setattr(agent_provider, 'search_pois', lambda *args: {'pois': [poi('agent')]})
-    assert web_provider.search_pois is original_web_search
-    monkeypatch.setattr(web_provider, 'search_pois', lambda *args: {'pois': [poi('web')]})
-    assert agent_places.search_places({'keywords': '公园'})['candidates'][0]['poi_id'] == 'agent'
-    assert web_places.search_places({'keywords': '公园'})['candidates'][0]['poi_id'] == 'web'
-    assert web_provider.ALLOWED_TOOLS == {'maps_text_search', 'maps_search_detail'}
-    assert not hasattr(web_provider, 'budget_scope')
-    assert not hasattr(web_places, 'PLACE_TOOL_SPEC')
+def test_page_and_agent_share_one_provider_and_poi_parser(monkeypatch):
+    from app.api import trips
+    from app.agents.tools import registry
+    assert agent_provider is web_provider
+    assert agent_places is web_places
+    assert trips.search_places is web_places.search_places
+    assert registry.amap_mcp is agent_provider
+    assert agent_provider.ALLOWED_TOOLS == {'maps_text_search', 'maps_search_detail',
+        'maps_direction_walking', 'maps_direction_driving', 'maps_direction_transit_integrated'}
+    assert hasattr(agent_provider, 'budget_scope')
+    monkeypatch.setattr(agent_provider, 'search_pois', lambda *args: {'pois': [poi('shared')]})
+    assert web_places.search_places({'keywords': '公园'})['candidates'][0]['poi_id'] == 'shared'
 
 
 @pytest.mark.parametrize('arguments', [{}, {'keywords': ''}, {'keywords': '   '},
@@ -145,7 +141,7 @@ def test_web_map_link_encodes_user_text_and_query_time_handles_timezone():
         assert web_places.query_time_label(value) == '时间待核实'
 
 
-@pytest.mark.parametrize('provider', PROVIDERS, ids=['agent', 'web'])
+@pytest.mark.parametrize('provider', PROVIDERS, ids=['shared'])
 def test_provider_credentials_are_dynamic_and_replace_url_keys(monkeypatch, provider):
     monkeypatch.setenv('AMAP_MAPS_API_KEY', 'primary-offline-secret')
     monkeypatch.setenv('AMAP_MAP_KEY', 'alias-offline-secret')
@@ -162,7 +158,7 @@ def test_provider_credentials_are_dynamic_and_replace_url_keys(monkeypatch, prov
             pytest.fail('session accepted missing key')
 
 
-@pytest.mark.parametrize('provider', PROVIDERS, ids=['agent', 'web'])
+@pytest.mark.parametrize('provider', PROVIDERS, ids=['shared'])
 @pytest.mark.parametrize('url', ['http://maps.offline.invalid/mcp',
     'https://user:password@maps.offline.invalid/mcp', 'https://maps.offline.invalid/mcp#fragment'])
 def test_provider_rejects_unsafe_endpoints(monkeypatch, provider, url):
@@ -172,7 +168,7 @@ def test_provider_rejects_unsafe_endpoints(monkeypatch, provider, url):
     assert 'password' not in str(caught.value)
 
 
-@pytest.mark.parametrize('provider', PROVIDERS, ids=['agent', 'web'])
+@pytest.mark.parametrize('provider', PROVIDERS, ids=['shared'])
 @pytest.mark.parametrize('seconds', ['0', '-1', 'NaN', 'inf', '121', 'invalid'])
 def test_provider_rejects_invalid_timeouts(monkeypatch, provider, seconds):
     monkeypatch.setenv('AMAP_MCP_TIMEOUT_SECONDS', seconds)
@@ -185,7 +181,7 @@ class OfflinePortal:
         return asyncio.run(function())
 
 
-@pytest.mark.parametrize('provider', PROVIDERS, ids=['agent', 'web'])
+@pytest.mark.parametrize('provider', PROVIDERS, ids=['shared'])
 def test_provider_schema_allowlist_deadline_and_six_call_limit(monkeypatch, provider):
     calls, timeout_windows = [], []
     class Client:
@@ -216,7 +212,7 @@ def test_provider_schema_allowlist_deadline_and_six_call_limit(monkeypatch, prov
     assert tools.calls == 0 and len(calls) == 6
 
 
-@pytest.mark.parametrize('provider', PROVIDERS, ids=['agent', 'web'])
+@pytest.mark.parametrize('provider', PROVIDERS, ids=['shared'])
 @pytest.mark.parametrize('endless', [False, True])
 def test_provider_connection_discovers_only_allowed_schemas_with_bounded_pagination(monkeypatch, provider, endless):
     events, pages, options = [], [], []
@@ -274,7 +270,7 @@ def test_provider_connection_discovers_only_allowed_schemas_with_bounded_paginat
     assert options[0]['timeout'].connect == 3
 
 
-@pytest.mark.parametrize('provider', PROVIDERS, ids=['agent', 'web'])
+@pytest.mark.parametrize('provider', PROVIDERS, ids=['shared'])
 def test_provider_session_applies_shared_connection_deadline_and_closes(monkeypatch, provider):
     windows, events = [], []
     @contextmanager
@@ -298,7 +294,7 @@ def test_provider_session_applies_shared_connection_deadline_and_closes(monkeypa
     assert provider._phase_context.get() is None
 
 
-@pytest.mark.parametrize('provider', PROVIDERS, ids=['agent', 'web'])
+@pytest.mark.parametrize('provider', PROVIDERS, ids=['shared'])
 def test_provider_detail_identity_authority_and_bounds(monkeypatch, provider):
     calls = []
     class Tools:
@@ -327,7 +323,7 @@ def test_provider_detail_identity_authority_and_bounds(monkeypatch, provider):
     assert len(calls) == 2
 
 
-@pytest.mark.parametrize('provider', PROVIDERS, ids=['agent', 'web'])
+@pytest.mark.parametrize('provider', PROVIDERS, ids=['shared'])
 def test_provider_redacts_messages_arguments_and_tracebacks(monkeypatch, provider):
     monkeypatch.setenv('AMAP_MAPS_API_KEY', 'primary-private-value')
     monkeypatch.setenv('AMAP_MAP_KEY', 'alias-private-value')

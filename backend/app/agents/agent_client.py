@@ -9,9 +9,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from time import monotonic
 
-
-from app.models import AgentCard
-from app.core.config import database_path, llm_enabled, model_name, fallback_model_name, model_timeout, display_timeout
+from app.core import config
+from app.core.config import database_path, model_name, fallback_model_name, model_timeout, display_timeout
 from app.core.resources import borrow_client
 from app.agents.model_transport import create_completion, response_storage_enabled, visible_params, wire_api
 
@@ -20,52 +19,26 @@ from app.agents.model_transport import create_completion, response_storage_enabl
 logger = logging.getLogger(__name__)
 
 
-# 汇总一次智能体回复及其计划、展示和工作流等结构化结果。
-@dataclass(frozen=True)
-class AgentReply:
-    body: str
-    card: AgentCard
-    idea_cards: list[dict]
-    plan: dict | None = None
-    next_action: str = "continue_chat"
-    requirements_patch: dict = field(default_factory=dict)
-    requirements_revision: int | None = None
-    failed: bool = False
-    expected_plan_id: str | None = None
-    verified_places: dict = field(default_factory=dict)
-    orchestrated: bool = False
-    target_item_id: str | None = None
-    confirm_current: bool = False
-    expected_plan_snapshot: dict | None = None
-    needs_input: bool = False
-    plan_text: str = ""
-    evidence: list[dict] | None = None
-    display: dict | None = None
-    display_source_hash: str = ""
-    display_status: str = "not_requested"
-    workflow_state: dict | None = None
-    preserve_plan_basis: bool = False
-
-
 # 收集单次会话的可展示事件和持久化记录，并负责最终落库。
 @dataclass
 class ConversationTrace:
+    # 当前任务的稳定请求标识，用于把进度、模型调用和运行记录关联起来。
     request_id: str
+    # 本轮执行的开始时间，用于计算整轮耗时并写入运行记录。
     started_at: str
+    # 当前任务所属旅行的标识，用于保存运行记录和校验数据归属。
     trip_id: str
+    # 用户本轮发送的原始消息，用于审计上下文和故障排查。
     user_body: str
-    events: list[str] = field(default_factory=list)
+    # 按发生顺序保存模型、工具和任务生命周期事件；不直接暴露给前端。
     records: list[dict] = field(default_factory=list, repr=False)
+    # 标记运行记录是否已经落库，避免正常路径和异常路径重复写入。
     written: bool = field(default=False, repr=False)
+    # 可选的实时进度回调；有值时把新增事件转发给任务进度持久化层。
     on_progress: object = field(default=None, repr=False)
 
-    # 同时追加文本事件和原始记录，并尽力通知实时进度回调。
+    # 保存结构化事件，并尽力通知实时进度回调。
     def add(self, title: str, value: object) -> None:
-        if isinstance(value, str):
-            content = value
-        else:
-            content = json.dumps(value, ensure_ascii=False, indent=2, default=str)
-        self.events.append(f"\n{'=' * 20} {title} {'=' * 20}\n{content}\n")
         self.records.append({"title": title, "value": value})
         if self.on_progress:
             try:
@@ -95,12 +68,17 @@ def record_agent_run(trace: ConversationTrace, *, error: BaseException | None = 
 # 从轨迹中提取最终输出、实际模型、用量和工具次数，生成持久化字段。
 def _agent_run_row(trace: ConversationTrace, error: BaseException | None) -> dict:
     records = trace.records
-    # 最后一条原始回复代表本次运行最终可记录的模型输出。
+    # 当前传输层使用“模型响应”记录正文和工具调用。
     output = None
     for record in reversed(records):
-        if record["title"] == "最终模型原始回复" and isinstance(record["value"], str):
-            output = record["value"]
-            break
+        if record['title'] != '模型响应' or not isinstance(record['value'], dict):
+            continue
+        response = record['value']
+        if isinstance(response.get('content'), str) and response['content'].strip():
+            output = response['content']
+        elif response.get('tool_calls'):
+            output = json.dumps(response['tool_calls'], ensure_ascii=False)
+        break
     # 模型字段随请求和备用模型切换记录更新，以反映最终使用者。
     model = None
     for record in records:
@@ -125,16 +103,16 @@ def _agent_run_row(trace: ConversationTrace, error: BaseException | None) -> dic
             tokens_in += usage["prompt_tokens"]
         if isinstance(usage.get("completion_tokens"), int):
             tokens_out += usage["completion_tokens"]
-    # 共享预算记录给出整轮工具调用总数。
+    # 执行器在结束时记录整轮预算，不再依赖旧工作流事件名称。
     tool_calls = 0
-    for record in records:
-        if record["title"] == "共享调用预算" and isinstance(record["value"], dict):
-            tool_calls = int(record["value"].get("tool_calls") or 0)
-    # 输入上下文和原始终稿已有独立字段，不在过程列表中重复保存。
+    for record in reversed(records):
+        if record['title'] == 'Task Runtime预算' and isinstance(record['value'], dict):
+            tool_calls = int(record['value'].get('tool_calls') or 0)
+            break
     process = [
         {"title": record["title"], "value": record["value"]}
         for record in records
-        if record["title"] not in {"输入上下文", "最终模型原始回复"}
+        if record["title"] != "输入上下文"
     ]
     return {
         "request_id": trace.request_id,
@@ -151,11 +129,6 @@ def _agent_run_row(trace: ConversationTrace, error: BaseException | None) -> dic
         "duration_ms": int((datetime.now() - datetime.fromisoformat(trace.started_at)).total_seconds() * 1000),
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
-
-
-# 根据显式禁用开关、测试环境和密钥可用性判断是否允许调用模型。
-def is_llm_enabled() -> bool:
-    return llm_enabled()
 
 
 # 运行任务执行器，直接返回回复和可选的完整变更包。
@@ -190,31 +163,32 @@ def generate_task_result(request_context, execution_context, *, cancelled=None, 
         'sequence': request_context.sequence, 'epoch': request_context.epoch,
     })
     # 模型不可用时返回失败结果，不执行业务循环。
-    if not is_llm_enabled():
-        proposal = ExecutionResult.failure('模型服务当前不可用，本次未生成或修改行程。')
-        trace.add('Task Execution结果', {'failed': True, 'reason': proposal.reason})
+    if not config.llm_enabled():
+        result = ExecutionResult.failure('模型服务当前不可用，本次未生成或修改行程。')
+        trace.add('Task Execution结果', {'failed': True, 'reason': result.reason})
         trace.write()
-        return proposal
+        return result
 
-    runtime = None
     try:
         # 主模型和限流备用模型均由环境配置，备用仅重试当前失败请求。
         primary_model = model_name()
         fallback_model = fallback_model_name()
 
-        # 对当前模型请求包一层限流降级，不重建或重放任务工作区。
+        # 对当前模型请求包一层限流降级，不重放已经执行的工具。
         def request_current(client_arg, model, messages, **kwargs):
             try:
                 return _create_chat_completion(client_arg, model, messages, **kwargs)
             except Exception as exc:
-                if not _is_rate_limit_error(exc) or not fallback_model or fallback_model == model:
+                rate_limited = (type(exc).__name__ == 'RateLimitError'
+                                or getattr(exc, 'status_code', None) == 429)
+                if not rate_limited or not fallback_model or fallback_model == model:
                     raise
                 logger.warning('Primary model request was rate limited; retrying that request on fallback')
                 trace.add('切换备用模型', {'from': model, 'to': fallback_model,
                                             'scope': 'current_model_request', 'reason': str(exc)})
                 return _create_chat_completion(client_arg, fallback_model, messages, **kwargs)
 
-        # 借用应用级连接池；预算、轨迹和工作区仍每轮独立。
+        # 借用应用级连接池；预算、轨迹和执行状态仍每轮独立。
         with borrow_client() as client:
             # 执行器共享整轮预算，返回回复和可选变更包。
             budget = (TurnBudget(max_models=None, max_tools=None, max_external=None, cancelled=cancelled)
@@ -223,13 +197,13 @@ def generate_task_result(request_context, execution_context, *, cancelled=None, 
                 client, primary_model, request_context, execution_context,
                 request=request_current, trace=trace, budget=budget,
             )
-            proposal = runtime.run()
+            result = runtime.run()
             trace.add('Task Execution结果', {
-                'failed': proposal.failed,
-                'reason': proposal.reason, 'has_changes': proposal.changes is not None,
+                'failed': result.failed,
+                'reason': result.reason, 'has_changes': result.changes is not None,
                 'usage': budget.usage(),
             })
-            return proposal
+            return result
     except Exception as exc:
         trace.write(exc)
         return ExecutionResult.failure('本次任务执行未完成，当前需求和行程已保留。')
@@ -238,40 +212,51 @@ def generate_task_result(request_context, execution_context, *, cancelled=None, 
 
 
 # 使用独立的无工具预算将已保存行程文本转换为 HTML 攻略展示，失败时保留文字回退信息。
-def generate_plan_display(source_text: str, source_dates, trip_id: str, *, style_instruction='', cancelled=None, retry_allowed=None) -> dict:
+def generate_plan_display(source_text: str, source_dates, trip_id: str, *, cancelled=None, retry_allowed=None) -> dict:
     """Convert only saved prose with an independent budget; never run a business loop."""
     from app.agents.budget import TurnBudget
     from app.agents.display_runtime import DisplayRuntime, redact_error
     from app.services.itinerary.plan_display import text_hash
     trace = ConversationTrace(uuid.uuid4().hex[:12], datetime.now().isoformat(timespec='seconds'), trip_id, source_text)
-    source_hash = text_hash(source_text)
     try:
-        if not is_llm_enabled():
+        if not config.llm_enabled():
             raise RuntimeError('模型服务当前不可用，完整文字已保留')
         with borrow_client() as client:
             # 展示转换最多调用两次模型，明确禁止工具和外部访问。
             budget = TurnBudget(max_models=2, max_tools=0, max_external=0,
                 seconds=display_timeout(), cancelled=cancelled)
-            runtime = DisplayRuntime(client, model_name(),
-                source_dates, style_instruction=style_instruction, retry_allowed=retry_allowed,
-                trace=trace, budget=budget, request=_create_chat_completion)
-            reply = runtime.convert_display(AgentReply(source_text, None, [], plan_text=source_text))
-            return {'display': reply.display, 'display_source_hash': source_hash,
-                    'display_status': reply.display_status, **runtime.cache.get('display_error', {})}
+            primary_model = model_name()
+            fallback_model = fallback_model_name()
+
+            def request_display(client_arg, model, messages, **kwargs):
+                try:
+                    return _create_chat_completion(client_arg, model, messages, **kwargs)
+                except Exception as exc:
+                    status_code = getattr(exc, 'status_code', None)
+                    rate_limited = (type(exc).__name__ == 'RateLimitError' or status_code == 429)
+                    if (not rate_limited or not fallback_model or fallback_model == model):
+                        raise
+                    trace.add('切换备用模型', {
+                        'from': model, 'to': fallback_model, 'scope': 'display_model_request',
+                        'error_type': type(exc).__name__, 'status_code': status_code,
+                    })
+                    return _create_chat_completion(client_arg, fallback_model, messages, **kwargs)
+
+            runtime = DisplayRuntime(client, primary_model,
+                source_dates, retry_allowed=retry_allowed,
+                trace=trace, budget=budget, request=request_display)
+            return runtime.convert_display(source_text)
     except Exception as exc:
-        # 写入回退原因前遮蔽环境中的密钥、令牌和密码值。
+        # 写入回退原因前遮蔽环境中的密钥、令牌和密码值；正常路径由 runtime 只计算一次哈希。
+        source_hash = text_hash(source_text)
         detail = redact_error(exc)
-        trace.add('展示转换', {'status': 'fallback', 'error_type': type(exc).__name__, 'reason': detail[:300],
+        trace.add('展示转换', {'status': 'fallback', 'error_type': type(exc).__name__,
+                                'status_code': getattr(exc, 'status_code', None),
                                 'source_hash': source_hash})
         return {'display': None, 'display_source_hash': source_hash, 'display_status': 'fallback',
                 'error_type': type(exc).__name__, 'reason': detail[:300]}
     finally:
         trace.write()
-
-
-# 兼容异常类型名和 HTTP 状态码两种限流信号。
-def _is_rate_limit_error(exc: Exception) -> bool:
-    return type(exc).__name__ == "RateLimitError" or getattr(exc, "status_code", None) == 429
 
 
 # 从服务错误文本中识别工具或函数调用能力不受支持的情况。
@@ -298,16 +283,11 @@ def _create_chat_completion(
     # 基础参数在 Chat Completions 与 Responses 两种线协议间共用。
     api = wire_api()
     params: dict[str, object] = {"model": model, "messages": messages}
-    # 按端点、模型和档位缓存已被拒绝的思考参数，避免重复无效尝试。
-    rejection_key = (str(getattr(client, 'base_url', '')) + '#' + api, model, reasoning_effort or '')
-    rejections = budget.reasoning_rejections if budget is not None else set()
+    # 固定端点按配置发送思考档位；服务拒绝时直接报错，不隐式改用默认值。
     reasoning_status = 'provider_default'
     if reasoning_effort is not None:
-        if rejection_key in rejections:
-            reasoning_status = 'provider_default_after_rejection'
-        else:
-            params['reasoning_effort'] = reasoning_effort
-            reasoning_status = 'requested'
+        params['reasoning_effort'] = reasoning_effort
+        reasoning_status = 'requested'
     # 规划默认保留服务端思考行为；只有显式配置 true/false 才覆盖聊天模板开关。
     # 该端点仅识别 chat_template_kwargs，单独传入 enable_thinking 无效。
     thinking = os.getenv('OPENAI_MAIN_ENABLE_THINKING', '').strip().lower()
@@ -403,18 +383,8 @@ def _create_chat_completion(
                 })
             return response
         except BadRequestError as exc:
-            # 仅对服务明确拒绝的思考或响应格式参数做单项降级重试。
+            # 仅保留响应格式的兼容处理，不自动移除思考参数。
             text = str(exc).lower()
-            if 'reasoning_effort' in params and _rejects_reasoning_effort(exc):
-                rejections.add(rejection_key)
-                params.pop('reasoning_effort')
-                reasoning_status = 'provider_default_after_rejection'
-                logger.info('Model rejected reasoning_effort; retrying with provider default')
-                if trace:
-                    trace.add('思考参数降级', {'model': model, 'agent_role': agent_role,
-                                           'requested': reasoning_effort, 'sent': None,
-                                           'status': reasoning_status, 'reason': '服务明确拒绝该思考参数或档位；移除参数后重试一次。'})
-                continue
             if "response_format" in params and _looks_like_unsupported_response_format(text):
                 if isinstance(params["response_format"], dict) and params["response_format"].get("type") == "json_schema":
                     if trace:
@@ -428,26 +398,6 @@ def _create_chat_completion(
             if "tools" in params and _looks_like_unsupported_tools(exc):
                 raise
             raise
-
-
-# 严格判断错误是否明确拒绝思考档位，避免被其他参数错误误导。
-def _rejects_reasoning_effort(exc: Exception) -> bool:
-    """Only drop effort when the provider explicitly rejects that parameter/value."""
-    body = getattr(exc, 'body', None)
-    error = body.get('error', body) if isinstance(body, dict) else {}
-    error = error if isinstance(error, dict) else {}
-    text = str(error.get('message') or exc).lower()
-    parameter = str(error.get('param') or '').lower()
-    effort_parameters = {'reasoning_effort', 'reasoning.effort'}
-    mentions_effort = any(name in text for name in effort_parameters) or parameter in effort_parameters
-    rejects = any(term in text for term in (
-        'not supported', 'unsupported', 'not support', 'does not support', 'not allowed',
-        'unknown parameter', 'unrecognized', 'unrecognised', 'unexpected keyword',
-        'invalid', 'must be one of', 'only supports', 'not available', '不支持', '无效',
-    )) or str(error.get('code') or '') in {'unsupported_parameter', 'unsupported_value', 'unknown_parameter', 'invalid_parameter_error'}
-    # 仅在报错参数确属思考档位时降级；泛化的工具或结构错误不足以触发。
-    conflicting_parameter = parameter and parameter not in effort_parameters
-    return bool(mentions_effort and rejects and not conflicting_parameter)
 
 
 # 识别端点整体不支持结构化响应格式的错误，但保留具体模式校验错误。

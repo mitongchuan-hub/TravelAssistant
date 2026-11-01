@@ -57,7 +57,7 @@ def test_main_prompt_context_and_plain_finish():
     result = runner.run()
     assert not result.failed and not result.changes and not result.changes
     assert result.answer == 'Python是一种编程语言。'
-    assert len(runner.registry) == 6 and 'submit_changes' in runner.registry
+    assert len(runner.registry) == 8 and 'submit_changes' in runner.registry
     context = json.loads(script.transcripts[0][1]['content'])
     assert context['requirements']['missing_for_generation']
     assert context['current_date'] == '2030-01-01'
@@ -129,25 +129,29 @@ def test_main_does_not_replace_final_text_with_transit_guard():
 def test_main_cross_city_queries_cache_and_catalog_route_binding(monkeypatch):
     runner = runtime(Script('unused'))
     seen = []
-    places = [{'poi_id': ident, 'name': ident, 'address': '', 'longitude': 116.4 + i,
-               'latitude': 39.9, 'city': '北京', 'district': '', 'fetched_at': '2030-01-01', 'source': '高德地图 POI'}
-              for i, ident in enumerate(['a', 'b'])]
+    places = [{'id': ident, 'name': ident, 'address': '', 'location': f'{116.4 + i},39.9',
+               'city': '北京'} for i, ident in enumerate(['a', 'b'])]
     def query(name, args, **kwargs):
-        seen.append((name, deepcopy(args), kwargs['route_cache']))
-        return {'status': 'available', 'candidates': places} if name == 'search_places' else {'status': 'available'}
+        seen.append((name, deepcopy(args)))
+        if name == 'maps_text_search':
+            return {'pois': [{'id': row['id'], 'name': row['name']} for row in places]}
+        if name == 'maps_search_detail':
+            return next(row for row in places if row['id'] == args['id'])
+        return {'paths': [{'duration': '600', 'distance': '500'}]}
     monkeypatch.setattr('app.agents.tools.registry.run_tool', query)
-    args = {'city': '北京', 'query': '景点'}
-    # Runtime schemas are tested separately; fake query deliberately ignores adapter details.
-    output = runner._query('search_places', args)
-    runner._query('search_places', args)
-    assert len(seen) == 1 and 'route_review' not in output
+    args = {'city': '北京', 'keywords': '景点'}
+    output = runner._query('maps_text_search', args)
+    runner._query('maps_text_search', args)
+    assert len(seen) == 1 and 'pois' in output
+    assert not runner.catalog  # Search summaries do not invent coordinates.
+    runner._query('maps_search_detail', {'id': 'a'})
+    runner._query('maps_search_detail', {'id': 'b'})
     assert set(runner.catalog) == {'a', 'b'}
-    runner._query('query_route', {'origin_poi_id': 'a', 'destination_poi_id': 'b'})
-    assert seen[-1][2] is runner.cache and runner.cache['_budget'] is runner.budget
-    with pytest.raises(ValueError, match='真实POI'):
-        runner._query('query_route', {'origin_poi_id': 'fake', 'destination_poi_id': 'b'})
-    runner._query('search_food', {'city': '北京'})
-    assert seen[-1][0] == 'search_food'
+    raw = runner._query('maps_direction_walking', {'origin': '116.4,39.9', 'destination': '117.4,39.9'})
+    assert raw['paths'][0]['duration'] == '600'
+    assert runner.evidence[-1]['normalized']['duration_minutes'] == 10
+    with pytest.raises(ValueError, match='真实地点'):
+        runner._query('maps_direction_walking', {'origin': '0,0', 'destination': '117.4,39.9'})
 
 
 def test_budget_none_counts_but_still_cancels_and_times_out():
@@ -176,18 +180,17 @@ def test_planning_keeps_serial_contract_budget_and_correction_limit():
     assert runner.config.max_steps == 16
     assert 'generation_question' not in runner._initial_context()
     with pytest.raises(ValueError, match='同城'):
-        runner._query('search_places', {'city': '北京'})
+        runner._query('maps_text_search', {'city': '北京', 'keywords': '公园'})
 
 
-def test_route_adapter_cache_limit_only_for_bounded_budgets(monkeypatch):
-    from app.agents.tools.routes import lookup_route
+def test_native_route_cache_avoids_duplicate_external_calls(monkeypatch):
+    runner = runtime(Script('unused'))
+    runner.catalog = {ident: {'poi_id': ident, 'name': ident, 'longitude': i, 'latitude': 1,
+                             'city': '杭州'} for i, ident in enumerate(['a', 'b'])}
     calls = []
-    monkeypatch.setattr('app.agents.tools.routes.query_route', lambda *args: calls.append(args) or {'status': 'available'})
-    catalog = {ident: {'poi_id': ident, 'longitude': i, 'latitude': 1} for i, ident in enumerate(['a', 'b'])}
-    cached = {tuple([i] * 7): {'status': 'available'} for i in range(32)}
-    args = {'origin_poi_id': 'a', 'destination_poi_id': 'b'}
-    assert lookup_route(args, catalog, dict(cached))['status'] == 'unavailable'
-    cache = {**cached, '_budget': TurnBudget(max_external=None)}
-    assert lookup_route(args, catalog, cache)['status'] == 'available'
-    assert lookup_route(args, catalog, cache)['status'] == 'available'
-    assert len(calls) == 1
+    monkeypatch.setattr('app.agents.tools.registry.run_tool',
+        lambda *args, **kwargs: calls.append(args) or {'paths': [{'duration': '60'}]})
+    args = {'origin': '0,1', 'destination': '1,1'}
+    runner._query('maps_direction_walking', args)
+    runner._query('maps_direction_walking', args)
+    assert len(calls) == 1 and runner.budget.external_calls == 1

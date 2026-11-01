@@ -87,7 +87,6 @@ def test_security_metadata_and_styles_stay_in_valid_head(source):
 
 
 def test_display_runtime_generates_html_and_repairs_once():
-    from app.agents.agent_client import AgentReply
     import json
     from types import SimpleNamespace
 
@@ -107,10 +106,30 @@ def test_display_runtime_generates_html_and_repairs_once():
             content=next(outputs), tool_calls=[]))])
 
     runtime = DisplayRuntime(None, 'offline', DATES, request=request,
-                             budget=TurnBudget(max_models=2), style_instruction='简洁手账风')
-    result = runtime.convert_display(AgentReply('行程', None, [], plan_text='09:00 香山，票价待核实。'))
-    assert result.display_status == 'ready'
-    assert result.display['html'] == HTML
+                             budget=TurnBudget(max_models=2))
+    result = runtime.convert_display('09:00 香山，票价待核实。')
+    assert result['display_status'] == 'ready'
+    assert result['display']['html'] == HTML
+    from app.services.itinerary.plan_display import text_hash
+    assert result['display_source_hash'] == text_hash('09:00 香山，票价待核实。')
+    assert set(result) == {'display', 'display_source_hash', 'display_status'}
     assert len(payloads) == 2
-    assert payloads[0]['style_instruction'] == '简洁手账风'
+    assert payloads[0]['display_style'] == '轻松、愉悦'
     assert 'validation_error' in payloads[1]
+
+
+def test_display_failure_returns_only_display_data_and_redacted_error(monkeypatch):
+    from app.agents.display_runtime import DisplayRuntime
+    from app.services.itinerary.plan_display import text_hash
+    source = '09:00 香山，票价待核实。'
+    monkeypatch.setenv('OPENAI_API_KEY', 'display-private-test-key')
+    def failed(*args, **kwargs):
+        raise RuntimeError('服务失败 display-private-test-key')
+    result = DisplayRuntime(None, 'offline', DATES, request=failed).convert_display(source)
+    assert result['display'] is None
+    assert result['display_status'] == 'fallback'
+    assert result['display_source_hash'] == text_hash(source)
+    assert result['error_type'] == 'RuntimeError'
+    assert '[redacted]' in result['reason']
+    assert 'display-private-test-key' not in result['reason']
+    assert not {'plan_text', 'workflow_state', 'requirements_patch', 'idea_cards'} & result.keys()

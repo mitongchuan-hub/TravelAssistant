@@ -12,7 +12,7 @@ import pytest
 from app.agents.task_runtime import transit_detail_guard
 from app.models import Trip, TripPlan, TripRequirements, User
 from app.services.itinerary.plan_display import text_hash
-from app.agents.tools import routes
+from app.services.maps import routes
 from app.views.display_presentation import display_view
 from app.views.route_view import build_route_view
 
@@ -40,9 +40,7 @@ def direct_payload():
 
 
 def query(monkeypatch, payload, mode='transit'):
-    monkeypatch.setattr(routes.amap_mcp, 'configured', lambda: True)
-    monkeypatch.setattr(routes, '_fetch_json', lambda endpoint, params: deepcopy(payload))
-    return routes.query_route(place('lodging', '测试住处'), place('park', '湖滨公园'), mode)
+    return routes.normalize_route(deepcopy(payload), place('lodging', '测试住处'), place('park', '湖滨公园'), mode)
 
 
 def test_subway_result_keeps_line_and_boarding_stations(monkeypatch, direct_payload):
@@ -281,7 +279,7 @@ def test_legacy_estimate_shows_missing_line_details(monkeypatch, direct_payload)
 
 def test_same_place_needs_no_missing_transit_warning():
     lodging = place('lodging', '测试住处')
-    trip, plan = itinerary(routes.query_route(lodging, lodging, 'transit'))
+    trip, plan = itinerary(routes.normalize_route({}, lodging, lodging, 'transit'))
     plan.evidence[0]['result']['candidates'] = [lodging]
     plan.evidence[-1]['arguments']['destination_poi_id'] = 'lodging'
     plan.display['days'][0]['items'][0].update(title='测试住处', location='测试住处')

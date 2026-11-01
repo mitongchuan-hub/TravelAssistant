@@ -1,4 +1,4 @@
-"""页面专属高德 MCP 连接：仅查询地点，独立限制调用次数和超时。"""
+"""Bounded AMap MCP client and adapters for existing synchronous travel tools."""
 from contextlib import contextmanager, asynccontextmanager
 from contextvars import ContextVar
 from datetime import timedelta
@@ -19,7 +19,9 @@ from mcp.client.streamable_http import streamable_http_client
 
 from app.core.config import amap_api_key, amap_timeout, amap_url
 
-ALLOWED_TOOLS = frozenset({'maps_text_search', 'maps_search_detail'})
+ALLOWED_TOOLS = frozenset({'maps_text_search', 'maps_search_detail', 'maps_direction_walking',
+                          'maps_direction_driving', 'maps_direction_transit_integrated'})
+_budget_context = ContextVar('amap_mcp_budget', default=None)
 _phase_context = ContextVar('amap_mcp_phase', default=None)
 _phase_observer = ContextVar('amap_mcp_phase_observer', default=None)
 logger = logging.getLogger(__name__)
@@ -87,7 +89,8 @@ def timeout_seconds():
         value = amap_timeout()
     except ValueError:
         raise AmapMCPError('高德MCP超时配置无效') from None
-    return value
+    scope = _budget_context.get()
+    return min(value, scope['budget'].remaining()) if scope else value
 
 
 def endpoint():
@@ -129,6 +132,25 @@ def redact_transport_logs():
         logger = logging.getLogger(name)
         if not any(getattr(item, '_travel_amap_redactor', False) for item in logger.filters):
             logger.addFilter(_redactor)
+
+
+@contextmanager
+def budget_scope(budget):
+    """The existing tool dispatch counts its first external call; details count too."""
+    token = _budget_context.set({'budget': budget, 'calls': 0} if budget else None)
+    try:
+        yield
+    finally:
+        _budget_context.reset(token)
+
+
+def consume_call():
+    scope = _budget_context.get()
+    if scope:
+        scope['budget'].remaining()
+        if scope['calls']:
+            scope['budget'].external()
+        scope['calls'] += 1
 
 
 def result_object(result):
@@ -190,6 +212,7 @@ class MCPTools:
         remaining = min(timeout_seconds(), self.deadline-monotonic())
         if remaining <= 0:
             raise AmapMCPError('本次高德MCP查询超时，信息待核实')
+        consume_call()
         self.calls += 1
         async def request():
             with anyio.fail_after(remaining):
@@ -224,6 +247,20 @@ def session():
     except AmapMCPError:
         raise
     except Exception as exc:
+        # SDK task groups may wrap an exception raised by the synchronous caller.
+        # Business cancellation/budget errors must not turn into provider fallback.
+        from app.agents.budget import AgentBudgetError
+        def budget_error(error):
+            if isinstance(error, AgentBudgetError):
+                return error
+            for child in getattr(error, 'exceptions', ()):
+                found = budget_error(child)
+                if found is not None:
+                    return found
+            return None
+        found = budget_error(exc)
+        if found is not None:
+            raise found from None
         raise AmapMCPError('高德MCP连接失败或超时，信息待核实', error_type=type(exc).__name__) from None
     finally:
         _phase_context.reset(token)
@@ -260,3 +297,11 @@ def search_pois(city, keywords, limit=5):
             candidates.append({**poi, **detail})
         return {'pois': candidates, 'total_matched': len(pois)}
 
+
+def call(name, arguments):
+    """One native tool call; results retain the upstream structure."""
+    try:
+        with session() as tools:
+            return tools.call(name, arguments)
+    except AmapMCPError as exc:
+        return {'status': 'unavailable', 'reason': str(exc)}

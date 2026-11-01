@@ -1,7 +1,6 @@
 """Tool-free conversion of saved itinerary prose into a validated HTML guide."""
 # 展示转换独立于业务执行器，只读取已保存正文，不查询事实或修改行程。
 from copy import deepcopy
-from dataclasses import replace
 import json
 import os
 from time import monotonic
@@ -22,14 +21,14 @@ def redact_error(error: Exception) -> str:
 
 
 class DisplayRuntime:
+    DEFAULT_STYLE = '轻松、愉悦'
+
     def __init__(self, client, model, source_dates, *, request, trace=None,
-                 budget=None, style_instruction='', retry_allowed=None):
+                 budget=None, retry_allowed=None):
         self.client, self.model, self.request, self.trace = client, model, request, trace
-        self.snapshot = {'source_dates': deepcopy(source_dates), 'style_instruction': style_instruction,
+        self.snapshot = {'source_dates': deepcopy(source_dates),
                          'display_retry_allowed': retry_allowed if retry_allowed is not None else (lambda: True)}
         self.budget = budget if budget is not None else TurnBudget(max_models=2, max_tools=0, max_external=0)
-        self.cache = {}
-        self.last_response = None
 
     def event(self, name, value):
         if self.trace:
@@ -46,7 +45,6 @@ class DisplayRuntime:
                 response_format=config.response_format, trace=self.trace, budget=self.budget,
                 reasoning_effort=role_reasoning_effort(config), agent_role='display')
             self.budget.remaining()
-            self.last_response = response
             message = response.choices[0].message
             if getattr(message, 'tool_calls', None):
                 raise ValueError('无工具模型节点不能调用工具')
@@ -58,12 +56,12 @@ class DisplayRuntime:
             self.event('Workflow 模型节点', {'node': role, 'seconds': round(monotonic() - started, 3)})
 
     # HTML/CSP/日期校验不通过时，预算和代次允许才携带校验原因纠错一次。
-    def convert_display(self, result):
-        source_hash = text_hash(result.plan_text)
+    def convert_display(self, source_text: str) -> dict:
+        source_hash = text_hash(source_text)
         try:
             dates = self.snapshot['source_dates']
-            payload = {'source_text': result.plan_text, 'source_dates': dates,
-                       'style_instruction': self.snapshot.get('style_instruction', ''), 'output_format': 'html'}
+            payload = {'source_text': source_text, 'source_dates': dates,
+                       'display_style': self.DEFAULT_STYLE, 'output_format': 'html'}
             raw = self.model_node('display', payload)
             try:
                 display = build_guide_display(raw, dates)
@@ -80,11 +78,11 @@ class DisplayRuntime:
                 raw = self.model_node('display', payload)
                 display = build_guide_display(raw, dates)
             self.event('展示转换', {'status': 'ready', 'source_hash': source_hash})
-            return replace(result, display=display, display_source_hash=source_hash, display_status='ready')
+            return {'display': display, 'display_source_hash': source_hash, 'display_status': 'ready'}
         except Exception as exc:
             self.budget.check_current()
             detail = redact_error(exc)
-            self.cache['display_error'] = {'error_type': type(exc).__name__, 'reason': detail[:500]}
             self.event('展示转换', {'status': 'fallback', 'error_type': type(exc).__name__,
-                'reason': detail[:500], 'source_hash': source_hash})
-            return replace(result, display=None, display_source_hash=source_hash, display_status='fallback')
+                'status_code': getattr(exc, 'status_code', None), 'source_hash': source_hash})
+            return {'display': None, 'display_source_hash': source_hash, 'display_status': 'fallback',
+                    'error_type': type(exc).__name__, 'reason': detail[:500]}

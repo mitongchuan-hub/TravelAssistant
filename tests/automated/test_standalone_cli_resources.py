@@ -37,8 +37,6 @@ def test_smoke_gate_precedes_bootstrap_and_isolation(monkeypatch):
 
 
 def test_smoke_isolation_precedes_bootstrap_and_failure_releases_scope(monkeypatch, tmp_path):
-    from app.agents import agent_client
-
     events = []
     (tmp_path / '.cache').mkdir()
     monkeypatch.setattr(live_single_agent_smoke, 'ROOT', tmp_path)
@@ -81,7 +79,7 @@ def test_smoke_isolation_precedes_bootstrap_and_failure_releases_scope(monkeypat
     monkeypatch.setattr(config, 'load_environment', bootstrap)
     monkeypatch.setattr(resources, 'client_scope', owner)
     monkeypatch.setattr(live_single_agent_smoke.threading, 'Timer', Timer)
-    monkeypatch.setattr(agent_client, 'is_llm_enabled', lambda: False)
+    monkeypatch.setattr(config, 'llm_enabled', lambda: False)
     assert live_single_agent_smoke.main() == 1
     assert events == ['timer_started', 'bootstrap', 'owner', 'closed', 'timer_cancelled']
     import json

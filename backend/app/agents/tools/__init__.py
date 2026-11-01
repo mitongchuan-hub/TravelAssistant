@@ -1,1 +1,1 @@
-"""Agent 专属工具及外部查询实现，与页面工具独立维护。"""
+"""Model tool registration: native AMap definitions, independent weather and local actions."""

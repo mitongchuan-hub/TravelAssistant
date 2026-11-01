@@ -4,7 +4,6 @@ from __future__ import annotations
 import math
 import os
 from pathlib import Path
-import sys
 from threading import Lock
 from urllib.parse import urlsplit
 
@@ -135,7 +134,7 @@ def store_responses() -> bool:
     return value == 'true'
 
 
-# 按启动用途汇总错误；验证不读取文件、不创建资源，也不因 pytest 而跳过。
+# 按启动用途汇总错误；验证不读取文件、不创建资源，也不因模型禁用而跳过。
 def validate_configuration(scope: str = 'web') -> None:
     if scope not in {'model', 'system', 'web'}:
         raise ValueError('Unknown configuration scope')
@@ -158,13 +157,8 @@ def validate_configuration(scope: str = 'web') -> None:
         raise ConfigurationError('启动配置缺失或无效：\n- ' + '\n- '.join(errors)) from None
 
 
-# 执行开关与无网络测试保护不是部署配置校验的替代品。
-def _llm_configured() -> bool:
+# 运行开关不替代启动配置校验；测试环境自行负责隔离真实客户端。
+def llm_enabled() -> bool:
+    """Whether model access is enabled by the explicit runtime configuration."""
     disabled = os.getenv('TRAVEL_AGENT_DISABLE_LLM', '').strip().lower()
     return disabled not in _TRUE and bool(os.getenv('OPENAI_API_KEY', '').strip())
-
-
-def llm_enabled() -> bool:
-    """Whether real model access is allowed, including both offline-test guards."""
-    return (_llm_configured() and not os.getenv('PYTEST_CURRENT_TEST')
-            and 'pytest' not in sys.modules)

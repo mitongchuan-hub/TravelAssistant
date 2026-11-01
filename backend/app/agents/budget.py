@@ -1,5 +1,5 @@
 """Shared request budgets for business execution and standalone display conversion."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from time import monotonic
 
 
@@ -22,7 +22,6 @@ class TurnBudget:
     input_tokens: int = 0
     output_tokens: int = 0
     total_token_limit: int | None = None
-    reasoning_rejections: set = field(default_factory=set)
 
     # 根据本轮时限建立单调时钟截止点。
     def __post_init__(self):

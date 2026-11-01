@@ -8,7 +8,7 @@ from starlette.concurrency import run_in_threadpool
 from app.api import dependencies as deps
 from app.api.schemas import CityInput
 from app.api.serializers import place_to_dict, requirements_values, trip_to_dict, workspace_snapshot
-from app.api.tools.places import search_places
+from app.services.maps.places import search_places
 from app.services.city_outings import CITY_FORM_FIELDS, city_requirements
 from app.services.places import collect_places
 

@@ -80,9 +80,9 @@ def main():
             from app.storage.store import DemoStore
             from app.services.city_outings import city_requirements
             from app.agents.tools.registry import run_tool
-            from app.agents.tools import amap_mcp
+            from app.services.maps import amap_mcp
             from app.agents.tools.weather import budget_scope as weather_scope
-            assert agent_client.is_llm_enabled(), 'Real model unavailable; no stub permitted'
+            assert config.llm_enabled(), 'Real model unavailable; no stub permitted'
             assert amap_mcp.configured(), 'AMap credentials unavailable'
             report['real_model_enabled'] = True
             report['model'] = config.model_name()
@@ -91,7 +91,8 @@ def main():
             travel_date = (date.today() + timedelta(days=2)).isoformat()
             with amap_mcp.observe_phases(lambda row: report['amap_phases'].append(row)):
                 with amap_mcp.budget_scope(preflight_budget):
-                    hotels = run_tool('search_places', {'city': '杭州', 'keywords': '西湖附近如家酒店'})
+                    from app.services.maps.places import search_places
+                    hotels = search_places({'city': '杭州', 'keywords': '西湖附近如家酒店'})
             report['stages'].append({'stage': 'real_hotel_search', 'status': hotels.get('status'),
                                      'candidate_count': len(hotels.get('candidates', [])),
                                      'reason': hotels.get('reason')})

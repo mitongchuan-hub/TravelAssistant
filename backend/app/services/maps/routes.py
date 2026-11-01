@@ -1,21 +1,6 @@
 """AMap route estimates between trusted POIs, never model coordinates."""
 import math
 from datetime import datetime, timezone
-from urllib.error import HTTPError, URLError
-from app.agents.tools import amap_mcp
-
-ROUTE_TOOL_SPEC = {'type': 'function', 'function': {
-    'name': 'query_route',
-    'description': '查询两个可信 POI 之间的步行、公共交通或驾车路线。公共交通返回所选方案的 transit_steps，保留地铁/公交线路、上下车站、可用方向、步行和换乘顺序；同一乘车段的 lines 为可选线路，不是连续换乘。transit_detail_status 为 available/partial/missing；missing 时只有总耗时和距离，不能当作完整公交线路。只接受真实 POI ID，不查询火车票。未来路况、班次和候车不保证，缺少的明细保持待核实。',
-    'parameters': {'type': 'object', 'additionalProperties': False, 'properties': {
-        'origin_poi_id': {'type': 'string'}, 'destination_poi_id': {'type': 'string'},
-        'mode': {'type': 'string', 'enum': ['walking', 'transit', 'driving']}},
-        'required': ['origin_poi_id', 'destination_poi_id', 'mode']}}}
-
-
-def _fetch_json(endpoint, params):
-    return amap_mcp.route(endpoint, params)
-
 
 def _text(value):
     if isinstance(value, str):
@@ -117,7 +102,7 @@ def transit_detail_status(steps):
     return 'partial'
 
 
-def query_route(origin, destination, mode='transit'):
+def normalize_route(payload, origin, destination, mode='transit'):
     result = {'origin_poi_id': origin['poi_id'], 'origin_name': origin['name'],
               'destination_poi_id': destination['poi_id'], 'destination_name': destination['name'],
               'mode': mode, 'status': 'unavailable', 'duration_minutes': None, 'distance_meters': None,
@@ -135,17 +120,7 @@ def query_route(origin, destination, mode='transit'):
     if origin['poi_id'] == destination['poi_id']:
         return {**result, 'status': 'available', 'duration_minutes': 0, 'distance_meters': 0,
                 'source': '同一已匹配地点', 'reason': '同一地点，未计场地内部步行。'}
-    if not amap_mcp.configured():
-        return {**result, 'reason': '路线查询暂未开通，交通耗时待核实。'}
-    params = {'origin': f"{origin['longitude']},{origin['latitude']}",
-              'destination': f"{destination['longitude']},{destination['latitude']}"}
-    endpoint = {'walking': 'walking', 'driving': 'driving', 'transit': 'transit/integrated'}[mode]
-    if mode == 'transit':
-        if not origin.get('city') or not destination.get('city'):
-            return {**result, 'reason': '公交查询需要已匹配地点的城市。'}
-        params.update(city=origin['city'], cityd=destination['city'], strategy=0)
     try:
-        payload = _fetch_json(endpoint, params)
         if not isinstance(payload, dict) or str(payload.get('status', '1')) != '1' or str(payload.get('infocode', '10000')) != '10000':
             return {**result, 'reason': '路线服务权限、配额或请求暂不可用，耗时待核实。'}
         route = payload.get('route')
@@ -193,26 +168,7 @@ def query_route(origin, destination, mode='transit'):
                 result['reason'] = (result['reason'].rstrip('。')
                     + '；部分线路字段缺失，已返回内容仍待核实。')
         return result
-    except (amap_mcp.AmapMCPError, HTTPError, URLError, TimeoutError, OSError, ValueError, TypeError):
+    except (ValueError, TypeError):
         return {**result, 'reason': '路线服务暂不可用，交通耗时仍待核实。'}
 
 
-def lookup_route(arguments, catalog, cache):
-    origin = catalog.get(arguments.get('origin_poi_id'))
-    destination = catalog.get(arguments.get('destination_poi_id'))
-    mode = arguments.get('mode', 'transit')
-    if not origin or not destination:
-        return {'status': 'unavailable', 'reason': '请先查询并匹配两个具体地点，不接受模型自报坐标。'}
-    key = (origin['poi_id'], destination['poi_id'], origin['longitude'], origin['latitude'],
-           destination['longitude'], destination['latitude'], mode)
-    if key not in cache:
-        budget = cache.get('_budget')
-        if (budget is None or budget.max_external is not None) and sum(
-                isinstance(k, tuple) and len(k) == 7 for k in cache) >= 32:
-            return {'status': 'unavailable', 'reason': '本轮路线查询数量已达上限，剩余路段待核实。'}
-        if budget is not None and origin['poi_id'] != destination['poi_id']:
-            budget.external()
-        budget = cache.get('_budget')
-        with amap_mcp.budget_scope(budget):
-            cache[key] = query_route(origin, destination, mode)
-    return cache[key]

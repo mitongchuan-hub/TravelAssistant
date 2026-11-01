@@ -79,7 +79,7 @@ def response(content):
 
 
 def test_proposals_and_display_share_owner_not_turn_state(monkeypatch, contexts, offline):
-    monkeypatch.setattr(agent_client, 'is_llm_enabled', lambda: True)
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
     clients, requests = [], []
 
     def factory(**settings):
@@ -127,9 +127,105 @@ def test_proposals_and_display_share_owner_not_turn_state(monkeypatch, contexts,
     assert clients[0].close_calls == 1
 
 
+def test_display_primary_rate_limit_uses_fallback_once(monkeypatch, offline):
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
+    monkeypatch.setenv('OPENAI_FALLBACK_MODEL', 'offline-fallback')
+    calls = []
+
+    class RateLimitError(RuntimeError):
+        status_code = 429
+
+    def completion(client, params, api):
+        calls.append(params['model'])
+        if len(calls) == 1:
+            raise RateLimitError('private provider details')
+        return response(HTML)
+
+    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    with resources.client_scope(client_factory=lambda **settings: FakeClient(**settings)):
+        result = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+
+    assert result['display_status'] == 'ready'
+    assert calls == ['offline-first', 'offline-fallback']
+    trace, error = offline[-1]
+    assert error is None
+    switch = [row['value'] for row in trace.records if row['title'] == '切换备用模型']
+    assert switch == [{'from': 'offline-first', 'to': 'offline-fallback',
+                       'scope': 'display_model_request', 'error_type': 'RateLimitError',
+                       'status_code': 429}]
+
+
+def test_display_fallback_failure_does_not_get_a_third_model_call(monkeypatch, offline):
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
+    monkeypatch.setenv('OPENAI_FALLBACK_MODEL', 'offline-fallback')
+    calls = []
+
+    class RateLimitError(RuntimeError):
+        status_code = 429
+
+    def completion(client, params, api):
+        calls.append(params['model'])
+        raise RateLimitError('private provider details')
+
+    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    with resources.client_scope(client_factory=lambda **settings: FakeClient(**settings)):
+        result = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+
+    assert result['display_status'] == 'fallback'
+    assert calls == ['offline-first', 'offline-fallback']
+    trace, error = offline[-1]
+    assert error is None
+    switch = [row['value'] for row in trace.records if row['title'] == '切换备用模型']
+    assert switch == [{'from': 'offline-first', 'to': 'offline-fallback',
+                       'scope': 'display_model_request', 'error_type': 'RateLimitError',
+                       'status_code': 429}]
+
+
+def test_display_non_rate_limit_error_does_not_use_fallback(monkeypatch, offline):
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
+    monkeypatch.setenv('OPENAI_FALLBACK_MODEL', 'offline-fallback')
+    calls = []
+
+    class BadRequestError(RuntimeError):
+        status_code = 400
+
+    def completion(client, params, api):
+        calls.append(params['model'])
+        raise BadRequestError('private provider details')
+
+    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    with resources.client_scope(client_factory=lambda **settings: FakeClient(**settings)):
+        result = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+
+    assert result['display_status'] == 'fallback'
+    assert calls == ['offline-first']
+
+
+def test_display_budget_boundary_does_not_attempt_correction_after_fallback(monkeypatch, offline):
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
+    monkeypatch.setenv('OPENAI_FALLBACK_MODEL', 'offline-fallback')
+    calls = []
+
+    class RateLimitError(RuntimeError):
+        status_code = 429
+
+    def completion(client, params, api):
+        calls.append(params['model'])
+        if len(calls) == 1:
+            raise RateLimitError('private provider details')
+        return response('<h1>截断的页面')
+
+    monkeypatch.setattr(agent_client, 'create_completion', completion)
+    with resources.client_scope(client_factory=lambda **settings: FakeClient(**settings)):
+        result = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
+
+    assert result['display_status'] == 'fallback'
+    assert calls == ['offline-first', 'offline-fallback']
+
+
 @pytest.mark.parametrize('failure', ['model-error', 'cancelled'])
 def test_error_or_cancel_releases_lease_without_closing_owner(monkeypatch, contexts, offline, failure):
-    monkeypatch.setattr(agent_client, 'is_llm_enabled', lambda: True)
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
     calls = []
 
     def completion(*args):
@@ -162,7 +258,7 @@ def test_missing_owner_fails_closed_without_unmanaged_construction(monkeypatch, 
 
     monkeypatch.setattr(openai, 'OpenAI', forbidden)
     monkeypatch.setattr(agent_client, 'create_completion', forbidden)
-    monkeypatch.setattr(agent_client, 'is_llm_enabled', lambda: enabled)
+    monkeypatch.setattr(config, 'llm_enabled', lambda: enabled)
     assert resources._owner is None
     proposal = agent_client.generate_task_result(*contexts('no-owner'))
     display = agent_client.generate_plan_display('上午西湖。', ['2030-05-01'], 'trip-hangzhou')
@@ -172,7 +268,7 @@ def test_missing_owner_fails_closed_without_unmanaged_construction(monkeypatch, 
     assert resources._owner is None
 
 
-def test_default_pytest_guard_never_constructs_or_calls_model(monkeypatch, contexts, offline):
+def test_default_offline_fixture_never_constructs_or_calls_model(monkeypatch, contexts, offline):
     import openai
 
     def forbidden(*args, **kwargs):
@@ -187,7 +283,57 @@ def test_default_pytest_guard_never_constructs_or_calls_model(monkeypatch, conte
     assert len(offline) == 2
 
 
+def test_offline_constructor_guard_survives_enabling_model_configuration(monkeypatch):
+    import openai
+
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
+    with pytest.raises(AssertionError, match='real OpenAI constructor'):
+        openai.OpenAI(api_key='offline-test-key')
+    with pytest.raises(AssertionError, match='real OpenAI constructor'):
+        with resources.client_scope():
+            pytest.fail('real constructor guard allowed scope startup')
+    assert resources._owner is None
+
+
+@pytest.mark.parametrize('operation', ['connect', 'connect_ex', 'create_connection'])
+def test_offline_socket_guard_rejects_network(operation):
+    import socket
+
+    address = ('203.0.113.1', 443)
+    with pytest.raises(AssertionError, match='real network access'):
+        if operation == 'create_connection':
+            socket.create_connection(address)
+        else:
+            with socket.socket() as connection:
+                getattr(connection, operation)(address)
+
+
+def test_offline_http_guard_preserves_fake_transport_and_async_loop():
+    import httpx
+
+    def respond(request):
+        return httpx.Response(200, json={'offline': True})
+
+    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
+        assert client.get('https://offline.invalid').json() == {'offline': True}
+    with httpx.Client() as client:
+        with pytest.raises(AssertionError, match='real network access'):
+            client.get('https://offline.invalid')
+
+    async def exercise():
+        # Creating this loop also exercises Windows' local socketpair wakeup.
+        await asyncio.sleep(0)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+            assert (await client.get('https://offline.invalid')).json() == {'offline': True}
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(AssertionError, match='real network access'):
+                await client.get('https://offline.invalid')
+
+    asyncio.run(exercise())
+
+
 def test_fastapi_lifespan_orders_worker_and_drains_off_event_loop(monkeypatch):
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
     from app import main
     from app.api import dependencies as deps
 
@@ -303,8 +449,8 @@ def run_import_script(script):
 
 
 @pytest.mark.parametrize('module', [
-    'app.agents.tools', 'app.agents.tools.amap_mcp', 'app.agents.tools.places',
-    'app.api.tools', 'app.api.tools.amap_mcp', 'app.api.tools.places',
+    'app.agents.tools', 'app.services.maps.amap_mcp', 'app.services.maps.places',
+    'app.services.maps', 'app.services.maps.amap_mcp', 'app.services.maps.places',
 ])
 def test_tool_imports_have_no_bootstrap_or_cross_layer_side_effects(module):
     run_import_script("""
@@ -352,7 +498,7 @@ dotenv.load_dotenv = forbidden
 openai.OpenAI = forbidden
 logging.basicConfig = forbidden
 from app.agents import agent_client
-from app.agents.tools import amap_mcp
+from app.services.maps import amap_mcp
 from app.core import resources
 assert 'app.main' not in sys.modules
 assert 'app.storage.store' not in sys.modules

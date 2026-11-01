@@ -23,6 +23,12 @@ class _StagingSignal:
 class TurnCommit:
     def capture_request_context(self, trip_id, task_id=None, *, body=None, entry='main',
                                 request_id=None, message_id=None):
+        """Build a trusted execution snapshot without conflating ID roles.
+
+        The compatibility ``message_id`` argument always identifies the original
+        user message. The task's ``thinking_id`` is the assistant placeholder and
+        is not used as the authorization message.
+        """
         from app.services.itinerary.plan_basis import PlanBasis, plan_basis
         from app.workflow.execution import RequestContext
         from app.workflow.task_context import normalize_workflow
@@ -38,12 +44,16 @@ class TurnCommit:
             source = body if body is not None else payload.get('body', payload.get('feedback', ''))
             if kind == 'plan' and body is None:
                 source = next((row.body for row in self.messages[trip_id] if row.id == task.get('message_id')), '')
+            # The task dictionary keeps legacy keys; local names state their roles.
+            user_message_id = message_id or (task.get('message_id') if task else None) or 'operation-' + uuid4().hex
+            execution_task_id = task_id or 'operation-' + uuid4().hex
+            request_key = request_id or (task['request_id'] if task else uuid4().hex)
             return RequestContext(
                 trip_id=trip_id, owner_id=trip.owner.id,
-                execution_task_id=task_id or 'operation-' + uuid4().hex,
+                execution_task_id=execution_task_id,
                 conversation_task_id=task.get('conversation_task_id') if task else None,
-                request_id=request_id or (task['request_id'] if task else uuid4().hex),
-                message_id=message_id or (task.get('message_id') if task else None) or 'operation-' + uuid4().hex,
+                request_id=request_key,
+                message_id=user_message_id,
                 body=source or '', entry=entry,
                 strategy=task.get('execution_strategy', 'task_execution') if task else 'task_execution',
                 requirements_revision=task['requirements_revision'] if task else trip.requirements.revision,
@@ -250,10 +260,9 @@ class TurnCommit:
             next_question = crud_payload['args'].get('next_question', '') if crud_payload else ''
             needs_input = bool(next_question)
             has_itinerary = 'itinerary' in crud_kinds
-            has_presentation = 'presentation' in crud_kinds
             card = AgentCard('missing-info' if needs_input or failed else 'itinerary-draft' if has_itinerary else 'requirement-summary',
                 '需要补充' if needs_input else '旅行助手', body[:120], [],
-                [AgentAction('查看攻略', 'itinerary')] if has_itinerary or has_presentation else [AgentAction('继续聊天', 'chat')])
+                [AgentAction('查看攻略', 'itinerary')] if has_itinerary else [AgentAction('继续聊天', 'chat')])
             from app.storage.store import USERS
             message = Message(message_id, USERS['agent'], 'agent', body, datetime.now().strftime('%H:%M'), status, card)
             messages = stage.messages[trip_id]
@@ -278,7 +287,7 @@ class TurnCommit:
                     submission_digest=submission_digest,
                     result_url=f'/workspace/{trip_id}?tab=' + ('itinerary' if has_itinerary else 'chat'))
             self._persist_staged_turn(stage, trip_id)
-        if has_itinerary or has_presentation:
+        if has_itinerary:
             self._notify_display_worker()
         return receipt
 

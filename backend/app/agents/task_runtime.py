@@ -1,9 +1,10 @@
-"""单旅行 Agent：一个上下文、六个工具、一次终止提交。"""
+"""单旅行 Agent：一个上下文、原生地图与独立天气工具、一次终止提交。"""
 from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from functools import partial
 import json
 from time import monotonic
 from typing import Any, Mapping
@@ -14,11 +15,15 @@ from app.workflow.execution import RequestContext
 from app.workflow.execution import ExecutionResult
 from app.agents.agent_roles import travel_role, role_reasoning_effort
 from app.agents.budget import AgentBudgetError, TurnBudget
-from app.agents.main_input import project_main_context, project_main_read_context
+from app.agents.main_input import project_main_context
+from app.agents.tools.read_context import read_context
+from app.agents.tools.submit_changes import submit_changes
 from app.agents.model_transport import IncompleteModelOutput
 from app.services.places import collect_places
 from app.services.itinerary.planning import required_information
-from app.services.itinerary.planning_evidence import critical_route_review
+from app.services.maps.evidence import ROUTE_TOOLS, PLACE_TOOLS, evidence_kind, evidence_result, place_messages
+from app.services.maps.places import normalize_pois
+from app.services.maps.routes import normalize_route
 from app.agents.tools import registry as tools
 from app.workflow.task_context import normalize_workflow
 
@@ -54,8 +59,8 @@ def transit_detail_guard(task, evidence):
     if not isinstance(task, str) or not any(word in task for word in _ROUTE_DETAIL_HINTS):
         return None
     for row in evidence:
-        result = row.get('result', {})
-        if (row.get('tool') == 'query_route' and result.get('mode') == 'transit'
+        result = evidence_result(row)
+        if (evidence_kind(row) == 'query_route' and result.get('mode') == 'transit'
                 and result.get('origin_poi_id') != result.get('destination_poi_id')
                 and (result.get('transit_detail_status') == 'missing'
                      or (result.get('transit_detail_status') not in {'available', 'partial'}
@@ -77,7 +82,7 @@ class TaskExecutionRuntime:
     max_steps: int = 16
     max_corrections: int = 3
 
-    # 初始化脱离存储的快照、共享预算和绑定当前实例的六工具注册表。
+    # 初始化脱离存储的快照、共享预算和本轮工具注册表。
     def __post_init__(self):
         if not isinstance(self.request_context, RequestContext):
             raise ValueError('request_context必须由服务器创建')
@@ -104,12 +109,14 @@ class TaskExecutionRuntime:
         self.evidence = []
         self.external_results = {}
         saved = getattr(self.plan, 'evidence', []) if self.plan else []
-        self._merge_places(collect_places([
-            {'role': 'tool', 'name': 'search_places', 'content': json.dumps(row['result'], ensure_ascii=False)}
-            for row in saved if isinstance(row, dict) and row.get('tool') == 'search_places'
-            and isinstance(row.get('result'), dict)]))
-        self.registry = tools.agent_tool_registry(read_context=self._read_context,
-                                                 submit_changes=self._submit, query=self._query)
+        self._merge_places(collect_places(place_messages(saved)))
+        self.search_ids = set(self.catalog)
+        self.registry = tools.agent_tool_registry(
+            read_context=partial(read_context, request_context=self.request_context,
+                execution_context=self.execution_context, trip=self.trip, plan=self.plan, evidence=self.evidence),
+            submit_changes=partial(submit_changes, request_context=self.request_context,
+                execution_context=self.execution_context, evidence=self.evidence, budget=self.budget),
+            query=self._query)
         self._corrections = 0
         self._failures = {}
         self.messages = []
@@ -144,7 +151,7 @@ class TaskExecutionRuntime:
         try:
             self.budget.remaining()
             if self.execution_context.entry == 'confirm':
-                return self._submit({'user_quote': self.request_context.body,
+                return self.registry['submit_changes'].execute({'user_quote': self.request_context.body,
                                      'itinerary': {'action': 'confirm'}})
             self.messages = [
                 {'role': 'system', 'content': self.config.prompt},
@@ -251,82 +258,76 @@ class TaskExecutionRuntime:
             message['_responses_output'] = deepcopy(replay)
         return message
 
-    def _read_context(self, args):
-        section = args['section']
-        raw = {'requirements': {'items': self.execution_context.idea_cards},
-               'messages': self.execution_context.messages,
-               'ideas': self.execution_context.idea_cards,
-               'evidence': list(getattr(self.plan, 'evidence', []) or []) + self.evidence}.get(section, {})
-        return project_main_read_context(
-            section, raw, trip=self.trip, plan=self.plan,
-            expected_basis=self.request_context.plan_basis,
-            current_message_id=self.request_context.message_id, request_args=args)
+    def _known_coordinate(self, value):
+        try:
+            lon, lat = (float(part) for part in value.split(','))
+        except (AttributeError, TypeError, ValueError):
+            raise ValueError('路线坐标必须来自已查询的真实地点') from None
+        matches = [place for place in self.catalog.values()
+                   if place.get('longitude') == lon and place.get('latitude') == lat]
+        if not matches:
+            raise ValueError('路线坐标必须来自已查询的真实地点，请先搜索并查询详情')
+        return matches[0]
 
-    def _submit(self, args):
-        from app.services.agent_crud import prepare_changes
-        self.budget.remaining()
-        # 证据仅为服务器实际执行记录，不接受模型提交的事实或引用。
-        payload = prepare_changes(args, self.request_context, self.execution_context, deepcopy(self.evidence))
-        self.budget.remaining()
-        return ExecutionResult(changes=payload)
-
-    def _route_review(self):
-        return critical_route_review(self.trip, self.catalog, self.evidence,
-                                     self.budget.max_external - self.budget.external_calls)
-
-    # 普通查询复用原地图/天气适配器，同城、真实POI、缓存和外部预算均在服务端控制。
     def _query(self, name, args):
         self.budget.remaining()
         city = self.trip.requirements.city.removesuffix('市')
-        if not self.chat_entry and name in {'search_places', 'search_food', 'query_weather'}:
-            requested = args.get('city') or self.trip.requirements.city
-            if not requested or requested.removesuffix('市') != city:
+        if name not in ROUTE_TOOLS and name not in PLACE_TOOLS and name != 'query_weather':
+            raise ValueError('未知查询工具')
+        if not self.chat_entry and name in {'maps_text_search', 'query_weather'}:
+            if not args.get('city') or args['city'].removesuffix('市') != city:
                 raise ValueError('同城查询须使用当前住宿所在城市。')
-            args = dict(args, city=requested)
-        if name == 'query_route':
-            endpoints = [self.catalog.get(args.get(key)) for key in ('origin_poi_id', 'destination_poi_id')]
-            if any(not point or (not self.chat_entry and point.get('city', '').removesuffix('市') != city)
-                   for point in endpoints):
-                raise ValueError('路线仅接受目录中的真实POI，请先查询地点。')
-        planning = self.execution_context.entry in {'planning', 'revision'}
-        if planning and name == 'search_food':
-            pending = [row for row in self._route_review() if row['status'] == 'not_attempted']
-            if pending:
-                return {'status': 'prerequisite_needed', 'route_review': pending,
-                        'instruction': '先查询关键住宿接驳，再查具体餐厅。'}
+        if name == 'maps_search_detail' and args.get('id') not in self.search_ids:
+            raise ValueError('地点详情只接受本轮搜索或已保存地点返回的真实ID')
+        endpoints = None
+        if name in ROUTE_TOOLS:
+            endpoints = [self._known_coordinate(args.get(key)) for key in ('origin', 'destination')]
+            if not self.chat_entry and any(point.get('city', '').removesuffix('市') != city for point in endpoints):
+                raise ValueError('同城路线须使用住宿所在城市的真实地点')
+            if ROUTE_TOOLS[name] == 'transit':
+                for key, point in zip(('city', 'cityd'), endpoints):
+                    if args.get(key, '').removesuffix('市') != point.get('city', '').removesuffix('市'):
+                        raise ValueError('公交城市须与已查询地点所在城市一致')
         key = (name, json.dumps(args, sort_keys=True, ensure_ascii=False))
-        if name != 'query_route' and key in self.external_results:
+        if key in self.external_results:
             self.event('查询缓存复用', {'tool': name, 'scope': 'current_turn'})
             return deepcopy(self.external_results[key])
-        if name != 'query_route':
-            required_calls = 6 if name in {'search_places', 'search_food'} else 2
-            self.budget.reserve(external=required_calls)
-            if name != 'query_weather':
-                self.budget.external()
-        from app.agents.tools.amap_mcp import budget_scope
+        from app.services.maps.amap_mcp import budget_scope
         from app.agents.tools.weather import budget_scope as weather_scope
-        started = monotonic()
         scope = weather_scope if name == 'query_weather' else budget_scope
+        started = monotonic()
+        if name != 'query_weather':
+            self.budget.external()
         with scope(self.budget):
             output = tools.run_tool(name, args, place_catalog=self.catalog, route_cache=self.cache)
         self.budget.remaining()
-        self._merge_places(collect_places([{'role': 'tool', 'name': name,
-                                           'content': json.dumps(output, ensure_ascii=False)}]))
-        if name != 'query_route' and output.get('status') == 'available':
+        normalized = output
+        if name in PLACE_TOOLS:
+            if name == 'maps_text_search':
+                self.search_ids.update(poi['id'] for poi in output.get('pois', [])
+                                       if isinstance(poi, dict) and isinstance(poi.get('id'), str))
+            elif output.get('status') != 'unavailable' and output.get('id') != args['id']:
+                raise ValueError('地图详情返回的ID与请求不一致')
+            normalized = normalize_pois(output)
+            self._merge_places(collect_places([{'role': 'tool', 'name': 'search_places',
+                'content': json.dumps(normalized, ensure_ascii=False)}]))
+        elif endpoints:
+            # Decode only for business evidence. LLM receives the full native result.
+            normalized = normalize_route({'route': output.get('route', output)},
+                                         *endpoints, mode=ROUTE_TOOLS[name])
+        if output.get('status') != 'unavailable':
             self.external_results[key] = deepcopy(output)
         self.evidence.append({'tool': name, 'arguments': deepcopy(args), 'result': deepcopy(output),
+                              'normalized': deepcopy(normalized),
                               'queried_at': datetime.now(timezone.utc).isoformat(timespec='seconds'),
                               'seconds': round(monotonic() - started, 3)})
-        if name == 'search_places' and not self.chat_entry:
-            # 聊天生成与页面入口共享路线提示；只读查询不强制补查整条行程。
-            return dict(output, route_review=self._route_review())
         return output
 
     def _route_unavailable_answer(self, warning):
         lines = [warning]
         for row in self.evidence:
-            result = row.get('result', {})
-            if row.get('tool') != 'query_route' or result.get('status') != 'available':
+            result = evidence_result(row)
+            if evidence_kind(row) != 'query_route' or result.get('status') != 'available':
                 continue
             details = []
             if result.get('duration_minutes') is not None:

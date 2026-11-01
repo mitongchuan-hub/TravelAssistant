@@ -67,8 +67,12 @@ def fake_places(arguments):
         for i, (name, address) in enumerate([('湖滨酒店（西湖店）', '湖滨路1号'), ('湖滨酒店（城站店）', '城站路2号')]) ]}
 trips.search_places = fake_places
 def fake_tool(name, arguments, **kwargs):
-    if name == 'search_places':
-        return fake_places(arguments)
+    if name == 'maps_text_search':
+        return {'pois': [{'id': row['poi_id'], 'name': row['name']} for row in fake_places(arguments)['candidates']]}
+    if name == 'maps_search_detail':
+        row = next(row for row in fake_places(arguments)['candidates'] if row['poi_id'] == arguments['id'])
+        return {'id': row['poi_id'], 'name': row['name'], 'address': row['address'], 'city': row['city'],
+                'location': f"{row['longitude']},{row['latitude']}"}
     raise AssertionError('Unexpected external tool in browser fixture')
 registry.run_tool = fake_tool
 
@@ -80,7 +84,8 @@ class ScriptedModel:
         if '我住' in body:
             changes.update(requirements_patch={'start_date': '2030-05-01', 'end_date': '2030-05-01',
                 'day_count': 1, 'transport_mode': 'transit'}, lodging={'poi_id': 'browser-hotel-0'})
-            steps = [('search_places', {'city': '杭州', 'keywords': '湖滨酒店（西湖店）'})]
+            steps = [('maps_text_search', {'city': '杭州', 'keywords': '湖滨酒店（西湖店）'}),
+                     ('maps_search_detail', {'id': 'browser-hotel-0'})]
         elif '确认' in body:
             changes['itinerary'] = {'action': 'confirm'}
             steps = []

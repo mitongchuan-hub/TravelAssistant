@@ -131,9 +131,10 @@ def test_trace_sink_failure_does_not_interrupt_model_logging():
 def test_real_model_request_adapter_publishes_progress_before_response(store, monkeypatch):
     from types import SimpleNamespace
     from app.agents import agent_client
+    from app.core import config
 
     monkeypatch.setenv('OPENAI_API_KEY', 'test-only-key')
-    monkeypatch.setattr(agent_client, 'is_llm_enabled', lambda: True)
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
     monkeypatch.setattr(agent_client, 'record_agent_run', lambda *args, **kwargs: None)
     task, _ = store.submit_task('trip-hangzhou', 'chat', {'body': '你好'}, 'adapter-test')
 
@@ -179,3 +180,27 @@ def test_completed_progress_dto_is_inactive_and_does_not_expose_private_fields()
     assert 'SECRET' not in json.dumps(dto)
     assert '<script>' in dto['execution_progress']['steps'][0]['detail']
     # Frontend must text-escape query detail and collapse completed execution.
+
+
+@pytest.mark.parametrize('terminal', ['reply', 'submit'])
+def test_run_record_reads_current_model_and_budget_events(terminal):
+    from datetime import datetime
+    from app.agents.agent_client import ConversationTrace, _agent_run_row
+    trace = ConversationTrace('request', datetime.now().isoformat(), 'trip', '用户消息')
+    trace.add('模型请求', {'model': 'primary'})
+    trace.add('模型响应', {'content': None, 'tool_calls': [{'name': 'read_context'}],
+                           'usage': {'prompt_tokens': 10, 'completion_tokens': 2}})
+    trace.add('切换备用模型', {'to': 'fallback'})
+    final = {'content': '最终回复' if terminal == 'reply' else None,
+             'tool_calls': [] if terminal == 'reply' else [{'name': 'submit_changes', 'arguments': '{}'}],
+             'usage': {'prompt_tokens': 15, 'completion_tokens': 5}}
+    trace.add('模型响应', final)
+    trace.add('Task Runtime预算', {'tool_calls': 2})
+    row = _agent_run_row(trace, None)
+    assert row['tool_calls'] == 2
+    assert row['model'] == 'fallback'
+    assert row['tokens_in'] == 25 and row['tokens_out'] == 7
+    if terminal == 'reply':
+        assert row['output'] == '最终回复'
+    else:
+        assert json.loads(row['output']) == final['tool_calls']

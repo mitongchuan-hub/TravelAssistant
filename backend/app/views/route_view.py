@@ -80,7 +80,7 @@ def _place_view(place):
     if place is None:
         return None
     # Reuse the provider's marker URI, never a URL supplied by a model or user.
-    from app.api.tools.places import map_url
+    from app.services.maps.places import map_url
     view = {key: getattr(place, key) for key in
             ('name', 'poi_id', 'address', 'city', 'district', 'source', 'fetched_at')}
     view['map_url'] = map_url(place)

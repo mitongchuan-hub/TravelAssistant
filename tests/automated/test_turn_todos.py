@@ -44,7 +44,8 @@ def test_terminal_submit_is_one_model_call_and_not_a_store_mutation():
     def request(client, model, messages, **kwargs):
         seen.append(kwargs['agent_role'])
         assert {tool['function']['name'] for tool in kwargs['tools']} == {
-            'read_context', 'query_weather', 'search_places', 'search_food', 'query_route', 'submit_changes'}
+            'read_context', 'query_weather', 'maps_text_search', 'maps_search_detail',
+            'maps_direction_walking', 'maps_direction_driving', 'maps_direction_transit_integrated', 'submit_changes'}
         return response('不能作为已保存答复透传', [call(arguments=changes())])
 
     runtime = make_runtime(request)

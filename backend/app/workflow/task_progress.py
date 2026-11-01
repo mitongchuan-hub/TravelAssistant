@@ -15,6 +15,9 @@ MODEL_LABELS = {
 }
 TOOL_LABELS = {
     'read_context': '读取旅行信息', 'query_weather': '查询天气',
+    'maps_text_search': '检索地点与餐饮', 'maps_search_detail': '查询地点详情',
+    'maps_direction_walking': '查询步行路线', 'maps_direction_driving': '查询驾车路线',
+    'maps_direction_transit_integrated': '查询公交地铁路线',
     'search_places': '检索地点', 'search_food': '查找餐饮', 'query_route': '查询交通路线',
     'check_requirements': '检查出行需求', 'update_requirements': '整理需求变更',
     'edit_plan_text': '调整行程文字',
@@ -39,7 +42,7 @@ def _detail(name, arguments):
     if name == 'read_context':
         return {'requirements': '出行需求', 'plan': '当前行程', 'evidence': '已查询资料',
                 'messages': '聊天记录', 'ideas': '想法墙'}.get(arguments.get('section'), '')
-    if name not in {'query_weather', 'search_places', 'search_food'}:
+    if name not in {'query_weather', 'search_places', 'search_food', 'maps_text_search'}:
         return ''
     # Only these user-facing query fields may leave the internal trace.
     values = [arguments.get(key) for key in ('city', 'keywords', 'keyword', 'query', 'start_date', 'end_date')]

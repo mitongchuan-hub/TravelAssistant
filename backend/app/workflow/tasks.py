@@ -246,12 +246,14 @@ class TravelTasks:
                 trip.workflow_state = deepcopy(next_workflow)
                 self._defer_persist = previous_defer + 1
                 if original:
-                    thinking_id = self.start_agent_task(trip_id).id
+                    # A retry gets a fresh assistant placeholder; the original user message remains the authorization source.
+                    assistant_message_id = self.start_agent_task(trip_id).id
+                    user_message_id = original['message_id']
                 else:
-                    message, thinking = self.queue_user_message(
+                    user_message, assistant_message = self.queue_user_message(
                         trip_id, _operation_body(kind, payload), trip.owner.id,
                     )
-                    message_id, thinking_id = message.id, thinking.id
+                    user_message_id, assistant_message_id = user_message.id, assistant_message.id
                 self._defer_persist = previous_defer
                 task_id = uuid4().hex
                 # Focus is navigation only; only an active question can bind a short
@@ -264,7 +266,8 @@ class TravelTasks:
                     'id': task_id, 'trip_id': trip_id, 'kind': kind, 'payload': payload,
                     'request_id': request_id, 'retry_of': retry_of, 'status': 'queued',
                     'message': '等待处理', 'created_at': now(), 'updated_at': now(),
-                    'message_id': message_id, 'thinking_id': thinking_id, 'result_url': '',
+                    # Keep legacy wire/storage keys stable at this boundary.
+                    'message_id': user_message_id, 'thinking_id': assistant_message_id, 'result_url': '',
                     'plan_id': self.plans[trip_id].id,
                     'plan_basis': current_basis.to_dict(),
                     'requirements_revision': trip.requirements.revision,

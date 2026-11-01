@@ -12,7 +12,7 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / 'backend'))
 sys.path.insert(1, str(PROJECT_ROOT))
-PROMPT_PATH = PROJECT_ROOT / 'backend/app/agents/prompts/chat.txt'
+PROMPT_PATH = PROJECT_ROOT / 'backend/app/agents/prompts/main.txt'
 
 from app.core import config, resources
 from tests.scope_eval import run_case

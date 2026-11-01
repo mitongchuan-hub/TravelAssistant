@@ -40,12 +40,6 @@ def travel_role(mode='city'):
                      max_steps=16, reasoning_effort='medium')
 
 
-def chat_role(mode='city'):
-    _check_mode(mode)
-    return AgentRole('travel_agent', load_prompt('chat.txt'), agent_tool_specs(readonly=True),
-                     max_steps=None, reasoning_effort='medium')
-
-
 def display_role(mode='city'):
     _check_mode(mode)
     return AgentRole('display', load_prompt('display.txt'), reasoning_effort='low')

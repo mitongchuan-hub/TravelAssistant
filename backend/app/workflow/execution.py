@@ -20,12 +20,19 @@ def serialize(value):
 
 @dataclass(frozen=True)
 class RequestContext:
-    """Server task identity and the state captured before model execution."""
+    """Server task identity and state captured before model execution.
+
+    ``request_id`` is the client idempotency key; ``execution_task_id`` is the
+    server job identity. ``message_id`` is the triggering user message and is
+    distinct from the task's assistant placeholder ``thinking_id``.
+    ``conversation_task_id`` is legacy workflow linkage, not another request ID.
+    """
     trip_id: str
     owner_id: str
     execution_task_id: str
     conversation_task_id: str | None
     request_id: str
+    # Compatibility name: this is the original user message ID, not the task ID.
     message_id: str
     body: str
     entry: str

@@ -194,7 +194,7 @@ def test_scripted_query_budget_exhaustion_cannot_save_next_submission(store, mon
     monkeypatch.setattr('app.agents.tools.registry.run_tool', lambda *a, **kw: queried.append(a) or {'status': 'available'})
     body = '记录夜骑，并查询西湖'
     runtime = runtime_for(store, body, ScriptedModel(
-        ('search_places', {'city': '杭州', 'keywords': '西湖'}),
+        ('maps_text_search', {'city': '杭州', 'keywords': '西湖'}),
         ('submit_changes', {'user_quote': body, 'ideas': [
             {'action': 'create', 'kind': '地点', 'title': '夜骑', 'body': '夜骑'}]})),
         budget=TurnBudget(max_external=0))
@@ -276,25 +276,26 @@ def test_missing_transit_details_cannot_publish_fabricated_terminal_itinerary(st
     calls = []
     def query(name, arguments, **kwargs):
         calls.append(name)
-        if name == 'search_places':
-            return {'status': 'available', 'candidates': [lake]}
-        assert name == 'query_route'
-        return {'status': 'available', 'mode': 'transit', 'origin_poi_id': hotel['poi_id'],
-                'destination_poi_id': lake['poi_id'], 'origin_name': hotel['name'],
-                'destination_name': lake['name'], 'duration_minutes': 25, 'distance_meters': 5000,
-                'transit_detail_status': 'missing', 'transit_steps': []}
+        if name == 'maps_text_search':
+            return {'pois': [{'id': lake['poi_id'], 'name': lake['name']}]}
+        if name == 'maps_search_detail':
+            return {'id': lake['poi_id'], 'name': lake['name'], 'city': lake['city'],
+                    'location': f"{lake['longitude']},{lake['latitude']}"}
+        assert name == 'maps_direction_transit_integrated'
+        return {'transits': [{'duration': '1500', 'distance': '5000'}]}
     monkeypatch.setattr('app.agents.tools.registry.run_tool', query)
     body = '请查询公交线路并生成行程'
     text = '09:00 在湖滨站乘坐999路公交，在西湖站下车。'
-    model = ScriptedModel(('search_places', {'city': '杭州', 'keywords': '西湖'}),
-        ('query_route', {'origin_poi_id': hotel['poi_id'], 'destination_poi_id': lake['poi_id'], 'mode': 'transit'}),
+    model = ScriptedModel(('maps_text_search', {'city': '杭州', 'keywords': '西湖'}),
+        ('maps_search_detail', {'id': lake['poi_id']}),
+        ('maps_direction_transit_integrated', {'origin': '120.15,30.25', 'destination': '120.14,30.24', 'city': '杭州', 'cityd': '杭州'}),
         ('submit_changes', {'user_quote': body, 'itinerary': {'action': 'replace', 'text': text,
             'idea_outcomes': [{'idea_ref': card.id, 'status': 'excluded', 'reason': '待用户确认'}
                               for card in store.idea_cards[TRIP]]}}),
         '公交线路明细待核实，本轮不保存新行程。')
     runtime = runtime_for(store, body, model)
     proposal = runtime.run()
-    assert calls == ['search_places', 'query_route']
+    assert calls == ['maps_text_search', 'maps_search_detail', 'maps_direction_transit_integrated']
     assert not proposal.changes
     store.commit_turn(runtime.request_context, proposal)
     restored = reload(store)

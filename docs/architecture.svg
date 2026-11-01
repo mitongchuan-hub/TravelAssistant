@@ -38,7 +38,7 @@
   <text x="512" y="401" class="mono">conversation  最近 8 条用户与助手消息</text>
   <text x="512" y="428" class="mono">requirements  known + items + 缺项</text>
   <text x="512" y="455" class="mono">current_plan  当前版本行程 / 无则 null</text>
-  <text x="512" y="485" class="small">附加系统提示词与 6 个工具定义</text>
+  <text x="512" y="485" class="small">附加系统提示词与 8 个工具定义</text>
   <text x="512" y="512" class="small">各部分筛选、裁剪与版本检查；业务旧入口仍兼容</text>
 
   <path d="M972 376H1005" class="edge"/>
@@ -65,8 +65,8 @@
   <path d="M324 708H370" class="edge"/>
   <rect x="660" y="640" width="286" height="169" rx="12" class="panel"/>
   <text x="680" y="670" class="label">工具注册表 · 串行执行</text>
-  <text x="680" y="700" class="body">读取上下文 / 天气 / 地点</text>
-  <text x="680" y="727" class="body">餐饮 / 路线 / submit_changes</text>
+  <text x="680" y="700" class="body">原生高德地图 ×5 / 独立天气</text>
+  <text x="680" y="727" class="body">read_context / submit_changes</text>
   <text x="680" y="756" class="small">参数 Schema、真实 POI、超时与取消</text>
   <text x="680" y="783" class="small">地图 / 天气适配器 → 外部服务</text>
   <path d="M602 708H648" class="edge"/>

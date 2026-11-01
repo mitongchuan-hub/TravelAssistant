@@ -46,7 +46,7 @@ TravelAssistant/
 └── .env                      # 本地配置，不提交
 ```
 
-前端只访问相对 `/api` 路径；模型与地图密钥始终留在后端。页面专属地图实现 `backend/app/api/tools/` 与 `backend/app/agents/tools/` 独立维护，不相互调用。生成的 HTML 攻略不是 Vue 模板：仍从受保护的文档端点加载进无脚本/无同源权限 iframe。
+前端只访问相对 `/api` 路径；模型与地图密钥始终留在后端。地图连接和地点解析统一位于 `backend/app/services/maps/`，Agent 与兼容 API 复用；模型直接使用筛选后的高德原生工具，天气保持独立实现。生成的 HTML 攻略不是 Vue 模板：仍从受保护的文档端点加载进无脚本/无同源权限 iframe。
 
 修改规则、数据保存和 Agent 执行分别查看 `services/`、`storage/`、`agents/`；页面结构和浏览器交互查看 `frontend/src/`。迁移合同见 [前后端迁移说明](docs/frontend-backend-migration.md)。
 
@@ -97,11 +97,11 @@ TRAVEL_COOKIE_SECURE=0
 - `AMAP_MAPS_API_KEY` 非空时优先于 `AMAP_MAP_KEY`；凭证仅由服务端使用。
 - `TRAVEL_DISPLAY_ENABLED=0` 关闭后台网页生成，正文仍可交付。
 - `TRAVEL_PERSISTENCE=0` 不持久保存状态，仅适合隔离调试；正常使用保持开启。
-- 其他配置项见 `.env.example`；实际参数处理以 `backend/app/agents/agent_roles.py`、`backend/app/agents/model_transport.py` 和 `backend/app/agents/tools/amap_mcp.py`、`backend/app/api/tools/amap_mcp.py` 为准。
+- 其他配置项见 `.env.example`；实际参数处理以 `backend/app/agents/agent_roles.py`、`backend/app/agents/model_transport.py` 和 `backend/app/services/maps/amap_mcp.py` 为准。
 
 配置由 `backend/app/core/config.py::load_environment()` 在入口显式加载一次，已有进程环境变量优先（`override=False`）；配置模块及模型/地图适配器的导入本身不读取 `.env`。Web 入口先加载并严格验证配置，再创建全局 Store，模型客户端在 FastAPI lifespan 中创建并供聊天与 HTML 生成复用，关闭时等待活跃借用结束后统一释放。每轮消息、预算、工作区和轨迹仍独立。
 
-独立调用 Agent 的脚本也须先执行 `load_environment()` 和对应范围的 `validate_configuration()`，再在 `app.core.resources.client_scope()` 内运行；业务函数不再偷偷创建临时模型客户端。未启动资源、无密钥或显式禁用时明确失败；默认 pytest 与离线评测不会创建真实客户端。修改连接密钥、地址等配置后需重新启动资源生命周期，不支持运行中切换共享连接。
+独立调用 Agent 的脚本也须先执行 `load_environment()` 和对应范围的 `validate_configuration()`，再在 `app.core.resources.client_scope()` 内运行；业务函数不再偷偷创建临时模型客户端。未启动资源、无密钥或显式禁用时明确失败；生产模型配置不识别 pytest。自动测试通过测试夹具禁用真实模型、拦截真实客户端与网络，需验证生命周期时显式注入假客户端；离线评测不启动模型资源。修改连接密钥、地址等配置后需重新启动资源生命周期，不支持运行中切换共享连接。
 
 不要提交 `.env`、SQLite 数据库或包含用户对话的运行记录。
 
@@ -151,7 +151,7 @@ HTTPS 部署显式设 `TRAVEL_COOKIE_SECURE=1`，代理传递可信主机/协议
 
 ### Agent 执行结果与保存
 
-主 Agent 直接返回 `ExecutionResult`：回复正文、可选的完整变更包、失败状态和原因。`backend/app/workflow/execution.py` 定义轻量请求快照、执行结果和持久化回执；行程内容摘要位于 `backend/app/services/itinerary/plan_basis.py`，供任务和保存时检查业务版本。
+主 Agent 直接返回 `ExecutionResult`：回复正文、可选的完整变更包、失败状态和原因。`read_context` 与 `submit_changes` 的工具定义、参数 Schema 和执行入口分别位于 `backend/app/agents/tools/read_context.py`、`submit_changes.py`；注册表统一注册，运行器绑定本轮快照与预算并调度执行。工具不直接操作 Store，读取投影和业务校验继续复用既有模块。`backend/app/workflow/execution.py` 定义轻量请求快照、执行结果和持久化回执；行程内容摘要位于 `backend/app/services/itinerary/plan_basis.py`，供任务和保存时检查业务版本。
 
 已删除 `agent_protocol.py` 和 `turn_workspace.py`，不再注册候选、选择候选 ID、冻结嵌套协议或对进程内提案签名。保存函数在锁内检查当前任务、请求和业务版本，复验变更包的原话、证据、目标及摘要，随后原子持久化。历史任务回执保持可读，执行结果不能改写历史工作流。
 
@@ -165,15 +165,23 @@ HTTPS 部署显式设 `TRAVEL_COOKIE_SECURE=1`，代理传递可信主机/协议
 
 用户只需发消息，即可咨询、补充需求、匹配住宿、管理想法、生成或修改行程、确认、清空以及调整攻略网页。新建对话直接进入聊天；不再要求填写设置表单或选择业务入口。前端想法墙保留，自由要求条目与结构化需求统一作为 Agent 的 requirements 输入；想法页生成快捷操作发送普通聊天消息。攻略预览和下载保留。
 
-Agent 可自由回答非旅行问题，并拥有 `read_context`、天气、地点、餐饮、路线和 `submit_changes` 六个工具。查询不会自动写入业务数据；只有明确授权并通过服务器校验的变更才会保存。住宿只能引用本轮真实地图查询地点，重名在聊天中澄清。保存行程或调整网页后通知后台攻略生成。
+Agent 可自由回答非旅行问题，并拥有 `read_context`、`submit_changes`、独立的 `query_weather` 和 5 个高德原生工具，共 8 个工具。高德原生工具为地点搜索 `maps_text_search`、详情 `maps_search_detail`、步行 `maps_direction_walking`、驾车 `maps_direction_driving` 和公交 `maps_direction_transit_integrated`；餐厅通过地点搜索与详情查询，不再维护单独餐饮工具。查询不会自动写入业务数据；只有明确授权并通过服务器校验的变更才会保存。住宿只能引用本轮真实地图查询地点，重名在聊天中澄清。保存行程或调整网页后通知后台攻略生成。
 
 模型输入中的 current_date 直接提供当前日期，不要求模型根据页面入口判断用户意图。工具串行执行，不设固定聊天步数或调用次数；保留单次模型配置超时、360 秒整轮期限、取消、账号隔离、参数和真实 POI 校验，重复无效调用会终止。历史任务接口保留兼容。
+
+### 地图工具与天气
+
+高德原生名称、描述和参数快照位于 `backend/app/agents/tools/amap_tools.json`，依据配置服务实际 `list_tools` 响应获取（2026-10-30）；连接时仍根据服务实时 Schema 验证工具参数。仅开放上述 5 个工具，不开放高德天气、打车或其他能力。搜索返回候选后，由 Agent 选择要获取详情的地点；不再自动查询每个候选的详情。
+
+模型收到高德原始返回；服务器另外解析真实地点、坐标和路线作为业务证据。路线坐标须属于已查询地点或已确认住宿，公交城市须对应真实地点；查询证据同时保留原始结果与规范化结果，旧证据继续可读。相同查询在本轮缓存，失败不缓存；时间、取消和外部调用预算继续生效。兼容设置接口复用同一高德连接与地点解析。
+
+天气继续由 `backend/app/agents/tools/weather.py` 的原服务实现查询，不改用高德天气。原生工具减少维护包装，但搜索与详情拆开可能增加模型调用次数，不能据此宣称更快或更准确。
 
 ### 事务保存与攻略生成
 
 执行策略固定为 `task_execution`：一个 `travel_agent` 在同一有界循环中读取需求、直接查询地点/天气/交通，并生成或修改行程；不再委派需求、查询、规划、修改子 Agent。工具定义、Schema 和实现由注册表绑定。`submit_changes` 是终止工具：一轮最多提交一个完整业务变更包，内部直接返回变更包，由 `TurnCommit` 复验并原子保存。非法子操作导致整包拒绝，不隐式保留部分写入；保存成功文案以实际提交结果为准。历史策略标记仍归一为 `task_execution`，不保留旧框架切换。
 
-正文先保存，HTML 网页独立派生。最后一个 `display` Agent 根据正文、日期与展示偏好生成完整 HTML/CSS；网页在无脚本、无同源权限的 iframe 中预览。生成失败可重试并阅读原文；风格重生失败时保留来源仍匹配的上一份网页。新消息会替代正在执行的旧轮；版本变化、清空聊天或新编辑使旧结果失效。失败保留已有方案和输入，可重试；服务重启不自动重跑写入任务。清空聊天保留需求和当前行程，但撤销待补充目标与未完成任务。
+正文先保存，HTML 网页独立派生。展示执行器直接接收正文字符串，返回 `display`、`display_source_hash`、`display_status`，失败时附安全错误信息；不再借用包含业务和工作流字段的旧 `AgentReply`。最后一个 `display` Agent 根据正文与日期，使用默认“轻松、愉悦”风格生成完整 HTML/CSS；网页在无脚本、无同源权限的 iframe 中预览。生成失败可重试并阅读原文；失败时保留来源仍匹配的上一份网页。新消息会替代正在执行的旧轮；版本变化、清空聊天或新编辑使旧结果失效。失败保留已有方案和输入，可重试；服务重启不自动重跑写入任务。清空聊天保留需求和当前行程，但撤销待补充目标与未完成任务。
 
 聊天中的执行过程按真实模型与工具事件更新，展示需求整理、天气／地点／交通查询等步骤及耗时。执行时展开，结束后可再次展开回看；失败、暂无结果和被新消息替代分别标注。过程随助手消息持久保存，旧消息没有记录时保持原展示。
 
@@ -182,6 +190,17 @@ Agent 读取当前已保存行程完整正文和有界想法摘要，更多内�
 想法墙也是旅行输入。完整生成提交时，Agent 须逐项返回想法处理结果：已安排、存在冲突、需补充信息或不适用，并说明依据；已安排项须摘录新行程的对应文字。程序检查卡片引用覆盖与正文摘录，卡片不是已核实事实，也不扩大局部修改、预订或支付授权。
 
 一轮可以多次查询，但合法 `submit_changes` 会立即结束模型执行；首版不支持保存后同轮继续规划。规划未完成时可明确仅提交需求，整包提交失败则不能暗中保存需求子集。新消息、业务版本和持久化检查保护旧状态，但不保证模型内容完全正确；保存成功或网页就绪不代表事实、预算或现实可执行性已核验。
+
+## ID 职责
+
+- `trip_id`：旅行资源归属。
+- `request_id`：客户端提交的幂等键；网络不确定时重发复用同一值。
+- `execution_task_id`：服务器实际执行作业的身份；用户主动重试创建新的任务身份。
+- `message_id`：兼容字段名，指触发执行的用户原始消息。
+- `thinking_id`：兼容字段名，指执行期间的助手占位消息，完成后更新为回复。
+- `conversation_task_id`：旧工作流关联字段，不是第二个请求 ID；当前仅用于已有会话问题关联。
+
+网络重发使用相同的 `request_id`；用户主动重试使用新的 `request_id`，并通过 `retry_of` 指向原任务。以上字段职责不同，不合并，也不修改历史数据库和 API 字段名。
 
 ## 任务接口
 

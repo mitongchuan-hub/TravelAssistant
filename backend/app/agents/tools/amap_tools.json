@@ -1,0 +1,116 @@
+[
+  {
+    "name": "maps_direction_driving",
+    "description": "驾车路径规划 API 可以根据用户起终点经纬度坐标规划以小客车、轿车通勤出行的方案，并且返回通勤方案的数据。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string",
+          "description": "出发点经纬度，坐标格式为：经度，纬度"
+        },
+        "destination": {
+          "type": "string",
+          "description": "目的地经纬度，坐标格式为：经度，纬度"
+        }
+      },
+      "required": [
+        "origin",
+        "destination"
+      ]
+    }
+  },
+  {
+    "name": "maps_direction_transit_integrated",
+    "description": "根据用户起终点经纬度坐标规划综合各类公共（火车、公交、地铁）交通方式的通勤方案，并且返回通勤方案的数据，跨城场景下必须传起点城市与终点城市",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string",
+          "description": "出发点经纬度，坐标格式为：经度，纬度"
+        },
+        "destination": {
+          "type": "string",
+          "description": "目的地经纬度，坐标格式为：经度，纬度"
+        },
+        "city": {
+          "type": "string",
+          "description": "公共交通规划起点城市"
+        },
+        "cityd": {
+          "type": "string",
+          "description": "公共交通规划终点城市"
+        }
+      },
+      "required": [
+        "origin",
+        "destination",
+        "city",
+        "cityd"
+      ]
+    }
+  },
+  {
+    "name": "maps_direction_walking",
+    "description": "根据输入起点终点经纬度坐标规划100km 以内的步行通勤方案，并且返回通勤方案的数据",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string",
+          "description": "出发点经度，纬度，坐标格式为：经度，纬度"
+        },
+        "destination": {
+          "type": "string",
+          "description": "目的地经度，纬度，坐标格式为：经度，纬度"
+        }
+      },
+      "required": [
+        "origin",
+        "destination"
+      ]
+    }
+  },
+  {
+    "name": "maps_search_detail",
+    "description": "查询关键词搜或者周边搜获取到的POI ID的详细信息",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "关键词搜或者周边搜获取到的POI ID"
+        }
+      },
+      "required": [
+        "id"
+      ]
+    }
+  },
+  {
+    "name": "maps_text_search",
+    "description": "关键字搜索 API 根据用户输入的关键字进行 POI 搜索，并返回相关的信息",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "keywords": {
+          "type": "string",
+          "description": "查询关键字"
+        },
+        "city": {
+          "type": "string",
+          "description": "查询城市"
+        },
+        "citylimit": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否限制城市范围内搜索，默认不限制"
+        }
+      },
+      "required": [
+        "keywords"
+      ]
+    }
+  }
+]

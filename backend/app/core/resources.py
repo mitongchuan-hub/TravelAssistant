@@ -40,9 +40,8 @@ def client_scope(
     """Own one client until all request leases drain, then close it exactly once.
 
     Concurrent/nested scopes are rejected, including while startup or shutdown
-    is running. An explicit factory permits offline fakes under pytest, but
-    still requires explicit connection settings and respects model disablement.
-    The default OpenAI factory is never used under pytest.
+    is running. An explicit factory allows alternative client implementations;
+    all factories require the same connection settings and respect disablement.
     """
     global _owner
     owner = _Owner()
@@ -60,7 +59,7 @@ def client_scope(
                 config.model_timeout()
             elif not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
                 raise config.ConfigurationError('timeout_seconds: 必须为有限正数秒数')
-        enabled = config.llm_enabled() if client_factory is None else config._llm_configured()
+        enabled = config.llm_enabled()
         if enabled:
             # Capture client settings once per owner, not once per request.
             settings = {

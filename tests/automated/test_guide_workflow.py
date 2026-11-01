@@ -48,7 +48,7 @@ def test_style_request_without_submission_does_not_mutate(store):
     assert not store.display_jobs
 
 
-def test_submitted_style_keeps_business_content_and_confirmation(store):
+def test_style_submission_is_rejected_and_keeps_business_content(store):
     before = deepcopy(store.plans[TRIP])
     calls = []
 
@@ -58,56 +58,43 @@ def test_submitted_style_keeps_business_content_and_confirmation(store):
 
     value = runtime(store, request)
     proposal = value.run()
-    assert not proposal.failed
-    assert store.plans[TRIP] == before  # A validated terminal proposal is not a write.
-    receipt = store.commit_turn(value.request_context, proposal)
-    after = store.plans[TRIP]
-    assert receipt.committed
-    assert len(calls) == 1  # No delegation or reply-review model.
-    assert after.id == before.id
-    assert after.text == before.text and after.evidence == before.evidence
-    assert after.status == '已确认'
-    assert plan_basis(after) == plan_basis(before)
-    assert after.display_style == '简洁手账风'
-    assert after.display_status == 'pending'
-    assert next(iter(store.display_jobs.values()))['style_instruction'] == '简洁手账风'
+    assert proposal.failed
+    assert store.plans[TRIP] == before
+    assert not store.display_jobs
+    assert calls
 
 
-def test_stale_plan_cannot_receive_a_prepared_style(store):
+def test_style_submission_cannot_mutate_a_stale_plan(store):
     before = deepcopy(store.plans[TRIP])
     value = runtime(store, lambda *a, **kw: response(
         user_quote='把攻略改成简洁手账风', presentation={'style_instruction': '简洁手账风'}))
     proposal = value.run()
-    assert not proposal.failed
-    store._apply_text_plan(TRIP, '10:00 灵隐寺，费用待核实。')
-    current = deepcopy(store.plans[TRIP])
-    receipt = store.commit_turn(value.request_context, proposal)
-    assert not receipt.committed
-    assert store.plans[TRIP] == current
-    assert store.plans[TRIP].display_style == before.display_style
+    assert proposal.failed
+    assert store.plans[TRIP] == before
+    assert not store.display_jobs
 
 
-def test_late_result_for_old_style_cannot_publish(store, monkeypatch):
+def test_late_result_cannot_publish_for_superseded_default_job(store, monkeypatch):
     from app.agents import agent_client
     from app.services.itinerary.guide_html import build_guide_display
 
     source_hash = text_hash(store.plans[TRIP].text)
-    store.retry_display(TRIP, store.plans[TRIP].id, source_hash, style_instruction='旧风格')
+    store.retry_display(TRIP, store.plans[TRIP].id, source_hash)
     job_id = store._next_display_job()
 
     def generate(*args, **kwargs):
-        store.retry_display(TRIP, store.plans[TRIP].id, source_hash, style_instruction='新风格')
+        store.retry_display(TRIP, store.plans[TRIP].id, source_hash)
         return {'display': build_guide_display(HTML), 'display_status': 'ready',
                 'display_source_hash': source_hash}
 
     monkeypatch.setattr(agent_client, 'generate_plan_display', generate)
     store.run_display_job(job_id)
-    assert store.plans[TRIP].display_style == '新风格'
-    assert store.plans[TRIP].display is None
-    assert next(iter(store.display_jobs.values()))['status'] == 'queued'
+    assert store.plans[TRIP].display_style == '轻松、愉悦'
+    assert store.plans[TRIP].display is not None
+    assert next(iter(store.display_jobs.values()))['status'] in {'queued', 'succeeded'}
 
 
-def test_failed_restyle_keeps_previous_guide(store, monkeypatch):
+def test_failed_default_style_generation_keeps_previous_guide(store, monkeypatch):
     from app.agents import agent_client
     from app.services.itinerary.guide_html import build_guide_display
 
@@ -116,7 +103,7 @@ def test_failed_restyle_keeps_previous_guide(store, monkeypatch):
     plan.display_source_hash = text_hash(plan.text)
     plan.display_status = 'ready'
     previous = deepcopy(plan.display)
-    store.retry_display(TRIP, plan.id, text_hash(plan.text), style_instruction='简洁')
+    store.retry_display(TRIP, plan.id, text_hash(plan.text))
     monkeypatch.setattr(agent_client, 'generate_plan_display', lambda *a, **kw: {
         'display': None, 'display_status': 'fallback', 'display_source_hash': text_hash(plan.text)})
     store.run_pending_display_jobs()
@@ -125,7 +112,7 @@ def test_failed_restyle_keeps_previous_guide(store, monkeypatch):
     assert store.plans[TRIP].display_status == 'fallback'
 
 
-def test_style_persists_and_survives_content_revision(store):
+def test_legacy_display_style_persists_without_affecting_generation(store):
     from app.storage.persistence import serialize_state, restore_state
 
     store.plans[TRIP].display_style = '手账风'
@@ -136,8 +123,8 @@ def test_style_persists_and_survives_content_revision(store):
     assert restored.plans[TRIP].display_style == '手账风'
     restored._apply_text_plan(TRIP, '10:00 西湖，费用待核实。')
     assert restored.plans[TRIP].display_style == '手账风'
-
-
+    restored.retry_display(TRIP, restored.plans[TRIP].id, text_hash(restored.plans[TRIP].text))
+    assert restored.plans[TRIP].display_style == '轻松、愉悦'
 def test_busy_and_confirmation_changes_refresh_preview_actions(store):
     initial = store.get_display_state(TRIP)['version']
     with store._foreground_operation(TRIP):

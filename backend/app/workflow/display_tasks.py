@@ -121,9 +121,8 @@ class DisplayTasks:
                 raise ValueError('行程已更新，请刷新后再生成攻略网页')
             if not self.display_enabled() or not plan.text:
                 raise ValueError('当前无法生成攻略网页，完整文字仍可阅读')
-            style = plan.display_style if style_instruction is None else style_instruction
-            if not isinstance(style, str) or len(style) > 2000 or style_instruction is not None and not style.strip():
-                raise ValueError('网页展示偏好不能为空或超过 2000 字')
+            # 保留旧任务字段的读取兼容；新任务始终忽略用户传入的风格。
+            style = '轻松、愉悦'
             existing = next((j for j in self.display_jobs.values() if j['trip_id'] == trip_id
                              and j['plan_id'] == plan.id and j['source_hash'] == source_hash), None)
             if existing and existing['status'] in DISPLAY_ACTIVE and existing.get('style_instruction', '') == style:
@@ -260,7 +259,6 @@ class DisplayTasks:
         try:
             dates = dates_from_snapshot(basis)
             result = agent_client.generate_plan_display(source, dates, trip_id=trip_id,
-                style_instruction=job.get('style_instruction', ''),
                 cancelled=lambda: not self._display_job_current(job_id), retry_allowed=retry_allowed)
         except Exception as exc:
             result = {'display': None, 'display_status': 'fallback', 'display_source_hash': text_hash(source),

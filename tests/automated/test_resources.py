@@ -21,7 +21,7 @@ class FakeClient:
 
 
 @pytest.fixture(autouse=True)
-def offline_environment(monkeypatch):
+def offline_environment(monkeypatch, restore_model_configuration):
     monkeypatch.delenv('MODEL_ID', raising=False)
     monkeypatch.delenv('TRAVEL_AGENT_DISABLE_LLM', raising=False)
     monkeypatch.setenv('OPENAI_API_KEY', 'offline-test-key')
@@ -137,21 +137,6 @@ def test_settings_are_dynamic_and_preserve_existing_values(monkeypatch):
         config.model_timeout()
 
 
-def test_llm_enabled_guards_both_pytest_signals(monkeypatch):
-    monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
-    assert not config.llm_enabled()  # pytest in sys.modules, even during collection
-    monkeypatch.delitem(sys.modules, 'pytest')
-    assert config.llm_enabled()
-    monkeypatch.setenv('PYTEST_CURRENT_TEST', 'offline')
-    assert not config.llm_enabled()
-    monkeypatch.delenv('PYTEST_CURRENT_TEST')
-    monkeypatch.setenv('TRAVEL_AGENT_DISABLE_LLM', ' YES ')
-    assert not config.llm_enabled()
-    monkeypatch.delenv('TRAVEL_AGENT_DISABLE_LLM')
-    monkeypatch.delenv('OPENAI_API_KEY')
-    assert not config.llm_enabled()
-
-
 def test_borrow_requires_explicit_owner():
     with pytest.raises(resources.ResourceUnavailable):
         with resources.borrow_client():
@@ -195,7 +180,7 @@ def test_explicit_timeout_does_not_read_unused_default(monkeypatch):
             assert client.settings['timeout'] == 2
 
 
-def test_default_factory_uses_shared_client_outside_pytest(monkeypatch):
+def test_default_factory_uses_shared_fake_client_when_enabled(monkeypatch):
     import openai
 
     clients = []
@@ -204,8 +189,7 @@ def test_default_factory_uses_shared_client_outside_pytest(monkeypatch):
         clients.append(FakeClient(**kwargs))
         return clients[-1]
 
-    monkeypatch.delitem(sys.modules, 'pytest')
-    monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
+    monkeypatch.setattr(config, 'llm_enabled', lambda: True)
     monkeypatch.setattr(openai, 'OpenAI', factory)
     with resources.client_scope():
         with resources.borrow_client() as client:
@@ -215,20 +199,17 @@ def test_default_factory_uses_shared_client_outside_pytest(monkeypatch):
     assert client.close_calls == 1
 
 
-@pytest.mark.parametrize('guard', ['module', 'environment'])
-def test_pytest_never_constructs_default_openai(monkeypatch, guard):
+@pytest.mark.parametrize('explicit_factory', [False, True])
+def test_disabled_model_switch_never_constructs_any_factory(monkeypatch, explicit_factory):
     import openai
 
     def forbidden(**kwargs):
-        pytest.fail('default OpenAI factory used under pytest')
+        pytest.fail('disabled model switch allowed client construction')
 
+    monkeypatch.setattr(config, 'llm_enabled', lambda: False)
     monkeypatch.setattr(openai, 'OpenAI', forbidden)
-    if guard == 'module':
-        monkeypatch.delenv('PYTEST_CURRENT_TEST', raising=False)
-    else:
-        monkeypatch.delitem(sys.modules, 'pytest')
-        monkeypatch.setenv('PYTEST_CURRENT_TEST', 'offline')
-    with resources.client_scope():
+    kwargs = {'client_factory': forbidden} if explicit_factory else {}
+    with resources.client_scope(**kwargs):
         with pytest.raises(resources.ResourceUnavailable):
             with resources.borrow_client():
                 pass

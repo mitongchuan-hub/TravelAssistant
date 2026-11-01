@@ -12,6 +12,7 @@ from jsonschema import ValidationError
 
 from app.services.itinerary.plan_basis import PlanBasis, plan_basis
 from app.services.itinerary.plan_display import dates_from_snapshot, text_hash, validate_display
+from app.services.maps.evidence import evidence_kind as map_evidence_kind, evidence_result
 from app.services.itinerary.planning import required_information
 
 
@@ -350,7 +351,7 @@ def _allowlisted_facts(tool: str, result: Any) -> dict[str, Any]:
                           "temperature_min_c", "precipitation_probability_max"),
         "query_route": ("origin_name", "destination_name", "mode", "status",
                         "duration_minutes", "distance_meters", "reason"),
-        "search_places": ("city", "status", "reason", "total_matched", "note"),
+        "search_places": ("city", "status", "reason", "total_matched", "note", "rating", "cost"),
         "search_food": ("city", "status", "reason", "total_matched", "note"),
     }.get(tool, ("status", "reason"))
     facts = {}
@@ -414,11 +415,11 @@ def _project_evidence_row(row: Any, *, ref: str | None = None,
 
     # 普通工具记录沿用单条结果格式，同样只保留白名单事实。
     tool = row.get("tool") if isinstance(row.get("tool"), str) else ""
-    result = row.get("result") if isinstance(row.get("result"), Mapping) else row
+    result = evidence_result(row) if isinstance(evidence_result(row), Mapping) else row
     item = {"ref": ref or row.get("_artifact_ref"), "kind": evidence_kind, "source": source or tool or None,
             "summary": _clip_text(row.get("summary", "")),
             "status": result.get("status", "unknown"),
-            "facts": _allowlisted_facts(tool, result)}
+            "facts": _allowlisted_facts(map_evidence_kind(row), result)}
     if not item["summary"] and isinstance(row.get("reason"), str):
         item["summary"] = _clip_text(row["reason"])
     return {key: value for key, value in item.items() if value not in (None, "", {})}
