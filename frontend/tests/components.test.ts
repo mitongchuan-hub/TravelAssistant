@@ -6,11 +6,53 @@ import ChatMessage from '@/components/ChatMessage.vue'
 import ChatProgress from '@/components/ChatProgress.vue'
 import GuidePreview from '@/components/GuidePreview.vue'
 import type { ChatMessage as Message } from '@/stores/workspace'
-import { snapshot } from './fixtures'
+import { snapshot, deferred } from './fixtures'
+import WorkspacePage from '@/pages/WorkspacePage.vue'
+import { apiRequest } from '@/api/client'
+vi.mock('@/api/client', () => ({ apiRequest: vi.fn(), ApiError: class extends Error {} }))
+vi.mock('@/stores/auth', () => ({ useAuthStore: () => ({ user: { id: 'user-test' } }) }))
+vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: 'trip-test' }, query: {} }), useRouter: () => ({ replace: vi.fn() }) }));
 
 // Component tests never fetch iframe documents; the real browser suite covers them.
 (window as unknown as { happyDOM: { settings: { disableIframePageLoading: boolean } } }).happyDOM.settings.disableIframePageLoading = true
 afterEach(() => { document.body.innerHTML = ''; vi.restoreAllMocks() })
+
+describe('workspace 终止 composer', () => {
+  it('keeps historical failed tasks readable without a retry control', async () => {
+    sessionStorage.clear()
+    vi.stubGlobal('matchMedia', () => ({ matches: false }))
+    const api = vi.mocked(apiRequest); api.mockReset()
+    api.mockResolvedValueOnce(snapshot({ tasks: [{ id: 'old-revision', kind: 'revision', request_id: 'old', retry_of: 'older', status: 'failed', message: '本次处理未完成，请重新发送消息。已有内容已保留。' }] }))
+    const wrapper = mount(WorkspacePage, { global: { stubs: { RouterLink: true, IdeaBoard: true, GuidePreview: true } } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('本次处理未完成，请重新发送消息。已有内容已保留。')
+    expect(wrapper.findAll('button').some(button => /重试|重发/.test(button.text()))).toBe(false)
+    expect(wrapper.find('button[aria-label="发送消息"]').exists()).toBe(true)
+    expect(api.mock.calls.every(call => call[1]?.method !== 'POST')).toBe(true)
+    wrapper.unmount(); vi.unstubAllGlobals()
+  })
+  it('uses the existing button to 终止 and preserves the current draft when sending becomes available', async () => {
+    sessionStorage.clear()
+    vi.stubGlobal('matchMedia', () => ({ matches: false }))
+    const task = { id: 'stop', kind: 'chat', request_id: 'stop', status: 'running', message: '' }
+    const api = vi.mocked(apiRequest); api.mockReset()
+    api.mockResolvedValueOnce(snapshot({ tasks: [task] }))
+    const wrapper = mount(WorkspacePage, { global: { stubs: { RouterLink: true, IdeaBoard: true, GuidePreview: true } } })
+    await flushPromises()
+    await wrapper.get('textarea').setValue('未发送草稿')
+    const stop = wrapper.get('button[aria-label="终止处理"]')
+    expect(stop.attributes('type')).toBe('button')
+    expect(stop.attributes('title')).toBe('终止处理')
+    const result = deferred<unknown>(); api.mockReturnValueOnce(result.promise)
+    await stop.trigger('click')
+    expect(wrapper.get('button[aria-label="正在终止"]').attributes('disabled')).toBeDefined()
+    result.resolve({ task: { ...task, status: 'superseded' } }); await flushPromises()
+    expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('未发送草稿')
+    expect(wrapper.get('button[aria-label="发送消息"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.text()).toContain('已终止')
+    wrapper.unmount(); vi.unstubAllGlobals()
+  })
+})
 
 describe('safe Markdown DOM (replaces server-rendered Markdown assertions)', () => {
   it('escapes raw HTML, disables remote images and executable links, preserves safe Markdown', () => {
@@ -33,6 +75,21 @@ describe('safe Markdown DOM (replaces server-rendered Markdown assertions)', () 
 })
 
 describe('message and progress disclosure', () => {
+  it('offers draft recovery only for failed replies and never emits a task retry', async () => {
+    const previous: Message = { id: 'user', sender_type: 'user', body: '修改西湖时间', created_at: '09:00', status: 'sent' }
+    const wrapper = mount(ChatMessage, { props: { previous, message: { id: 'failed', sender_type: 'agent', body: '本次处理未完成，请重新发送消息。已有内容已保留。', status: 'failed', created_at: '09:01' }, busy: false } })
+    expect(wrapper.get('button').text()).toBe('移回草稿')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('draft')).toEqual([[previous.body]])
+    expect(wrapper.emitted('retry')).toBeUndefined()
+  })
+  it('recovers rejected sends to draft instead of replaying them', async () => {
+    const wrapper = mount(ChatMessage, { props: { message: { id: 'rejected', sender_type: 'user', body: '草稿', status: 'send_failed', created_at: '09:01' }, busy: false } })
+    expect(wrapper.get('button').text()).toBe('移回草稿')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('recover')).toEqual([[]])
+    expect(wrapper.emitted('retry')).toBeUndefined()
+  })
   it('hides legacy business buttons from saved messages', () => {
     const wrapper = mount(ChatMessage, { props: { message: { id: 'old', sender_type: 'agent', status: 'sent', created_at: '09:00', body: '历史消息', agent_card: { kind: 'requirement-summary', actions: [{ label: '生成路线', target: 'generate' }, { label: '想法', target: 'board' }] } }, busy: false } })
     expect(wrapper.findAll('button')).toHaveLength(0)

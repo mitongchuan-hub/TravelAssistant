@@ -20,7 +20,7 @@
 | 游玩设置 HTML | GET/PUT `/api/trips/{id}/requirements`，原需求 revision 检查 |
 | 整个 workspace / HTML 消息片段 | `/api/trips/{id}/workspace` 一致快照；Vue 按稳定 ID 渲染 |
 | messages after-ID 增量 | 保留读取兼容；Vue 使用完整快照，能更新同 ID 的思考消息和进度 |
-| 表单生成/修改 | 原 tasks 入口，保留 request_id 与完整计划依据绑定 |
+| 生成/修改 | 聊天 `/messages`；新任务仅 chat，`/tasks` 只保留 chat 兼容提交；历史 plan/revision 可读；无失败任务 retry 接口，重新发送是新 chat 身份 |
 | 想法表单 | ideas JSON 增删；仍只展示最新八张墙卡 |
 | 清空聊天表单 | DELETE messages，复用 clear_chat 的取消/保留行程语义 |
 | 确认行程表单 | POST plan/confirm，完整 plan_id/hash/revision |

@@ -4,7 +4,7 @@ import type { ChatMessage } from '@/stores/workspace'
 import SafeMarkdown, { replyPreview } from './SafeMarkdown'
 import ChatProgress from './ChatProgress.vue'
 const props = defineProps<{ message: ChatMessage; previous?: ChatMessage; busy: boolean }>()
-const emit = defineEmits<{ draft: [body: string]; retry: []; guide: []; board: []; generate: [] }>()
+const emit = defineEmits<{ draft: [body: string]; recover: []; guide: []; board: []; generate: [] }>()
 const disclosure = ref<HTMLDetailsElement | null>(null)
 const reply = computed(() => replyPreview(props.message.body, props.message.agent_card?.kind))
 const timeBreak = computed(() => {
@@ -37,8 +37,8 @@ function collapse() { if (disclosure.value) { disclosure.value.open = false; dis
         <SafeMarkdown v-else class="chat-reply-content" :text="message.body"/>
       </div>
       <details v-if="supplemental.length" class="chat-supplemental"><summary>补充信息</summary><ul><li v-for="bullet in supplemental" :key="bullet">{{ bullet }}</li></ul></details>
-      <button v-if="message.status === 'send_failed'" class="chat-message-action" type="button" :disabled="busy" @click="emit('retry')">发送失败，重试这条消息</button>
-      <button v-else-if="message.status === 'failed' && previous?.sender_type === 'user'" class="chat-message-action" type="button" @click="emit('draft', previous.body)">重新发送这条消息</button>
+      <button v-if="message.status === 'send_failed'" class="chat-message-action" type="button" :disabled="busy" @click="emit('recover')">移回草稿</button>
+      <button v-else-if="message.status === 'failed' && previous?.sender_type === 'user'" class="chat-message-action" type="button" @click="emit('draft', previous.body)">移回草稿</button>
       <div v-else-if="message.status !== 'thinking' && actions.length" class="chat-message-actions"><button v-for="action in actions" :key="action.target" class="chat-message-action" type="button" :disabled="action.target === 'generate' && busy" @click="action.target === 'itinerary' ? emit('guide') : action.target === 'board' ? emit('board') : emit('generate')">{{ action.target === 'itinerary' ? '查看当前行程' : action.label }}</button></div>
       <span v-if="message.status === 'sending'" class="chat-message-state">正在确认是否送达…</span>
     </div>

@@ -101,12 +101,28 @@ def _state_locked(method):
             return method(self, *args, **kwargs)
     return wrapped
 
+def _manual_business_write(method):
+    @wraps(method)
+    def transaction(self, trip_id, *args, **kwargs):
+        from app.application.undo import manual_barrier
+        with self._lock:
+            stage = self._stage_turn(trip_id)
+            result = method(stage, trip_id, *args, **kwargs)
+            if result is not False:
+                manual_barrier(stage, trip_id)
+                from app.storage.legacy.workflow import bump_epoch
+                stage.trips[trip_id].workflow_state = bump_epoch(stage.trips[trip_id].workflow_state)
+            self._persist_staged_turn(stage, trip_id)
+            return result
+    return transaction
+
 
 class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
     def __init__(self, db_path: str | None = None, persistence_enabled: bool | None = None, *, display_worker_enabled: bool | None = None, seed_demo: bool = True) -> None:
         self.db_path = db_path or database_path()
         self.persistence_enabled = self._resolve_persistence_enabled(persistence_enabled)
         self._lock = RLock()
+        self.agent_undo = {}
         self._task_context = local()
         self.tasks: dict[str, dict] = {}
         self._agent_locks: dict[str, RLock] = {}
@@ -199,6 +215,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         self.messages.pop(trip_id, None)
         self.plans.pop(trip_id, None)
         self.idea_cards.pop(trip_id, None)
+        self.agent_undo.pop(trip_id, None)
         self._agent_locks.pop(trip_id, None)
         self._discard_display_jobs(trip_id)
         self.tasks = {
@@ -288,7 +305,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             raise ValueError('请重新确认住宿的地图位置')
         return deepcopy(next(iter(trusted.values())))
 
-    @_state_locked
+    @_manual_business_write
     def update_city_outing(self, trip_id, changes, expected_revision, lodging):
         trip = self.trips[trip_id]
         if trip.requirements.revision != expected_revision:
@@ -304,7 +321,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         self._persist()
         return updated
 
-    @_state_locked
+    @_manual_business_write
     def update_trip_requirements(self, trip_id: str, changes: dict, expected_revision: int) -> Trip:
         trip = self.trips[trip_id]
         if expected_revision != trip.requirements.revision:
@@ -398,7 +415,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
                 sender=USERS["agent"],
                 sender_type="agent",
                 status="failed",
-                body="我刚刚没有完成回复，可以直接重新发送上一条消息。",
+                body="本次处理未完成，请重新发送消息。已有内容已保留。",
                 created_at=_now_label(),
                 agent_card=AgentCard(
                     kind="missing-info",
@@ -419,7 +436,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
                     self.messages[trip_id].append(error_message)
             else:
                 self.messages[trip_id].append(error_message)
-            self.trips[trip_id].last_activity = "Agent 整理失败，等待重试"
+            self.trips[trip_id].last_activity = "Agent 整理失败，等待新消息"
             self._persist()
 
     @_state_locked
@@ -430,7 +447,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         self._persist()
         return message
 
-    @_state_locked
+    @_manual_business_write
     def delete_idea(self, trip_id: str, idea_id: str) -> bool:
         cards = self.idea_cards[trip_id]
         remaining = [card for card in cards if card.id != idea_id]
@@ -441,7 +458,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         self._persist()
         return True
 
-    @_state_locked
+    @_manual_business_write
     def add_idea(self, trip_id: str, body: str) -> IdeaCard:
         rotation = IDEA_ROTATIONS[len(self.idea_cards[trip_id]) % len(IDEA_ROTATIONS)]
         card = IdeaCard(
@@ -457,30 +474,6 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         self.trips[trip_id].last_activity = "已添加新的旅行想法"
         self._persist()
         return card
-
-    def request_revision(self, trip_id: str, item_id: str | None = None, feedback: str = "", sender: User | None = None, *, display_target: dict | None = None) -> Message | None:
-        if not getattr(self._task_context, 'task_id', None):
-            from uuid import uuid4
-            payload = {'feedback': feedback.strip() or '希望安排更轻松一点'}
-            if item_id:
-                payload['item_id'] = item_id
-            if display_target is not None:
-                from app.services.itinerary.plan_display import text_hash
-                with self._lock:
-                    target = validate_display_target_metadata(self.plans[trip_id], display_target)
-                    payload.update(display_target={key: target[key] for key in ('day_index', 'item_index')},
-                        expected_plan_id=self.plans[trip_id].id, source_hash=text_hash(self.plans[trip_id].text),
-                        expected_requirements_revision=self.trips[trip_id].requirements.revision)
-            task, _ = self.submit_task(trip_id, 'revision', payload, uuid4().hex)
-            receipt = self.run_task(task['id'])
-            return next((row for row in self.messages[trip_id] if receipt and row.id == receipt.message_id), None)
-
-    def generate_plan(self, trip_id: str) -> Message | None:
-        if not getattr(self._task_context, 'task_id', None):
-            from uuid import uuid4
-            task, _ = self.submit_task(trip_id, 'plan', {}, uuid4().hex)
-            receipt = self.run_task(task['id'])
-            return next((row for row in self.messages[trip_id] if receipt and row.id == receipt.message_id), None)
 
     def confirm_plan(self, trip_id: str):
         return self.confirm_current_turn(trip_id)

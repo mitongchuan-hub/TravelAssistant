@@ -25,13 +25,13 @@ def test_execution_assembly_is_detached_and_preserves_metadata():
     target = {'title': 'saved title', 'day_index': 0, 'item_index': 0}
     execution = build_execution_context(trip=trip, plan=plan, messages=messages,
         idea_cards=ideas, metrics=metrics, current_date='2030-01-02',
-        entry='revision', payload=payload, display_target=target)
+        entry='main', payload=payload, display_target=target)
     assert [f.name for f in fields(TaskExecutionContext)] == [
         'trip', 'messages', 'idea_cards', 'plan', 'metrics', 'current_date',
         'entry', 'scope', 'target_item_id', 'display_target']
     assert [m.id for m in execution.messages] == ['sent']
     assert (execution.current_date, execution.entry, execution.scope, execution.target_item_id) == (
-        '2030-01-02', 'revision', 'item', 'item-old')
+        '2030-01-02', 'main', 'item', 'item-old')
     assert execution.display_target == target
     execution.trip.requirements['revision'] = 9
     execution.plan.display['days'].append('changed')
@@ -55,7 +55,7 @@ def test_execution_assembly_is_detached_and_preserves_metadata():
 def test_execution_assembly_scope_matches_legacy(payload, target, scope, item):
     from app.agents.inputs.execution import build_execution_context
     result = build_execution_context(trip=None, plan=None, messages=[], idea_cards=[],
-        metrics={}, current_date='2030-01-02', entry='revision', payload=payload,
+        metrics={}, current_date='2030-01-02', entry='main', payload=payload,
         display_target=target)
     assert (result.scope, result.target_item_id) == (scope, item)
 
@@ -63,7 +63,7 @@ def test_execution_assembly_scope_matches_legacy(payload, target, scope, item):
 @pytest.mark.parametrize('kwargs,error', [
     ({'entry': 'invalid'}, '未知任务执行入口'),
     ({'scope': 'invalid'}, '任务执行范围无效'),
-    ({'display_target': {}}, '展示目标只能用于修改入口'),
+    ({'entry': 'confirm', 'display_target': {}}, '展示目标只能用于聊天入口'),
 ])
 def test_context_keeps_validation_and_positional_order(kwargs, error):
     from app.agents.inputs.execution import TaskExecutionContext
@@ -78,7 +78,7 @@ def store(tmp_path):
 
 
 @pytest.mark.parametrize('kind,payload', [
-    ('chat', {'body': '你好'}), ('revision', {'feedback': '修改旧条目', 'item_id': 'item-1'}),
+    ('chat', {'body': '你好'}),
 ])
 def test_execute_turn_assembles_under_lock_and_freezes_target(store, monkeypatch, kind, payload):
     from app.agents.inputs import execution as inputs
@@ -96,7 +96,7 @@ def test_execute_turn_assembles_under_lock_and_freezes_target(store, monkeypatch
         assert plan == store.plans[TRIP]
         assert raw == payload
         captured['resolved'] = True
-        return target
+        return None
 
     def assemble(**kwargs):
         assert store._lock._is_owned()
@@ -127,7 +127,7 @@ def test_execute_turn_assembles_under_lock_and_freezes_target(store, monkeypatch
     monkeypatch.setattr(store, 'record_task_progress', lambda *args: captured.setdefault('progress', args))
     receipt = store.execute_turn(task['id'])
     assert receipt.committed and store.tasks[task['id']]['status'] == 'succeeded'
-    assert captured.get('resolved', False) == (kind == 'revision')
+    assert captured.get('resolved', False)
     assert 'progress' in captured
 
 

@@ -43,12 +43,12 @@ class TaskExecutionContext:
     display_target: Mapping[str, Any] | None = None
 
     def __post_init__(self):
-        if self.entry not in {'main', 'planning', 'revision', 'confirm'}:
+        if self.entry not in {'main', 'confirm'}:
             raise ValueError('未知任务执行入口')
         if self.scope not in {'', 'item', 'all'}:
             raise ValueError('任务执行范围无效')
-        if self.display_target is not None and self.entry != 'revision':
-            raise ValueError('展示目标只能用于修改入口')
+        if self.display_target is not None and self.entry != 'main':
+            raise ValueError('展示目标只能用于聊天入口')
 
 
 _ROUTE_DETAIL_HINTS = ('公交', '地铁', '公共交通', '线路', '换乘', '乘车', '车站', '站点', '怎么去')

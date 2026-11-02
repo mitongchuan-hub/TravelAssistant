@@ -38,7 +38,7 @@ class TurnCommit:
                 messages=self.messages[trip_id], plan=self.plans[trip_id])
             kind = task['kind'] if task else None
             if kind:
-                entry = {'chat': 'main', 'plan': 'planning', 'revision': 'revision'}[kind]
+                entry = 'main'
             payload = task['payload'] if task else {}
             source = body if body is not None else payload.get('body', payload.get('feedback', ''))
             if kind == 'plan' and body is None:
@@ -129,14 +129,7 @@ class TurnCommit:
             # Resolve against the same locked plan used by assembly. The resolver
             # only reads saved data; assembly detaches both plan and target once.
             payload = task['payload']
-            display_target = None
-            if task['kind'] == 'revision':
-                try:
-                    display_target = resolve_display_target(self.plans[trip_id], payload)
-                except ValueError:
-                    # Legacy item-id revisions have no display target metadata;
-                    # preserve their old path while accepting resolved targets.
-                    display_target = None
+            display_target = resolve_display_target(self.plans[trip_id], payload)
             execution = build_execution_context(
                 trip=self.trips[trip_id], plan=self.plans[trip_id],
                 messages=self.messages[trip_id], idea_cards=self.idea_cards[trip_id],
@@ -198,7 +191,7 @@ class TurnCommit:
                 target['receipt'] = serialize(receipt)
                 self._persist_staged_turn(stage, task['trip_id'])
                 return receipt
-            reason = str(exc) if isinstance(exc, ValueError) else '本次处理未完成，当前需求和行程已保留，请稍后重试。'
+            reason = str(exc) if isinstance(exc, ValueError) else '本次处理未完成，请重新发送消息。已有内容已保留。'
             proposal = ExecutionResult.failure(reason)
         return self.commit_turn(context, proposal)
 
@@ -238,6 +231,8 @@ class TurnCommit:
             stage = self._stage_turn(context.trip_id)
             trip_id = context.trip_id
             trip = stage.trips[trip_id]
+            from app.application.undo import capture, record_change, manual_barrier
+            undo_before = capture(stage, trip_id)
             crud_lines, crud_kinds, crud_payload = [], [], None
             if proposal.changes is not None:
                 from app.domain.changes import apply_changes
@@ -260,7 +255,7 @@ class TurnCommit:
             failed = proposal.failed
             reason = proposal.reason
             if failed:
-                parts.append('仍未完成：' + (reason or '本次处理未全部完成，请稍后重试。'))
+                parts.append('本次处理未完成，请重新发送消息。已有内容已保留。')
             body = '\n\n'.join(parts) or '本轮已结束，当前行程未修改。'
             status = 'failed' if failed else 'sent'
             next_question = crud_payload['args'].get('next_question', '') if crud_payload else ''
@@ -297,6 +292,10 @@ class TurnCommit:
                     committed_effect_kinds=crud_kinds,
                     submission_digest=submission_digest,
                     result_url=f'/workspace/{trip_id}?tab=' + ('itinerary' if has_itinerary else 'chat'))
+            if context.entry == 'confirm' or (failed and crud_kinds):
+                manual_barrier(stage, trip_id)
+            elif not failed and crud_kinds:
+                record_change(stage, trip_id, undo_before, message_id)
             self._persist_staged_turn(stage, trip_id)
         if has_itinerary:
             self._notify_display_worker()
@@ -305,6 +304,7 @@ class TurnCommit:
     def _stage_turn(self, trip_id):
         """Reuse the normal builders against private aggregates, never live objects."""
         stage = copy(self)
+        stage.agent_undo = deepcopy(self.agent_undo)
         stage.trips = dict(self.trips)
         stage.plans = dict(self.plans)
         stage.messages = dict(self.messages)
@@ -329,6 +329,7 @@ class TurnCommit:
                     self.tasks[task_id].update(task)
                 else:
                     self.tasks[task_id] = task
+        self.agent_undo = stage.agent_undo
         self.display_jobs = stage.display_jobs
         self._display_changed.notify_all()
 

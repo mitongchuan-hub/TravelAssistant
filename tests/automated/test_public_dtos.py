@@ -115,7 +115,7 @@ def test_message_progress_optional_steps_safe_whitelist_and_copies():
     ({'status': 'historical-status', 'kind': 'historical-kind'},
      {'status': 'historical-status', 'kind': 'historical-kind', 'message': ''}),
     ({'status': 'failed', 'message': 'upstream secret', 'exception': 'private'},
-     {'status': 'failed', 'message': '处理暂未完成，请检查当前行程后重试'}),
+     {'status': 'failed', 'message': '本次处理未完成，请重新发送消息。已有内容已保留。'}),
     ({'id': 'task-1', 'trip_id': 'trip-1', 'kind': 'plan', 'request_id': 'request-1',
       'retry_of': None, 'status': 'succeeded', 'created_at': 'now', 'updated_at': 'later',
       'message_id': None, 'thinking_id': 'thinking-1', 'plan_id': None,
@@ -174,7 +174,7 @@ def test_workspace_top_level_shapes_and_detached_metrics_display_state(monkeypat
     monkeypatch.setattr(deps, 'store', store)
     monkeypatch.setattr(deps, 'get_owned_trip_or_404', lambda trip_id, user: store.trips[trip_id])
     public = serializers.workspace_snapshot('trip-hangzhou', USER)
-    assert set(public) == {'trip', 'plan', 'messages', 'tasks', 'idea_cards', 'wall_cards', 'metrics', 'display_state'}
+    assert set(public) == {'trip', 'plan', 'messages', 'tasks', 'idea_cards', 'wall_cards', 'metrics', 'display_state', 'undo'}
     assert public['tasks'] == []
     assert public['idea_cards'] == [asdict(row) for row in store.idea_cards['trip-hangzhou']]
     assert public['wall_cards'] == public['idea_cards']

@@ -303,6 +303,7 @@ def load_snapshot(db_path: str | Path) -> dict[str, Any] | None:
 
 def serialize_state(store: Any, users: dict[str, User]) -> dict[str, Any]:
     return {
+        "agent_undo": deepcopy(getattr(store, "agent_undo", {})),
         "tasks": deepcopy(store.tasks),
         "display_jobs": deepcopy(store.display_jobs),
         "schema_version": CURRENT_SCHEMA_VERSION,
@@ -344,6 +345,7 @@ def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) 
         for trip_id, raw_cards in snapshot.get("idea_cards", {}).items()
         if trip_id in store.trips
     }
+    store.agent_undo = {key: deepcopy(value) for key, value in snapshot.get("agent_undo", {}).items() if key in store.trips}
     store.tasks = _restore_tasks(snapshot.get("tasks", {}), store.trips)
     store.display_jobs = {jid: deepcopy(job) for jid, job in snapshot.get('display_jobs', {}).items()
                           if job.get('trip_id') in store.trips}

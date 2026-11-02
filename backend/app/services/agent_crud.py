@@ -345,7 +345,7 @@ def apply_changes(stage, context, payload):
             raise ValueError('目标想法在处理期间已变化，请刷新后重试')
     task = stage.tasks.get(context.execution_task_id, {})
     target = None
-    if task.get('kind') == 'revision':
+    if task.get('payload', {}).get('display_target') is not None:
         from app.workflow.tasks import resolve_display_target
         raw_payload = task.get('payload', {})
         supplied = raw_payload.get('display_target')

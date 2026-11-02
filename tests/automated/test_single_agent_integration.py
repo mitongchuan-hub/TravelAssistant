@@ -62,7 +62,13 @@ def reload(store):
 
 def runtime_for(store, body, model, *, kind='chat', payload=None, budget=None):
     payload = payload or {'body' if kind == 'chat' else 'feedback': body}
-    task, _ = store.submit_task(TRIP, kind, payload, uuid4().hex)
+    if kind == 'revision':
+        # Historical target-bound rows remain readable; no retry or new revision
+        # submission is supported. Exercise their existing authorization guard.
+        task, _ = store.submit_task(TRIP, 'chat', {'body': body}, uuid4().hex)
+        store.tasks[task['id']].update(kind='revision', payload=deepcopy(payload))
+    else:
+        task, _ = store.submit_task(TRIP, kind, payload, uuid4().hex)
     store.tasks[task['id']]['status'] = 'running'
     context = store.capture_request_context(TRIP, task['id'])
     execution = TaskExecutionContext(

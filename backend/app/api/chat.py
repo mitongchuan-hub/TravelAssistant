@@ -1,9 +1,9 @@
-"""JSON 任务提交、轮询、重试及聊天清空接口。"""
+"""JSON 聊天任务提交、轮询、终止及聊天清空接口。"""
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from app.api import dependencies as deps
-from app.api.schemas import EmptyInput, MessageInput, RetryInput, TaskInput
+from app.api.schemas import EmptyInput, MessageInput, TaskInput
 from app.api.serializers import message_to_dict, task_to_dict, workspace_snapshot
 from app.application.execution import TaskConflict
 
@@ -12,26 +12,17 @@ router = APIRouter(prefix='/api/trips/{trip_id}', tags=['chat'])
 
 def normalized_payload(data):
     payload = data.payload
-    binding_keys = {'expected_plan_id', 'source_hash', 'expected_requirements_revision'}
-    allowed = {'chat': {'body'}, 'plan': binding_keys,
-               'revision': binding_keys | {'feedback', 'item_id', 'display_target'}}[data.kind]
-    if payload.keys() - allowed:
+    if payload.keys() - {'body'}:
         raise HTTPException(400, '任务内容不正确')
-    if data.kind == 'chat':
-        return {'body': payload.get('body')}
-    if data.kind == 'revision':
-        if not isinstance(payload.get('feedback'), str):
-            raise HTTPException(400, '请填写修改意见')
-        payload = {**payload, 'feedback': payload['feedback'].strip()}
-    return payload
+    return {'body': payload.get('body')}
 
 
-def submit(request, trip_id, kind, payload, request_id, background_tasks, retry_of='', include_messages=False):
+def submit(request, trip_id, kind, payload, request_id, background_tasks, include_messages=False):
     user = deps.require_user(request)
     with deps.store._lock:
         deps.get_owned_trip_or_404(trip_id, user)
         try:
-            task, created = deps.store.submit_task(trip_id, kind, payload, request_id, retry_of)
+            task, created = deps.store.submit_task(trip_id, kind, payload, request_id)
         except TaskConflict:
             raise
         except ValueError as exc:
@@ -58,15 +49,15 @@ def submit_task(request: Request, trip_id: str, data: TaskInput, background_task
     return submit(request, trip_id, data.kind, normalized_payload(data), data.request_id, background_tasks)
 
 
-@router.post('/tasks/{task_id}/retry')
-def retry_task(request: Request, trip_id: str, task_id: str, data: RetryInput, background_tasks: BackgroundTasks):
+@router.post('/tasks/{task_id}/cancel')
+def cancel_task(request: Request, trip_id: str, task_id: str, data: EmptyInput):
     user = deps.require_user(request)
     with deps.store._lock:
         deps.get_owned_trip_or_404(trip_id, user)
-        task = deps.store.get_task(task_id, trip_id=trip_id)
-        if not task:
+        task = deps.store.cancel_task(trip_id, task_id)
+        if task is None:
             raise HTTPException(404, '任务不存在')
-        return submit(request, trip_id, task['kind'], task['payload'], data.request_id, background_tasks, task_id)
+        return {'task': task_to_dict(task)}
 
 
 @router.get('/messages')

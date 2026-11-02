@@ -179,7 +179,14 @@ def test_task_submission_retry_polling_and_safe_allowlists(monkeypatch):
         assert 'SECRET' not in polled.text and 'payload' not in polled.json()['tasks'][0]
         retry = client.post(f'/api/trips/{trip}/tasks/{task["id"]}/retry',
                             json={'request_id': 'retry-api'}, headers=headers)
-        assert retry.status_code == 202 and retry.json()['task']['retry_of'] == task['id']
+        assert retry.status_code == 404
+        assert len(ran) == 1
+        resent = client.post(f'/api/trips/{trip}/messages', json={
+            'body': '你好', 'request_id': 'new-chat-api'}, headers=headers)
+        assert resent.status_code == 202
+        assert resent.json()['task']['id'] != task['id']
+        assert resent.json()['task']['message_id'] != task['message_id']
+        assert 'retry_of' not in resent.json()['task']
         assert len(ran) == 2
         denied = client.post(f'/api/trips/{trip}/tasks', json=payload | {
             'request_id': 'injected', 'payload': {'body': '你好', 'owner_id': 'other'}}, headers=headers)
@@ -187,6 +194,96 @@ def test_task_submission_retry_polling_and_safe_allowlists(monkeypatch):
         after = store.messages[trip][-1].id
         assert client.get(f'/api/trips/{trip}/messages', params={'after': after}).json() == {'messages': []}
         assert client.get(f'/api/trips/{trip}/messages', params={'after': 'unknown'}).json() == {'messages': []}
+
+
+def test_task_termination_is_owned_csrf_protected_idempotent_and_preserves_data(monkeypatch):
+    from copy import deepcopy
+    from app.main import app
+    from app.api import dependencies as deps
+    from app.storage.store import DemoStore
+    from app.application.execution import _execution_current
+    store = DemoStore(persistence_enabled=False, display_worker_enabled=False)
+    trip = 'trip-hangzhou'
+    monkeypatch.setattr(deps, 'store', store)
+    owner = store.trips[trip].owner
+    monkeypatch.setattr(deps, 'current_user', lambda request: owner)
+    task, _ = store.submit_task(trip, 'chat', {'body': '保留这个请求'}, 'terminate-api')
+    store.tasks[task['id']]['status'] = 'running'
+    context = store.capture_request_context(trip, task['id'])
+    assert _execution_current(store, context)
+    before_plan = deepcopy(store.plans[trip])
+    before_requirements = deepcopy(store.trips[trip].requirements)
+    before_ids = [m.id for m in store.messages[trip]]
+    with TestClient(app) as client:
+        path = f'/api/trips/{trip}/tasks/{task["id"]}/cancel'
+        headers = csrf_headers(client)
+        assert client.post(path, json={}).status_code == 403
+        assert store.tasks[task['id']]['status'] == 'running'
+        assert client.post(path.replace(trip, 'unknown-trip'), json={}, headers=headers).status_code == 404
+        assert client.post(path.replace(task['id'], 'unknown-task'), json={}, headers=headers).status_code == 404
+        response = client.post(path, json={}, headers=headers)
+        assert response.status_code == 200
+        assert response.json()['task']['status'] == 'superseded'
+        assert not _execution_current(store, context)
+        state = deepcopy(store.trips[trip].workflow_state)
+        assert state['epoch'] == context.epoch + 1
+        assert state['sequence'] == context.sequence + 1
+        assert client.post(path, json={}, headers=headers).json() == response.json()
+        assert store.trips[trip].workflow_state == state
+    assert store.plans[trip] == before_plan
+    assert store.trips[trip].requirements == before_requirements
+    assert [m.id for m in store.messages[trip]] == before_ids
+    assert store.fail_execution(task['id'], ValueError('late error')) is None
+    assert store.get_task(task['id'])['status'] == 'superseded'
+
+
+def test_termination_queued_terminal_and_persistence_failure(monkeypatch):
+    import pytest
+    from copy import deepcopy
+    from app.storage.store import DemoStore
+    from app.storage import transactions
+    from app.application.execution import cancel_task
+    store = DemoStore(persistence_enabled=False, display_worker_enabled=False)
+    trip = 'trip-hangzhou'
+    task, _ = store.submit_task(trip, 'chat', {'body': '排队终止'}, 'queued-stop')
+    assert cancel_task(store, trip, task['id'])['status'] == 'superseded'
+    assert store.run_task(task['id']) is None
+    newer, _ = store.submit_task(trip, 'chat', {'body': '新请求'}, 'new-request')
+    before = deepcopy(store.trips[trip].workflow_state)
+    assert store.cancel_task(trip, task['id'])['status'] == 'superseded'
+    assert store.trips[trip].workflow_state == before
+    assert store.get_task(newer['id'])['status'] == 'queued'
+    before_messages = deepcopy(store.messages[trip])
+    store.persistence_enabled = True
+    monkeypatch.setattr(transactions, 'save_snapshot', lambda *a, **k: (_ for _ in ()).throw(OSError('disk failure')))
+    with pytest.raises(transactions.TurnPersistenceError):
+        store.cancel_task(trip, newer['id'])
+    assert store.get_task(newer['id'])['status'] == 'queued'
+    assert store.messages[trip] == before_messages
+    assert store.trips[trip].workflow_state == before
+
+
+def test_termination_rejects_late_result_and_other_owner(monkeypatch):
+    from app.main import app
+    from app.api import dependencies as deps
+    from app.storage.store import DemoStore
+    from app.domain.models import User
+    from app.application.contracts import ExecutionResult
+    store = DemoStore(persistence_enabled=False, display_worker_enabled=False)
+    trip = 'trip-hangzhou'
+    monkeypatch.setattr(deps, 'store', store)
+    monkeypatch.setattr(deps, 'current_user', lambda request: store.trips[trip].owner)
+    task, _ = store.submit_task(trip, 'chat', {'body': '迟到回复'}, 'late-stop')
+    store.tasks[task['id']]['status'] = 'running'
+    context = store.capture_request_context(trip, task['id'])
+    with TestClient(app) as client:
+        headers = csrf_headers(client)
+        monkeypatch.setattr(deps, 'current_user', lambda request: User('stranger', 'Other', 'O'))
+        assert client.post(f'/api/trips/{trip}/tasks/{task["id"]}/cancel', json={}, headers=headers).status_code == 404
+    store.cancel_task(trip, task['id'])
+    receipt = store.commit_turn(context, ExecutionResult(answer='不可保存的迟到回复'))
+    assert not receipt.committed
+    assert all(row.body != '不可保存的迟到回复' for row in store.messages[trip])
 
 
 def test_shared_dependency_seam_and_owner_isolation(monkeypatch):

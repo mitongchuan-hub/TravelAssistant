@@ -9,7 +9,7 @@ import GuidePreview from '@/components/GuidePreview.vue'
 const route = useRoute(), router = useRouter(), auth = useAuthStore()
 const tripId = String(route.params.id), userId = auth.user!.id
 const workspace = useWorkspace(tripId, userId, () => { saveDraft(); void router.replace({ name: 'auth' }) })
-const { snapshot, messages, loading, error, feedback, busy, submitting, latestTask, pending } = workspace
+const { snapshot, messages, loading, error, feedback, busy, submitting, latestTask, pending, canCancel, cancelling, undoing, undoUncertain } = workspace
 const board = computed(() => route.query.tab === 'board')
 const guideOpen = ref(route.query.tab === 'itinerary' || route.query.guide === '1')
 const list = ref<HTMLElement | null>(null), input = ref<HTMLTextAreaElement | null>(null)
@@ -40,7 +40,7 @@ watch(() => JSON.stringify(messages.value), () => {
   })
 }, { flush: 'pre' })
 async function send() {
-  if (composing.value || submitting.value || pending.value || !draft.value.trim()) return
+  if (canCancel.value || composing.value || submitting.value || pending.value || !draft.value.trim()) return
   if (draft.value.trim().length > 10000) { draftFeedback.value = '消息不能超过 10000 字，请缩短后发送。'; return }
   const body = draft.value.trim(); draft.value = ''; draftFeedback.value = ''; toLatest()
   const accepted = await workspace.send(body)
@@ -51,6 +51,8 @@ function keydown(event: KeyboardEvent) {
 }
 function recoverDraft(body: string) { if (draft.value.trim()) draftFeedback.value = '输入框已有草稿，请发送或清空后再重试。'; else draft.value = body; input.value?.focus({ preventScroll: true }) }
 function dismissPending() { const body = workspace.dismissPending(); if (body) recoverDraft(body) }
+async function terminate() { if (!draft.value && pending.value?.body) draft.value = pending.value.body; saveDraft(); draftFeedback.value = ''; await workspace.cancel(); input.value?.focus({ preventScroll: true }) }
+async function undoLast() { if (window.confirm('撤销上次 Agent 修改？将恢复当时的需求、住宿、想法、行程及当时合法网页，保留聊天记录。最多连续撤销三步，无重做。')) await workspace.undoLast() }
 function openGuide() { guideOpen.value = true }
 async function tab(value: 'board' | 'chat') { guideOpen.value = false; await router.replace({ query: { tab: value } }); await nextTick(); resizeComposer(); viewportChanged() }
 async function generate() { await tab('chat'); await workspace.send('请根据已保存的要求和想法生成同城行程。') }
@@ -77,11 +79,11 @@ onBeforeUnmount(() => { document.body.classList.remove('chat-page'); window.remo
         <header class="chat-top"><RouterLink class="chat-back" to="/trips" aria-label="返回我的旅行">‹</RouterLink><div class="chat-heading"><h1>{{ snapshot.trip.destination.replace('周末旅行', '') }}</h1><p>{{ snapshot.trip.date_range }}</p></div><button class="guide-open" type="button" aria-controls="guide-preview" :aria-expanded="guideOpen" @click="openGuide">攻略</button></header>
         <section ref="list" class="chat-list" aria-label="与旅行助手的对话" @scroll.passive="nearBottom() && (newReplies = false)">
           <p v-if="error" class="chat-send-feedback" role="status">{{ error }} <button class="chat-message-action" type="button" @click="workspace.refresh">重新连接</button></p>
-          <ChatMessage v-for="(message, index) in messages" :key="message.id" :message="message" :previous="messages[index - 1]" :busy="busy" @draft="recoverDraft" @retry="workspace.retryPending" @guide="openGuide"/>
+          <template v-for="(message, index) in messages" :key="message.id"><ChatMessage :message="message" :previous="messages[index - 1]" :busy="busy" @draft="recoverDraft" @recover="dismissPending" @guide="openGuide"/><button v-if="snapshot.undo?.message_id === message.id" class="chat-message-action" type="button" :disabled="undoing || canCancel || !snapshot.undo.can_undo" @click="undoLast">{{ undoing ? '正在撤销…' : '撤销上次修改（剩余' + snapshot.undo.available_count + '步）' }}</button></template>
           <div v-if="!messages.length" class="chat-empty"><span aria-hidden="true">✦</span><h2>一起聊聊这趟旅行</h2><p>想去哪里、怎么玩，或者先说一个小想法。</p></div>
-          <p v-if="latestTask?.kind !== 'chat' && latestTask && typeof latestTask.status === 'string' && ['queued', 'running', 'failed'].includes(latestTask.status)" class="chat-send-feedback" role="status">{{ latestTask.status === 'failed' ? latestTask.message || '本次处理未完成，已有内容已保留。' : '正在安排你的路线，已有内容仍可查看。' }}<button v-if="latestTask.status === 'failed'" class="chat-message-action" type="button" :disabled="busy" @click="workspace.retryTask(latestTask)">重试</button></p>
+          <p v-if="latestTask?.kind !== 'chat' && latestTask && typeof latestTask.status === 'string' && ['queued', 'running', 'failed'].includes(latestTask.status)" class="chat-send-feedback" role="status">{{ latestTask.status === 'failed' ? latestTask.message || '本次处理未完成，请重新发送消息。已有内容已保留。' : '正在安排你的路线，已有内容仍可查看。' }}</p>
         </section>
-        <section class="chat-dock" aria-label="聊天输入区"><button v-if="newReplies" class="chat-new-replies" type="button" @click="toLatest">有新回复 ↓</button><form class="composer" :aria-busy="busy" @submit.prevent="send"><textarea ref="input" v-model="draft" name="body" rows="1" aria-label="聊天消息" :placeholder="snapshot.trip.mode === 'city' ? '想去哪儿逛逛？也可以直接说生成路线…' : '写下你的旅行想法…'" autocomplete="off" maxlength="10000" required @compositionstart="composing = true" @compositionend="composing = false" @keydown="keydown" @focus="viewportChanged" @blur="viewportChanged"/><button type="submit" aria-label="发送消息" title="发送消息" :disabled="submitting || !!pending || composing || !draft.trim()"><span aria-hidden="true">↑</span></button></form><p v-if="feedback || draftFeedback" class="chat-send-feedback" role="status">{{ draftFeedback || feedback }}<button v-if="pending?.failed && pending.kind === 'plan'" class="chat-message-action" type="button" @click="workspace.retryPending">重试请求</button><button v-if="pending?.failed" class="chat-message-action" type="button" @click="dismissPending">{{ pending.kind === 'chat' ? '移回草稿' : '取消未提交请求' }}</button></p></section>
+        <section class="chat-dock" aria-label="聊天输入区"><button v-if="newReplies" class="chat-new-replies" type="button" @click="toLatest">有新回复 ↓</button><form class="composer" :aria-busy="busy" @submit.prevent="send"><textarea ref="input" v-model="draft" name="body" rows="1" aria-label="聊天消息" :placeholder="snapshot.trip.mode === 'city' ? '想去哪儿逛逛？也可以直接说生成路线…' : '写下你的旅行想法…'" autocomplete="off" maxlength="10000" required @compositionstart="composing = true" @compositionend="composing = false" @keydown="keydown" @focus="viewportChanged" @blur="viewportChanged"/><button v-if="canCancel" type="button" :aria-label="cancelling ? '正在终止' : '终止处理'" :title="cancelling ? '正在终止' : '终止处理'" :disabled="cancelling" @click="terminate"><span aria-hidden="true">终止</span></button><button v-else type="submit" aria-label="发送消息" title="发送消息" :disabled="submitting || !!pending || composing || !draft.trim()"><span aria-hidden="true">↑</span></button></form><p v-if="feedback || draftFeedback" class="chat-send-feedback" role="status">{{ draftFeedback || feedback }}<button v-if="undoUncertain" class="chat-message-action" type="button" :disabled="undoing" @click="workspace.undoLast">确认撤销结果</button><button v-if="pending?.failed" class="chat-message-action" type="button" @click="dismissPending">{{ pending.kind === 'chat' ? '移回草稿' : '取消未提交请求' }}</button></p></section>
         <nav class="bottom-nav bottom-nav--v2" aria-label="底部导航"><RouterLink :to="{ query: { tab: 'board' } }" @click.prevent="tab('board')">想法</RouterLink><RouterLink class="active" :to="{ query: { tab: 'chat' } }" @click.prevent="tab('chat')">聊天</RouterLink></nav>
       </section>
       <GuidePreview :open="guideOpen" :snapshot="snapshot" :busy="busy" :feedback="feedback" @close="guideOpen = false"/>

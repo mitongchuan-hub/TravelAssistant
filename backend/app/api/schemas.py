@@ -243,7 +243,17 @@ class MessageDTO(TypedDict):
     execution_progress: ProgressDTO
 
 
+class UndoDTO(TypedDict):
+    available_count: int
+    latest_entry_id: str
+    message_id: str
+    version: int
+    can_undo: bool
+    reason: str
+
+
 class WorkspaceDTO(TypedDict):
+    undo: UndoDTO
     trip: TripDTO
     plan: PlanDTO
     messages: list[MessageDTO]
@@ -298,12 +308,8 @@ class MessageInput(InputDTO):
         return normalize_message_text(value)
 
 
-class RetryInput(InputDTO):
-    request_id: StrictStr = Field(min_length=1, max_length=100)
-
-
 class TaskInput(InputDTO):
-    kind: Literal['chat', 'plan', 'revision']
+    kind: Literal['chat']
     request_id: StrictStr = Field(min_length=1, max_length=100)
     payload: dict = Field(default_factory=dict)
 
@@ -321,3 +327,10 @@ class BasisInput(InputDTO):
     expected_plan_id: StrictStr = Field(min_length=1, max_length=200)
     source_hash: StrictStr = Field(min_length=1, max_length=200)
     expected_requirements_revision: StrictInt = Field(ge=0)
+
+
+class UndoInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    entry_id: StrictStr = Field(min_length=1, max_length=100)
+    request_id: StrictStr = Field(min_length=1, max_length=100)
+    expected_version: StrictInt = Field(ge=0)

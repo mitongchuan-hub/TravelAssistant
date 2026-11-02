@@ -41,7 +41,7 @@ def apply_changes(stage, context, payload):
             raise ValueError('目标想法在处理期间已变化，请刷新后重试')
     task = stage.tasks.get(context.execution_task_id, {})
     target = None
-    if task.get('kind') == 'revision':
+    if task.get('payload', {}).get('display_target') is not None:
         from app.application.execution import resolve_display_target
         target = resolve_display_target(stage.plans[trip_id], task.get('payload', {}))
     execution = SimpleNamespace(trip=stage.trips[trip_id], plan=stage.plans[trip_id],

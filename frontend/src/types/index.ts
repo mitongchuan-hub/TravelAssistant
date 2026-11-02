@@ -198,7 +198,9 @@ export interface Task {
   message: string
 }
 
+export interface UndoState { available_count: number; latest_entry_id: string; message_id: string; version: number; can_undo: boolean; reason: string }
 export interface WorkspaceSnapshot {
+  undo?: UndoState
   trip: Trip
   plan: Plan
   messages: ChatMessage[]

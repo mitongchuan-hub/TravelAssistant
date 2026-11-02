@@ -172,16 +172,17 @@ def test_budget_none_counts_but_still_cancels_and_times_out():
         TurnBudget(max_models=0).model()
 
 
-def test_planning_keeps_serial_contract_budget_and_correction_limit():
+def test_chat_keeps_serial_contract_and_correction_limit():
     script = Script(*[[call('read_context', {'section': 'messages'}, f'{i}a'),
                        call('read_context', {'section': 'ideas'}, f'{i}b')] for i in range(2)])
-    runner = runtime(script, entry='planning')
+    runner = runtime(script, entry='main')
     assert runner.run().failed and runner.budget.tool_calls == 0
-    assert runner.budget.max_models == 16 and 'submit_changes' in runner.registry
+    assert runner.budget.max_models is None and 'submit_changes' in runner.registry
     assert runner.config.max_steps == 16
     assert 'generation_question' not in runner._initial_context()
-    with pytest.raises(ValueError, match='同城'):
-        runner._query('maps_text_search', {'city': '北京', 'keywords': '公园'})
+    for entry in ('planning', 'revision'):
+        with pytest.raises(ValueError, match='未知任务执行入口'):
+            runtime(Script('unused'), entry=entry)
 
 
 def test_native_route_cache_avoids_duplicate_external_calls(monkeypatch):

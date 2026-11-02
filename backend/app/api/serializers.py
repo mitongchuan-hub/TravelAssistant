@@ -51,7 +51,7 @@ def task_to_dict(task: dict[str, Any]) -> TaskDTO:
             'message_id', 'thinking_id', 'plan_id', 'requirements_revision')
     result = {key: deepcopy(task[key]) for key in keys if key in task}
     # Runtime failures can include upstream exception text; expose only a safe label.
-    result['message'] = ('处理暂未完成，请检查当前行程后重试' if task.get('status') == 'failed'
+    result['message'] = ('本次处理未完成，请重新发送消息。已有内容已保留。' if task.get('status') == 'failed'
                          else task.get('message', ''))
     return cast(TaskDTO, result)
 
@@ -81,8 +81,9 @@ def workspace_snapshot(trip_id: str, user: User) -> WorkspaceDTO:
     # One lock covers ownership and all related collections: polling cannot mix turns.
     with deps.store._lock:
         trip = deps.get_owned_trip_or_404(trip_id, user)
+        from app.application.undo import metadata
         cards = deps.store.idea_cards[trip_id]
-        return {'trip': trip_to_dict(trip), 'plan': plan_to_dict(deps.store.plans[trip_id]),
+        return {'undo': metadata(deps.store, trip_id), 'trip': trip_to_dict(trip), 'plan': plan_to_dict(deps.store.plans[trip_id]),
                 'messages': [message_to_dict(row) for row in deps.store.messages[trip_id]],
                 'tasks': [task_to_dict(row) for row in deps.store.list_tasks(trip_id)],
                 'idea_cards': cast(list[IdeaDTO], [asdict(row) for row in cards]),

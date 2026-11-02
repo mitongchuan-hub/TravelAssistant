@@ -3,20 +3,29 @@ import { apiRequest, ApiError } from '@/api/client'
 import type { ChatMessage, Task, WorkspaceSnapshot } from '@/types'
 
 export type { ProgressStep, Progress, ChatMessage, Idea, LegacyRoute, LegacyItem, Plan, DisplayState, Task, WorkspaceSnapshot } from '@/types'
-interface Pending { kind: 'chat' | 'plan'; request_id: string; payload: Record<string, unknown>; body?: string; created_at: string; failed?: boolean; retry_of?: string }
+interface Pending { kind: 'chat'; request_id: string; payload: Record<string, unknown>; body?: string; created_at: string; failed?: boolean; cancel_requested?: boolean }
 export const requestId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
 const activeTask = (task: Task) => typeof task.status === 'string' && ['queued', 'running'].includes(task.status)
 export function useWorkspace(tripId: string, userId: string, onUnauthorized?: () => void) {
   const snapshot = ref<WorkspaceSnapshot | null>(null)
   const loading = ref(true), error = ref(''), feedback = ref(''), submitting = ref(false)
   const pending = ref<Pending | null>(null)
-  const authRequired = ref(false)
+  const authRequired = ref(false), cancelling = ref(false)
+  let postFlight: Promise<void> | null = null
+  const canCancel = computed(() => cancelling.value || !!pending.value && !pending.value.failed || !!snapshot.value?.tasks.some(activeTask))
   let paused = false
   const root = `/api/trips/${encodeURIComponent(tripId)}`
   const storageKey = `travelassistant:pending:${encodeURIComponent(userId)}:${encodeURIComponent(tripId)}`
+  const undoing = ref(false)
+  const undoKey = storageKey + ':undo'
+  let pendingUndo: { entry_id: string; expected_version: number; request_id: string } | null = null
+  try { const saved = JSON.parse(sessionStorage.getItem(undoKey) || 'null'); if (saved && typeof saved.entry_id === 'string' && typeof saved.request_id === 'string' && Number.isInteger(saved.expected_version)) pendingUndo = saved } catch { /* Optional storage. */ }
+  if (pendingUndo) feedback.value = '上次撤销结果待确认，请确认撤销结果；将复用同一请求标识。'
+  const undoUncertain = ref(!!pendingUndo)
+  function rememberUndo() { undoUncertain.value = !!pendingUndo; try { if (pendingUndo) sessionStorage.setItem(undoKey, JSON.stringify(pendingUndo)); else sessionStorage.removeItem(undoKey) } catch { /* In-memory recovery. */ } }
   let stopped = false, timer: ReturnType<typeof setTimeout> | undefined, refreshing: Promise<void> | null = null, epoch = 0
   const controllers = new Set<AbortController>()
-  try { const saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null'); if (saved && ['chat', 'plan'].includes(saved.kind) && typeof saved.request_id === 'string' && typeof saved.payload === 'object') pending.value = saved } catch { /* Storage is optional. */ }
+  try { const saved = JSON.parse(sessionStorage.getItem(storageKey) || 'null'); if (saved && saved.kind === 'chat' && !('retry_of' in saved) && typeof saved.request_id === 'string' && saved.payload && typeof saved.payload === 'object') pending.value = saved; else if (saved) sessionStorage.removeItem(storageKey) } catch { /* Storage is optional. */ }
   function remember(value: Pending | null) { pending.value = value; try { if (value) sessionStorage.setItem(storageKey, JSON.stringify(value)); else sessionStorage.removeItem(storageKey) } catch { /* In-memory recovery still works. */ } }
   async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const controller = new AbortController(); controllers.add(controller)
@@ -30,7 +39,7 @@ export function useWorkspace(tripId: string, userId: string, onUnauthorized?: ()
       throw e
     } finally { clearTimeout(timeout); controllers.delete(controller) }
   }
-  const busy = computed(() => submitting.value || !!pending.value && !pending.value.failed || !!snapshot.value?.display_state.busy || !!snapshot.value?.tasks.some(activeTask))
+  const busy = computed(() => undoing.value || !!pendingUndo || submitting.value || !!pending.value && !pending.value.failed || !!snapshot.value?.display_state.busy || !!snapshot.value?.tasks.some(activeTask))
   const latestTask = computed(() => snapshot.value?.tasks.find(activeTask) ?? snapshot.value?.tasks.at(-1))
   const messages = computed(() => {
     const result = [...(snapshot.value?.messages ?? [])]
@@ -48,15 +57,19 @@ export function useWorkspace(tripId: string, userId: string, onUnauthorized?: ()
     const task = snapshot.value?.tasks.find(t => t.request_id === item.request_id)
     // A retained task is the durable acknowledgement, even if another tab has
     // already cleared its messages. Never replay an acknowledged chat request.
-    if (task) { remember(null); feedback.value = '' }
+    if (task && !item.cancel_requested) { remember(null); feedback.value = '' }
   }
   async function postPending() {
-    const item = pending.value; if (!item || item.failed || submitting.value || stopped || paused) return
+    if (postFlight) return postFlight
+    postFlight = performPostPending()
+    try { await postFlight } finally { postFlight = null }
+  }
+  async function performPostPending() {
+    const item = pending.value; if (!item || item.failed || item.cancel_requested || submitting.value || stopped || paused || cancelling.value) return
     submitting.value = true; epoch++
     try {
-      const path = item.retry_of ? `/tasks/${encodeURIComponent(item.retry_of)}/retry` : item.kind === 'chat' ? '/messages' : '/tasks'
-      const body = item.retry_of ? { request_id: item.request_id } : item.kind === 'chat' ? { ...item.payload, request_id: item.request_id } : { kind: item.kind, payload: item.payload, request_id: item.request_id }
-      const result = await request<{ task: Task; messages?: ChatMessage[] }>(path, { method: 'POST', body: JSON.stringify(body) })
+      const body = { ...item.payload, request_id: item.request_id }
+      const result = await request<{ task: Task; messages?: ChatMessage[] }>('/messages', { method: 'POST', body: JSON.stringify(body) })
       if (stopped) return
       if (!result.task?.id || result.task.request_id !== item.request_id) throw new Error('Unknown acknowledgement')
       if (snapshot.value) {
@@ -64,8 +77,10 @@ export function useWorkspace(tripId: string, userId: string, onUnauthorized?: ()
         for (const message of result.messages ?? []) { const i = snapshot.value.messages.findIndex(m => m.id === message.id); if (i < 0) snapshot.value.messages.push(message); else snapshot.value.messages[i] = message }
       }
       // Keep the optimistic text until its server message is present in a snapshot.
-      if (item.kind !== 'chat' || result.messages?.some(m => m.id === result.task.message_id)) remember(null)
-      feedback.value = ''
+      if (!pending.value?.cancel_requested) {
+        if (result.messages?.some(m => m.id === result.task.message_id)) remember(null)
+        feedback.value = ''
+      }
     } catch (e) {
       if (stopped) return
       if (authRequired.value) { feedback.value = messageFor(e); return }
@@ -73,8 +88,38 @@ export function useWorkspace(tripId: string, userId: string, onUnauthorized?: ()
       else feedback.value = '连接中断，正在使用同一请求标识确认是否送达，请勿重复发送。'
     } finally { submitting.value = false }
   }
+  async function cancel() {
+    if (cancelling.value || stopped || authRequired.value) return false
+    if (pending.value) remember({ ...pending.value, cancel_requested: true })
+    cancelling.value = true; epoch++; clearTimeout(timer)
+    feedback.value = '正在终止，请稍候…'
+    try {
+      // Do not abort an uncertain submission: a browser abort is not a server cancellation.
+      if (postFlight) await postFlight
+      if (stopped) return false
+      let task = pending.value ? snapshot.value?.tasks.find(t => t.request_id === pending.value!.request_id) : snapshot.value?.tasks.find(activeTask)
+      if (!task) {
+        const data = await request<WorkspaceSnapshot>('/workspace', { cache: 'no-store' })
+        if (stopped) return false
+        snapshot.value = data
+        task = pending.value ? data.tasks.find(t => t.request_id === pending.value!.request_id) : data.tasks.find(activeTask)
+      }
+      if (!task?.id) throw new Error('尚无法确认请求是否送达，请重新连接后再次终止。')
+      const result = await request<{ task: Task }>(`/tasks/${encodeURIComponent(task.id)}/cancel`, { method: 'POST', body: '{}' })
+      if (stopped) return false
+      if (result.task?.id !== task.id || activeTask(result.task)) throw new Error('服务未确认终止，请重试。')
+      epoch++
+      if (snapshot.value) snapshot.value.tasks = snapshot.value.tasks.map(t => t.id === result.task.id ? result.task : t)
+      remember(null)
+      feedback.value = result.task.status === 'superseded' ? '已终止，消息、需求和行程已保留。' : '本次处理已结束，已有内容已保留。'
+      return true
+    } catch (e) {
+      if (!stopped) feedback.value = `终止失败，未确认后台任务已停止。${e instanceof Error && !(e instanceof ApiError) ? e.message : messageFor(e)}`
+      return false
+    } finally { cancelling.value = false; schedule() }
+  }
   async function refresh() {
-    if (stopped || document.hidden || authRequired.value) return
+    if (stopped || document.hidden || authRequired.value || cancelling.value) return
     if (refreshing) return refreshing
     paused = false
     refreshing = (async () => {
@@ -84,37 +129,52 @@ export function useWorkspace(tripId: string, userId: string, onUnauthorized?: ()
         if (stopped || epoch !== currentEpoch) return
         snapshot.value = data; error.value = ''; reconcile()
         if (pending.value && !pending.value.failed && !submitting.value) await postPending()
-      } catch (e) { if (!stopped) { error.value = messageFor(e); if (e instanceof ApiError && [401, 403, 404].includes(e.status)) paused = true } }
+      } catch (e) { if (!stopped && epoch === currentEpoch) { error.value = messageFor(e); if (e instanceof ApiError && [401, 403, 404].includes(e.status)) paused = true } }
       finally { loading.value = false }
     })()
     try { await refreshing } finally { refreshing = null; schedule() }
   }
-  async function submit(kind: 'chat' | 'plan', payload: Record<string, unknown>, body?: string) {
-    if (submitting.value || (kind !== 'chat' && busy.value) || pending.value || stopped || paused) return false
+  async function undoLast() {
+    if (undoing.value || submitting.value || pending.value || stopped || paused) return false
+    if (!pendingUndo) {
+      const value = snapshot.value?.undo
+      if (!value?.can_undo) return false
+      pendingUndo = { entry_id: value.latest_entry_id, expected_version: value.version, request_id: requestId() }
+      rememberUndo()
+    }
+    undoing.value = true; epoch++
+    try {
+      const result = await request<{ receipt: { undone_entry_id: string } }>('/undo', { method: 'POST', body: JSON.stringify(pendingUndo) })
+      if (result.receipt?.undone_entry_id !== pendingUndo.entry_id) throw new Error('Unknown undo acknowledgement')
+      pendingUndo = null; rememberUndo()
+      feedback.value = '已撤销本次修改，聊天记录已保留。'
+      return true
+    } catch (e) {
+      if (e instanceof ApiError && [400, 403, 404, 409, 422].includes(e.status)) { pendingUndo = null; rememberUndo(); feedback.value = messageFor(e) }
+      else feedback.value = '尚未确认撤销结果，请重试撤销；将使用同一请求标识，不会多退一步。'
+      return false
+    } finally { undoing.value = false; await refresh() }
+  }
+  async function submit(kind: 'chat', payload: Record<string, unknown>, body?: string) {
+    if (undoing.value || pendingUndo || cancelling.value || submitting.value || pending.value || stopped || paused) return false
     remember({ kind, request_id: requestId(), payload, body, created_at: new Intl.DateTimeFormat('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()) })
     await postPending(); await refresh(); return true
   }
   function binding() { const state = snapshot.value!.display_state; return { expected_plan_id: state.plan_id, source_hash: state.source_hash, expected_requirements_revision: state.requirements_revision } }
   async function action(path: string, body?: unknown, method = 'POST') {
-    if (submitting.value || stopped || paused) return false
+    if (undoing.value || pendingUndo || cancelling.value || submitting.value || stopped || paused) return false
     submitting.value = true; epoch++; feedback.value = ''
     try { await request(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }); return true }
     catch (e) { if (!stopped) feedback.value = messageFor(e); return false }
     finally { submitting.value = false; await refresh() }
-  }
-  async function retryPending() { if (!pending.value || submitting.value) return; remember({ ...pending.value, failed: false }); await postPending(); await refresh() }
-  async function retryTask(task: Task) {
-    if (busy.value || pending.value || stopped || paused) return
-    remember({ kind: 'plan', retry_of: task.id, request_id: requestId(), payload: {}, created_at: '' })
-    await postPending(); await refresh()
   }
   function visibility() { clearTimeout(timer); if (!document.hidden) void refresh() }
   document.addEventListener('visibilitychange', visibility)
   void refresh()
   onScopeDispose(() => { stopped = true; epoch++; clearTimeout(timer); controllers.forEach(c => c.abort()); document.removeEventListener('visibilitychange', visibility) })
   function dismissPending() { const body = pending.value?.body; if (pending.value?.failed) { remember(null); feedback.value = '' }; return body }
-  return { snapshot, messages, pending, loading, error, feedback, busy, submitting, latestTask, authRequired, refresh, retryPending, retryTask, dismissPending,
-    send: (body: string) => submit('chat', { body }, body), generate: () => submit('plan', binding()),
+  return { undoLast, undoing, undoUncertain, snapshot, messages, pending, loading, error, feedback, busy, submitting, latestTask, authRequired, cancelling, canCancel, cancel, refresh, dismissPending,
+    send: (body: string) => submit('chat', { body }, body),
     confirm: () => action('/plan/confirm', binding()), regenerate: () => action('/display', { plan_id: snapshot.value!.display_state.plan_id, source_hash: snapshot.value!.display_state.source_hash }),
     addIdea: (body: string) => action('/ideas', { body }), deleteIdea: (id: string) => action(`/ideas/${encodeURIComponent(id)}`, undefined, 'DELETE'), clearMessages: () => action('/messages', undefined, 'DELETE') }
 }

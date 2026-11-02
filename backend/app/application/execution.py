@@ -126,22 +126,6 @@ def validate_display_target_metadata(plan, metadata):
         raise TaskConflict('目标安排已变化，请刷新行程')
     return current
 
-def _operation_body(kind, payload):
-    from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
-    from app.application.guide import _foreground_operation as _fn__foreground_operation
-    from app.application.guide import _notify_display_worker as _fn__notify_display_worker
-    from app.application.guide import _queue_display as _fn__queue_display
-    from app.application.guide import cancel_display_jobs as _fn_cancel_display_jobs
-    from app.application.workspace import trip_metrics as _fn_trip_metrics
-    from app.storage.state import _persist as _fn__persist
-    from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
-    from app.storage.transactions import _stage_turn as _fn__stage_turn
-    if kind == 'chat':
-        return payload.get('body', '').strip()
-    if kind == 'revision':
-        return payload.get('feedback', '').strip()
-    return '页面操作：生成当前行程'
-
 def _configured_strategy(store):
     from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
     from app.application.guide import _foreground_operation as _fn__foreground_operation
@@ -175,7 +159,7 @@ def _restore_tasks(current, before):
         else:
             current[task_id] = deepcopy(saved)
 
-def submit_task(self, trip_id, kind, payload, request_id, retry_of=''):
+def submit_task(self, trip_id, kind, payload, request_id):
     from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
     from app.application.guide import _foreground_operation as _fn__foreground_operation
     from app.application.guide import _notify_display_worker as _fn__notify_display_worker
@@ -185,95 +169,34 @@ def submit_task(self, trip_id, kind, payload, request_id, retry_of=''):
     from app.storage.state import _persist as _fn__persist
     from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
     from app.storage.transactions import _stage_turn as _fn__stage_turn
-    if kind not in {'chat', 'plan', 'revision'}:
+    if kind != 'chat':
         raise ValueError('任务类型不正确')
     if not isinstance(request_id, str) or not 1 <= len(request_id) <= 100:
         raise ValueError('请求标识不正确，请刷新后重试')
     if not isinstance(payload, dict):
         raise ValueError('任务内容必须为对象')
     payload = deepcopy(payload)
-    if kind == 'chat':
-        payload['body'] = normalize_message_text(payload.get('body'))
+    payload['body'] = normalize_message_text(payload.get('body'))
+    if set(payload) != {'body'}:
+        raise ValueError('聊天任务只接受正文')
     with self._lock:
         for task in self.tasks.values():
             if task['trip_id'] == trip_id and task['request_id'] == request_id:
-                if (task['kind'], task['payload'], task['retry_of']) != (kind, payload, retry_of):
+                if (task['kind'], task['payload']) != (kind, payload):
                     raise TaskConflict('同一请求标识不能用于不同内容')
                 return (deepcopy(task), False)
-        if retry_of:
-            child = next((task for task in self.tasks.values() if task['trip_id'] == trip_id and task['retry_of'] == retry_of), None)
-            if child:
-                if (child['kind'], child['payload']) != (kind, payload):
-                    raise TaskConflict('重试内容必须与原任务一致')
-                return (deepcopy(child), False)
         active = next((task for task in self.tasks.values() if task['trip_id'] == trip_id and task['status'] in ACTIVE), None)
-        original = self.tasks.get(retry_of) if retry_of else None
-        if retry_of:
-            if active:
-                raise TaskConflict('这次旅行还有任务正在处理，请等待完成后再重试')
-            if not original or original['trip_id'] != trip_id or original['status'] != 'failed':
-                raise TaskConflict('只有失败的任务可以重试')
-            if (original['kind'], original['payload']) != (kind, payload):
-                raise TaskConflict('重试内容必须与原任务一致')
-        elif active and kind != 'chat':
-            raise TaskConflict('这次旅行还有任务正在处理，请等待完成后再提交')
-        if kind in {'plan', 'revision'}:
-            validate_task_basis(self.plans[trip_id], self.trips[trip_id].requirements.revision, payload)
-        if kind != 'revision' and 'display_target' in payload:
-            raise ValueError('只有行程修改可以指定展示目标')
-        if kind == 'revision':
-            feedback = payload.get('feedback')
-            if not isinstance(feedback, str) or not 1 <= len(feedback.strip()) <= 2000:
-                raise ValueError('修改意见应为 1 到 2000 字的文本')
-            payload['feedback'] = feedback.strip()
-            if not self.plans[trip_id].has_content:
-                raise ValueError('请先生成行程')
-            resolve_display_target(self.plans[trip_id], payload)
-            target = payload.get('item_id')
-            if target is not None and (not isinstance(target, str)):
-                raise ValueError('旧行程条目标识应为文本')
-            if target and (not any((item.id == target for day in self.plans[trip_id].days for item in day.items))):
-                raise ValueError('目标安排已变化，请刷新行程')
         trip = self.trips[trip_id]
         current_basis = plan_basis(self.plans[trip_id])
         workflow = normalize_workflow(trip.workflow_state, trip=trip, trip_id=trip_id, messages=self.messages[trip_id], plan_basis=current_basis)
-        if original:
-            try:
-                original_basis = PlanBasis.from_value(original['plan_basis'])
-            except (KeyError, TypeError, ValueError):
-                raise TaskConflict('原任务缺少可验证的授权依据，请重新提交') from None
-            receipt = original.get('receipt') if isinstance(original.get('receipt'), dict) else None
-            if receipt and receipt.get('accepted_artifact_ids'):
-                raise TaskConflict('原任务已提交部分业务效果，请基于当前状态重新发起请求')
-            expected_workflow_revision = receipt.get('after_workflow_revision') if receipt else original.get('workflow_revision')
-            expected_requirements_revision = receipt.get('after_requirements_revision') if receipt else original.get('requirements_revision')
-            expected_basis = original_basis
-            if receipt and isinstance(receipt.get('after_plan_basis'), dict):
-                try:
-                    expected_basis = PlanBasis.from_value(receipt['after_plan_basis'])
-                except ValueError:
-                    raise TaskConflict('原任务回执缺少可验证的行程依据，请重新提交') from None
-            if workflow['sequence'] != original.get('sequence') or workflow['epoch'] != original.get('epoch') or workflow['revision'] != expected_workflow_revision or (trip.requirements.revision != expected_requirements_revision) or (current_basis != expected_basis):
-                raise TaskConflict('原请求的会话、需求或行程依据已变化，请重新提交')
-            expected_body = _operation_body(kind, payload)
-            source = next((message for message in self.messages[trip_id] if message.id == original.get('message_id')), None)
-            if source is None or source.sender_type != 'user' or source.sender.id != trip.owner.id or (source.body != expected_body):
-                raise TaskConflict('原始请求消息已失效，请重新提交')
-            strategy = original.get('execution_strategy')
-            if strategy not in EXECUTION_STRATEGIES:
-                raise TaskConflict('原任务缺少固定执行策略，请重新提交')
-            message_id = original['message_id']
-            next_workflow = workflow
-        else:
-            strategy = _configured_strategy(self)
-            message_id = ''
-            next_workflow = advance_request(workflow)
+        strategy = _configured_strategy(self)
+        next_workflow = advance_request(workflow)
         before_tasks = deepcopy(self.tasks)
         before_messages = deepcopy(self.messages[trip_id])
         before_trip = deepcopy(trip)
         previous_defer = getattr(self, '_defer_persist', 0)
         try:
-            if not original and active:
+            if active:
                 for previous in self.tasks.values():
                     if previous['trip_id'] == trip_id and previous['status'] in ACTIVE:
                         previous.update(status='superseded', message='已由新消息替代', updated_at=now(), result_url='')
@@ -284,18 +207,14 @@ def submit_task(self, trip_id, kind, payload, request_id, retry_of=''):
                                 row.status, row.body = ('superseded', '这次处理已由你的新消息替代。')
             trip.workflow_state = deepcopy(next_workflow)
             self._defer_persist = previous_defer + 1
-            if original:
-                assistant_message_id = start_agent_task(self, trip_id).id
-                user_message_id = original['message_id']
-            else:
-                user_message, assistant_message = queue_user_message(self, trip_id, _operation_body(kind, payload), trip.owner.id)
-                user_message_id, assistant_message_id = (user_message.id, assistant_message.id)
+            user_message, assistant_message = self.queue_user_message(trip_id, payload['body'], trip.owner.id)
+            user_message_id, assistant_message_id = (user_message.id, assistant_message.id)
             self._defer_persist = previous_defer
             task_id = uuid4().hex
             conversation_task_id = next_workflow['active_question']['task_id'] if next_workflow.get('active_question') else None
-            task = {'id': task_id, 'trip_id': trip_id, 'kind': kind, 'payload': payload, 'request_id': request_id, 'retry_of': retry_of, 'status': 'queued', 'message': '等待处理', 'created_at': now(), 'updated_at': now(), 'message_id': user_message_id, 'thinking_id': assistant_message_id, 'result_url': '', 'plan_id': self.plans[trip_id].id, 'plan_basis': current_basis.to_dict(), 'requirements_revision': trip.requirements.revision, 'workflow_revision': next_workflow['revision'], 'sequence': next_workflow['sequence'], 'epoch': next_workflow['epoch'], 'conversation_task_id': conversation_task_id, 'execution_strategy': strategy}
+            task = {'id': task_id, 'trip_id': trip_id, 'kind': kind, 'payload': payload, 'request_id': request_id, 'status': 'queued', 'message': '等待处理', 'created_at': now(), 'updated_at': now(), 'message_id': user_message_id, 'thinking_id': assistant_message_id, 'result_url': '', 'plan_id': self.plans[trip_id].id, 'plan_basis': current_basis.to_dict(), 'requirements_revision': trip.requirements.revision, 'workflow_revision': next_workflow['revision'], 'sequence': next_workflow['sequence'], 'epoch': next_workflow['epoch'], 'conversation_task_id': conversation_task_id, 'execution_strategy': strategy}
             self.tasks[task_id] = task
-            _fn__persist(self)
+            self._persist()
         except Exception:
             self._defer_persist = previous_defer
             _restore_tasks(self.tasks, before_tasks)
@@ -303,6 +222,28 @@ def submit_task(self, trip_id, kind, payload, request_id, retry_of=''):
             self.trips[trip_id] = before_trip
             raise
         return (deepcopy(task), True)
+
+def cancel_task(self, trip_id, task_id):
+    """Invalidate an execution cooperatively, publishing only after persistence."""
+    from app.storage.legacy.workflow import bump_epoch
+    from app.storage.transactions import _stage_turn, _persist_staged_turn
+    with self._lock:
+        task = self.tasks.get(task_id)
+        if not task or task.get('trip_id') != trip_id:
+            return None
+        if task['status'] not in ACTIVE:
+            return deepcopy(task)
+        stage = _stage_turn(self, trip_id)
+        target = stage.tasks[task_id]
+        target.update(status='superseded', message='已终止，已有内容已保留', updated_at=now(), result_url='')
+        stage.trips[trip_id].workflow_state = bump_epoch(stage.trips[trip_id].workflow_state)
+        for row in stage.messages[trip_id]:
+            if row.id == target.get('thinking_id'):
+                row.status, row.body = 'superseded', '本次处理已终止，消息、需求和行程已保留。'
+                row.execution_progress = finish_progress(row.execution_progress, 'superseded')
+        _persist_staged_turn(self, stage, trip_id)
+        return deepcopy(self.tasks[task_id])
+
 
 def get_task(self, task_id, *, trip_id=None):
     from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
@@ -413,7 +354,7 @@ def recover_tasks(self):
     for task in self.tasks.values():
         if task['status'] in ACTIVE:
             task['status'], task['updated_at'] = ('failed', now())
-            task['message'] = '服务重启使任务中断。请先检查当前行程，再重试。'
+            task['message'] = '本次处理未完成，请重新发送消息。已有内容已保留。'
             changed = True
     if changed:
         _fn__persist(self)
@@ -444,7 +385,7 @@ def capture_request_context(self, trip_id, task_id=None, *, body=None, entry='ma
         workflow = normalize_workflow(trip.workflow_state, trip=trip, messages=self.messages[trip_id], plan=self.plans[trip_id])
         kind = task['kind'] if task else None
         if kind:
-            entry = {'chat': 'main', 'plan': 'planning', 'revision': 'revision'}[kind]
+            entry = 'main'
         payload = task['payload'] if task else {}
         source = body if body is not None else payload.get('body', payload.get('feedback', ''))
         if kind == 'plan' and body is None:
@@ -520,7 +461,7 @@ def execute_turn(self, task_id):
         trip_id = task['trip_id']
         context = capture_request_context(self, trip_id, task_id)
         payload = task['payload']
-        display_target = resolve_display_target(self.plans[trip_id], payload) if task['kind'] == 'revision' else None
+        display_target = resolve_display_target(self.plans[trip_id], payload)
         execution = build_execution_context(trip=self.trips[trip_id], plan=self.plans[trip_id], messages=self.messages[trip_id], idea_cards=self.idea_cards[trip_id], metrics=_fn_trip_metrics(self, trip_id), current_date=datetime.now().date().isoformat(), entry=context.entry, payload=payload, display_target=display_target)
         conflict = _turn_conflict(self, context)
     if conflict:
@@ -600,7 +541,7 @@ def fail_execution(self, task_id, exc):
             target['receipt'] = serialize(receipt)
             _fn__persist_staged_turn(self, stage, task['trip_id'])
             return receipt
-        reason = str(exc) if isinstance(exc, ValueError) else '本次处理未完成，当前需求和行程已保留，请稍后重试。'
+        reason = str(exc) if isinstance(exc, ValueError) else '本次处理未完成，请重新发送消息。已有内容已保留。'
         proposal = ExecutionResult.failure(reason)
     return commit_turn(self, context, proposal)
 
@@ -639,6 +580,8 @@ def commit_turn(self, context, proposal):
         stage = _fn__stage_turn(self, context.trip_id)
         trip_id = context.trip_id
         trip = stage.trips[trip_id]
+        from app.application.undo import capture, record_change, manual_barrier
+        undo_before = capture(stage, trip_id)
         crud_lines, crud_kinds, crud_payload = ([], [], None)
         if proposal.changes is not None:
             from app.application.changes import apply_changes
@@ -661,7 +604,7 @@ def commit_turn(self, context, proposal):
         failed = proposal.failed
         reason = proposal.reason
         if failed:
-            parts.append('仍未完成：' + (reason or '本次处理未全部完成，请稍后重试。'))
+            parts.append('本次处理未完成，请重新发送消息。已有内容已保留。')
         body = '\n\n'.join(parts) or '本轮已结束，当前行程未修改。'
         status = 'failed' if failed else 'sent'
         next_question = crud_payload['args'].get('next_question', '') if crud_payload else ''
@@ -683,6 +626,10 @@ def commit_turn(self, context, proposal):
             from app.application.contracts import serialize
             task = stage.tasks[context.execution_task_id]
             task.update(status=task_status, message=next_question or (reason if failed else '已完成'), needs_input=needs_input, updated_at=now(), receipt=serialize(receipt), committed_effect_kinds=crud_kinds, submission_digest=submission_digest, result_url=f'/workspace/{trip_id}?tab=' + ('itinerary' if has_itinerary else 'chat'))
+        if context.entry == 'confirm' or (failed and crud_kinds):
+            manual_barrier(stage, trip_id)
+        elif not failed and crud_kinds:
+            record_change(stage, trip_id, undo_before, message_id)
         _fn__persist_staged_turn(self, stage, trip_id)
     if has_itinerary:
         _fn__notify_display_worker(self)
@@ -814,7 +761,7 @@ def fail_agent_task(self, trip_id: str, thinking_message_id: str | None=None) ->
     with self._lock:
         if not _task_current(self):
             return
-        error_message = Message(id=f'm-{next_id(self)}', sender=self.users['agent'], sender_type='agent', status='failed', body='我刚刚没有完成回复，可以直接重新发送上一条消息。', created_at=_now_label(), agent_card=AgentCard(kind='missing-info', title='Agent 暂时没有回复成功', summary='你的消息已经保留，这次处理没有完成。', bullets=['消息不会丢失', '可以重新发送上一条消息', '也可以先继续补充旅行想法'], actions=[AgentAction(label='继续聊天', target='chat')]))
+        error_message = Message(id=f'm-{next_id(self)}', sender=self.users['agent'], sender_type='agent', status='failed', body='本次处理未完成，请重新发送消息。已有内容已保留。', created_at=_now_label(), agent_card=AgentCard(kind='missing-info', title='Agent 暂时没有回复成功', summary='你的消息已经保留，这次处理没有完成。', bullets=['消息不会丢失', '可以重新发送上一条消息', '也可以先继续补充旅行想法'], actions=[AgentAction(label='继续聊天', target='chat')]))
         if thinking_message_id:
             for index, message in enumerate(self.messages[trip_id]):
                 if message.id == thinking_message_id:
@@ -826,48 +773,8 @@ def fail_agent_task(self, trip_id: str, thinking_message_id: str | None=None) ->
                 self.messages[trip_id].append(error_message)
         else:
             self.messages[trip_id].append(error_message)
-        self.trips[trip_id].last_activity = 'Agent 整理失败，等待重试'
+        self.trips[trip_id].last_activity = 'Agent 整理失败，等待新消息'
         _fn__persist(self)
-
-def request_revision(self, trip_id: str, item_id: str | None=None, feedback: str='', sender: User | None=None, *, display_target: dict | None=None) -> Message | None:
-    from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
-    from app.application.guide import _foreground_operation as _fn__foreground_operation
-    from app.application.guide import _notify_display_worker as _fn__notify_display_worker
-    from app.application.guide import _queue_display as _fn__queue_display
-    from app.application.guide import cancel_display_jobs as _fn_cancel_display_jobs
-    from app.application.workspace import trip_metrics as _fn_trip_metrics
-    from app.storage.state import _persist as _fn__persist
-    from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
-    from app.storage.transactions import _stage_turn as _fn__stage_turn
-    if not getattr(self._task_context, 'task_id', None):
-        from uuid import uuid4
-        payload = {'feedback': feedback.strip() or '希望安排更轻松一点'}
-        if item_id:
-            payload['item_id'] = item_id
-        if display_target is not None:
-            from app.services.itinerary.plan_display import text_hash
-            with self._lock:
-                target = validate_display_target_metadata(self.plans[trip_id], display_target)
-                payload.update(display_target={key: target[key] for key in ('day_index', 'item_index')}, expected_plan_id=self.plans[trip_id].id, source_hash=text_hash(self.plans[trip_id].text), expected_requirements_revision=self.trips[trip_id].requirements.revision)
-        task, _ = self.submit_task(trip_id, 'revision', payload, uuid4().hex)
-        receipt = self.run_task(task['id'])
-        return next((row for row in self.messages[trip_id] if receipt and row.id == receipt.message_id), None)
-
-def generate_plan(self, trip_id: str) -> Message | None:
-    from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
-    from app.application.guide import _foreground_operation as _fn__foreground_operation
-    from app.application.guide import _notify_display_worker as _fn__notify_display_worker
-    from app.application.guide import _queue_display as _fn__queue_display
-    from app.application.guide import cancel_display_jobs as _fn_cancel_display_jobs
-    from app.application.workspace import trip_metrics as _fn_trip_metrics
-    from app.storage.state import _persist as _fn__persist
-    from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
-    from app.storage.transactions import _stage_turn as _fn__stage_turn
-    if not getattr(self._task_context, 'task_id', None):
-        from uuid import uuid4
-        task, _ = self.submit_task(trip_id, 'plan', {}, uuid4().hex)
-        receipt = self.run_task(task['id'])
-        return next((row for row in self.messages[trip_id] if receipt and row.id == receipt.message_id), None)
 
 def confirm_plan(self, trip_id: str):
     from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs

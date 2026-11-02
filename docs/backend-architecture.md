@@ -28,3 +28,13 @@ E:/anaconda/envs/TravelAssistant/python.exe -m pytest tests/automated -q
 ```
 
 不使用真实模型、地图、网络、`.env` 或生产数据库。任何旧文件删除候选应单独报告，不在可逆阶段删除。
+
+## Agent 撤销
+
+`application/undo.py` 集中管理每旅行最多三份业务快照、单调版本、写屏障和幂等回执。兼容 `workflow/turn_commit.py` 与 `application/execution.py` 都在同一 stage 内登记历史；快照存于可选 `agent_undo` 字段，旧库缺字段视为空历史。手动业务写也使用 stage 原子清链。工作区仅公开计数、entry/message ID、版本及可用性，不公开快照。检查 owner、全局 CSRF、entry ID、request ID和预期版本；同 token重复返回同回执。撤销重建 plan identity并递增需求/workflow版本，使迟到结果不能发布；旧 HTML重新验证，不恢复旧 job。
+
+## 单一聊天任务入口
+
+新执行任务仅使用 `chat`，主提交接口为 `POST /api/trips/{id}/messages`；兼容 `POST /tasks` 也仅接受 `kind=chat` 和 `payload.body`，旧 `plan` / `revision` 新请求返回校验错误。生成与修改仍由同一个 Agent 的 `submit_changes` 完成，Runtime 不再接收 planning/revision 入口；确定性的 confirm、undo、cancel、展示转换不在此次删除范围。
+
+`application/execution.submit_task` 统一任务提交实现，DemoStore 的旧 workflow 门面转调此用例。历史任务字段与记录不改写，列表/工作区继续可读（包括旧 plan/revision、`retry_of`）。失败任务的 POST retry 路由、payload 恢复函数和提交分支已删除，不再写入 `retry_of` 或复用旧授权消息。用户看到“本次处理未完成，请重新发送消息。已有内容已保留。”；重新发送创建新的 chat/main 请求、任务和用户消息身份。网络送达不确定的 pending 仍以同 request_id 恢复/去重；已确认任务不重新执行。普通新 chat 的替代取消、固定策略、sequence/epoch、版本保护、原子提交和撤销屏障保留；undo 网络幂等、HTML 结构纠错与 429 备用请求不变。

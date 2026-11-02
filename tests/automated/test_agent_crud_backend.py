@@ -81,10 +81,10 @@ def execution(store):
                            idea_cards=deepcopy(store.idea_cards[key]), display_target=None)
 
 
-def proposal(store, body, args, *, task=True, kind='revision'):
+def proposal(store, body, args, *, task=True, kind='chat'):
     key = 'trip-hangzhou'
     if task:
-        # Exercise the same sealed transaction through chat or a legacy task.
+        # Exercise the sealed transaction through the only new task kind.
         payload = {'feedback': body} if kind == 'revision' else {'body': body}
         row, _ = store.submit_task(key, kind, payload, 'request-' + str(len(store.tasks)))
         store.tasks[row['id']]['status'] = 'running'

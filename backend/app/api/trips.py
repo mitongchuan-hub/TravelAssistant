@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from starlette.concurrency import run_in_threadpool
 
 from app.api import dependencies as deps
-from app.api.schemas import CityInput
+from app.api.schemas import CityInput, UndoInput
 from app.api.serializers import place_to_dict, requirements_values, trip_to_dict, workspace_snapshot
 from app.services.maps.places import search_places
 from app.services.city_outings import CITY_FORM_FIELDS, city_requirements
@@ -150,3 +150,16 @@ def delete_trip(request: Request, trip_id: str):
         choices._items = {key: value for key, value in choices._items.items()
                           if not (value['trip_id'] == trip_id and value['owner_id'] == user.id)}
     return {'deleted': True}
+
+
+@router.post("/{trip_id}/undo")
+def undo_trip(request: Request, trip_id: str, data: UndoInput):
+    from app.application.undo import undo
+    from app.workflow.tasks import TaskConflict
+    user = deps.require_user(request)
+    with deps.store._lock:
+        deps.get_owned_trip_or_404(trip_id, user)
+        try:
+            return {"receipt": undo(deps.store, trip_id, data.entry_id, data.request_id, data.expected_version)}
+        except TaskConflict as exc:
+            raise HTTPException(409, str(exc)) from None
