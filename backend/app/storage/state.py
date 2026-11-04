@@ -19,6 +19,8 @@ class State:
         self.persistence_enabled = boolean('TRAVEL_PERSISTENCE') if persistence_enabled is None else persistence_enabled
         self._lock = RLock()
         self.agent_undo = {}
+        self.dispatchers = {}
+        self._drain_owners = {}
         self._task_context = local()
         self._ids = count(100)
         self.users = {'agent': User('agent', '旅行规划 Agent', 'AI')}

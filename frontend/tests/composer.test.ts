@@ -78,6 +78,44 @@ describe('temporarily hidden undo', () => {
   })
 })
 
+describe('follow-up composer controls', () => {
+  it('shows send beside the square stop only with a draft and keeps waiting controls near input', async () => {
+    const value = snapshot(); value.queue.current_task = { id: 'running', status: 'running', message: '' }
+    value.queue.waiting_tasks = [{ id: 'b', status: 'waiting', body: '之后去博物馆', message: '' }]
+    vi.mocked(apiRequest).mockResolvedValue(value)
+    const wrapper = mount(WorkspacePage, options); await flushPromises()
+    expect(wrapper.find('button[aria-label="终止处理"] svg rect').exists()).toBe(true)
+    expect(wrapper.find('button[aria-label="发送消息"]').exists()).toBe(false)
+    await wrapper.get('textarea').setValue('再看看餐厅')
+    expect(wrapper.get('button[aria-label="发送消息"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('button[aria-label="终止处理"]').exists()).toBe(true)
+    expect(wrapper.get('.chat-dock').text()).toContain('之后去博物馆')
+    expect(wrapper.find('button[aria-label="取消等待消息：之后去博物馆"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+  it('does not send through composition or Enter and keeps the draft during an uncertain ACK', async () => {
+    vi.mocked(apiRequest).mockResolvedValueOnce(snapshot())
+    const wrapper = mount(WorkspacePage, options); await flushPromises()
+    await wrapper.get('textarea').setValue('输入法草稿')
+    await wrapper.get('textarea').trigger('compositionstart')
+    await wrapper.get('form.composer').trigger('submit')
+    await wrapper.get('textarea').trigger('keydown', { key: 'Enter', isComposing: true, keyCode: 229 })
+    expect(vi.mocked(apiRequest).mock.calls).toHaveLength(1)
+    expect(wrapper.get<HTMLTextAreaElement>('textarea').element.value).toBe('输入法草稿')
+    wrapper.unmount()
+  })
+  it('shows pause reason and explicit current-content resume without disabling new messages', async () => {
+    const value = snapshot(); Object.assign(value.queue, { paused: true, pause_reason: 'failed' })
+    vi.mocked(apiRequest).mockResolvedValue(value)
+    const wrapper = mount(WorkspacePage, options); await flushPromises()
+    expect(wrapper.get('.chat-dock').text()).toContain('失败')
+    expect(wrapper.get('.chat-dock').text()).toContain('基于当前保存内容继续')
+    await wrapper.get('textarea').setValue('继续补充')
+    expect(wrapper.get('button[aria-label="发送消息"]').attributes('disabled')).toBeUndefined()
+    wrapper.unmount()
+  })
+})
+
 describe('composer sizing lifecycle', () => {
   it('sets empty drafts to 38px without measuring placeholder height after async snapshot', async () => {
     const response = deferred<ReturnType<typeof snapshot>>()

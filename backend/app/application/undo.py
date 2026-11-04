@@ -127,6 +127,8 @@ def undo(store, trip_id, entry_id, request_id, expected_version):
         workflow = normalize_workflow(trip.workflow_state)
         workflow.update(revision=workflow['revision'] + 1, sequence=workflow['sequence'] + 1, epoch=workflow['epoch'] + 1)
         trip.workflow_state = workflow
+        from app.workflow.dispatcher import invalidate
+        invalidate(stage, trip_id)
         stage._discard_display_jobs(trip_id)
         if plan.text and plan.display_status != 'ready':
             plan.display_status = 'pending'

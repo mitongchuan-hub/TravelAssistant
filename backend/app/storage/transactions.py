@@ -16,6 +16,7 @@ def _stage_turn(self, trip_id):
     """Reuse the normal builders against private aggregates, never live objects."""
     stage = copy(self)
     stage.agent_undo = deepcopy(self.agent_undo)
+    stage.dispatchers = deepcopy(self.dispatchers)
     stage.trips = dict(self.trips)
     stage.plans = dict(self.plans)
     stage.messages = dict(self.messages)
@@ -35,6 +36,7 @@ def _publish_turn(self, stage, trip_id):
     from app.storage.task_repository import publish_tasks
     publish_tasks(self, stage, trip_id)
     self.agent_undo = stage.agent_undo
+    self.dispatchers = stage.dispatchers
     self.display_jobs = stage.display_jobs
     self._display_changed.notify_all()
 
@@ -60,13 +62,13 @@ class _StagingSignal:
 
 def delete_trip_atomically(store, trip_id):
     with store._lock:
-        if any(task.get('trip_id') == trip_id and task.get('status') in {'queued', 'running'}
+        if trip_id in store._drain_owners or any(task.get('trip_id') == trip_id and task.get('status') in {'waiting', 'queued', 'running'}
                for task in store.tasks.values()):
             raise ValueError('这趟旅行还有任务正在进行，请稍后再删除')
         if trip_id not in store.trips:
             return False
         stage = _stage_turn(store, trip_id)
-        for name in ('trips', 'plans', 'messages', 'agent_undo'):
+        for name in ('trips', 'plans', 'messages', 'agent_undo', 'dispatchers'):
             getattr(stage, name).pop(trip_id, None)
         stage.display_jobs = {key: job for key, job in stage.display_jobs.items() if job.get('trip_id') != trip_id}
         stage.tasks = {}
@@ -75,7 +77,7 @@ def delete_trip_atomically(store, trip_id):
                           delete_trip_ids=[trip_id])
         else:
             store.task_repository.apply(delete_trip_ids=[trip_id])
-        for name in ('trips', 'plans', 'messages', 'agent_undo'):
+        for name in ('trips', 'plans', 'messages', 'agent_undo', 'dispatchers'):
             getattr(store, name).pop(trip_id, None)
         store.display_jobs = stage.display_jobs
         from app.storage.task_repository import publish_tasks

@@ -85,7 +85,8 @@ def test_execute_turn_assembles_under_lock_and_freezes_target(store, monkeypatch
     from app.workflow import tasks
     task, _ = store.submit_task(TRIP, kind, payload, 'assembly-' + kind)
     task = store.tasks[task['id']]
-    task['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, task['trip_id'], task['id'])
     original = inputs.build_execution_context
     captured = {}
     target = {'title': 'server target', 'day_index': 0, 'item_index': 0}
@@ -134,7 +135,8 @@ def test_execute_turn_conflict_does_not_call_agent(store, monkeypatch):
     from app.agents import entrypoints
     task, _ = store.submit_task(TRIP, 'chat', {'body': '旧请求'}, 'stale-assembly')
     task = store.tasks[task['id']]
-    task['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, task['trip_id'], task['id'])
     store.trips[TRIP].requirements.revision += 1
     monkeypatch.setattr(entrypoints, 'generate_task_result', lambda *a, **kw: pytest.fail('stale agent call'))
     receipt = store.execute_turn(task['id'])
@@ -145,7 +147,8 @@ def test_execute_turn_cancelled_during_agent_does_not_save_answer(store, monkeyp
     from app.agents import entrypoints
     task, _ = store.submit_task(TRIP, 'chat', {'body': '取消请求'}, 'cancelled-assembly')
     task = store.tasks[task['id']]
-    task['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, task['trip_id'], task['id'])
 
     def generate(context, execution, *, cancelled, on_progress):
         assert not cancelled()

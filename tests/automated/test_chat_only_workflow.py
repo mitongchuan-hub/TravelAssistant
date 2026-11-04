@@ -19,7 +19,8 @@ def store():
 def commit_chat(store, body, args, evidence=()):
     key = 'trip-hangzhou'
     task, _ = store.submit_task(key, 'chat', {'body': body}, __import__('uuid').uuid4().hex)
-    store.tasks[task['id']]['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, store.tasks[task['id']]['trip_id'], task['id'])
     context = store.capture_request_context(key, task['id'])
     execution = SimpleNamespace(trip=deepcopy(store.trips[key]), plan=deepcopy(store.plans[key]),
                                 idea_cards=deepcopy(store.trips[key].requirements.text), display_target=None)

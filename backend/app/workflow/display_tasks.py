@@ -34,16 +34,17 @@ class DisplayTasks:
         return boolean('TRAVEL_DISPLAY_ENABLED')
 
     def _foreground_active(self, trip_id=None):
+        from app.workflow.dispatcher import metadata
+        if any(trip_id is None or tid == trip_id for tid in getattr(self, "_drain_owners", {})):
+            return True
         for task in self.tasks.values():
-            if task['status'] in ACTIVE and (trip_id is None or task['trip_id'] == trip_id):
-                return True
-        for tid, operations in self._foreground_operations.items():
-            if trip_id is not None and tid != trip_id:
+            if trip_id is not None and task['trip_id'] != trip_id:
                 continue
-            if any(task_id is None or self.tasks.get(task_id, {}).get('status') in ACTIVE
-                   for task_id in operations.values()):
+            if task['status'] in {'queued', 'running'} or (
+                    task['status'] == 'waiting' and not metadata(self, task['trip_id'])['paused']):
                 return True
-        return False
+        return any(operations and (trip_id is None or tid == trip_id)
+                   for tid, operations in self._foreground_operations.items())
 
     @contextmanager
     def _foreground_operation(self, trip_id):

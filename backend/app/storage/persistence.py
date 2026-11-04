@@ -29,7 +29,7 @@ from app.domain.models import (
 from app.services.itinerary.plan_display import migrate_stored_display
 
 SNAPSHOT_KEY = "demo_store_v1"
-CURRENT_SCHEMA_VERSION = 10
+CURRENT_SCHEMA_VERSION = 11
 TASK_HISTORY_SCHEMA_VERSION = 7
 
 
@@ -310,6 +310,7 @@ def load_snapshot(db_path: str | Path) -> dict[str, Any] | None:
 def serialize_state(store: Any, users: dict[str, User]) -> dict[str, Any]:
     return {
         "agent_undo": deepcopy(getattr(store, "agent_undo", {})),
+        "dispatchers": deepcopy(getattr(store, "dispatchers", {})),
         "display_jobs": deepcopy(store.display_jobs),
         "schema_version": CURRENT_SCHEMA_VERSION,
         "users": {user_id: asdict(user) for user_id, user in users.items()},
@@ -346,6 +347,8 @@ def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) 
         for trip_id, raw_plan in snapshot.get("plans", {}).items()
         if trip_id in store.trips
     }
+    from app.workflow.dispatcher import defaults
+    store.dispatchers = {key: {**defaults(), **snapshot.get("dispatchers", {}).get(key, {})} for key in store.trips}
     store.agent_undo = {key: deepcopy(value) for key, value in snapshot.get("agent_undo", {}).items() if key in store.trips}
     # Legacy history is imported separately; normal restore never hydrates history.
     store.tasks = {}
@@ -388,9 +391,14 @@ def initialize_task_history(store, snapshot, users):
             if (existing is not None and existing != task) or (by_request is not None and by_request != task):
                 raise ValueError('旧任务历史与数据库记录冲突')
         save_snapshot(store.db_path, serialize_state(store, users), initialize=False,
-                      task_upserts=imported.values(), migration=['task_history_v7', 'trip_model_v9', 'requirements_text_v10'])
+                      task_upserts=imported.values(), migration=['task_history_v7', 'trip_model_v9', 'requirements_text_v10', 'followup_v11'])
     elif snapshot and int(snapshot.get('schema_version', 1)) < CURRENT_SCHEMA_VERSION:
-        save_snapshot(store.db_path, serialize_state(store, users), initialize=False, migration=(['trip_model_v9', 'requirements_text_v10'] if int(snapshot.get('schema_version', 1)) < 9 else 'requirements_text_v10'))
+        version = int(snapshot.get('schema_version', 1))
+        migrations = ([ 'trip_model_v9' ] if version < 9 else [])
+        if version < 10:
+            migrations.append('requirements_text_v10')
+        migrations.append('followup_v11')
+        save_snapshot(store.db_path, serialize_state(store, users), initialize=False, migration=migrations)
     store.tasks = {task['id']: task for task in store.task_repository.active()}
 
 

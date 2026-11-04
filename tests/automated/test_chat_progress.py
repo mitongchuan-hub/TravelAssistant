@@ -72,23 +72,24 @@ def store(monkeypatch):
 
 def running(store):
     task, _ = store.submit_task('trip-hangzhou', 'chat', {'body': '查询天气'}, 'request-one')
-    store.tasks[task['id']]['status'] = 'running'
-    return task
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, store.tasks[task['id']]['trip_id'], task['id'])
+    return store.get_task(task['id'])
 
 
-def test_superseded_request_keeps_history_and_rejects_late_events(store):
+def test_followup_keeps_current_progress_and_does_not_steer(store):
     task = running(store)
     store.record_task_progress(task['id'], '模型请求', {'agent_role': 'main_execution'})
-    message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
-    assert message.execution_progress['steps']
     next_task, _ = store.submit_task('trip-hangzhou', 'chat', {'body': '先不查了'}, 'request-two')
-    before = deepcopy(store.messages['trip-hangzhou'])
+    assert store.tasks[task['id']]['status'] == 'running'
     store.record_task_progress(task['id'], '模型响应', {'agent_role': 'main_execution'})
-    assert store.messages['trip-hangzhou'] == before
     message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
-    assert message.execution_progress['state'] == 'superseded'
-    assert message.execution_progress['reason'] == 'superseded'
-    assert store.tasks[next_task['id']]['status'] == 'queued'
+    assert message.execution_progress['state'] == 'running'
+    assert store.tasks[next_task['id']]['status'] == 'waiting'
+    store.cancel_task('trip-hangzhou', task['id'])
+    before = deepcopy(store.messages['trip-hangzhou'])
+    store.record_task_progress(task['id'], '模型请求', {'agent_role': 'main_execution'})
+    assert store.messages['trip-hangzhou'] == before
 
 
 @pytest.mark.parametrize('status', ['queued', 'running'])
@@ -97,8 +98,8 @@ def test_cancelled_request_keeps_explicit_reason_and_rejects_late_events(store, 
     store.record_task_progress(task['id'], '模型请求', {'agent_role': 'main_execution'})
     store.tasks[task['id']]['status'] = status
     result = store.cancel_task('trip-hangzhou', task['id'])
-    assert result['status'] == 'superseded'  # Existing task/receipt contract is unchanged.
-    message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
+    assert result['status'] == 'cancelled'
+    message = next(row for row in store.messages['trip-hangzhou'] if row.id == store.get_task(task['id'])['thinking_id'])
     assert message.execution_progress['state'] == 'superseded'
     assert message.execution_progress['reason'] == 'cancelled'
     assert message.execution_progress['steps'][0]['status'] == 'stopped'
@@ -163,7 +164,7 @@ def test_committed_reply_and_snapshot_keep_execution_history(store, monkeypatch)
     task, _ = store.submit_task('trip-hangzhou', 'chat', {'body': '你好'}, 'commit-test')
     receipt = store.run_task(task['id'])
     assert receipt.committed
-    message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
+    message = next(row for row in store.messages['trip-hangzhou'] if row.id == store.get_task(task['id'])['thinking_id'])
     assert message.status == 'sent'
     assert message.execution_progress['state'] == 'succeeded'
     assert len(message.execution_progress['steps']) == 1
@@ -209,7 +210,7 @@ def test_real_model_request_adapter_publishes_progress_before_response(store, mo
     task, _ = store.submit_task('trip-hangzhou', 'chat', {'body': '你好'}, 'adapter-test')
 
     def completion(*args):
-        message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
+        message = next(row for row in store.messages['trip-hangzhou'] if row.id == store.get_task(task['id'])['thinking_id'])
         assert message.execution_progress['steps'][-1]['status'] == 'running'
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='你好！', tool_calls=[]))], usage=None)
 
@@ -217,7 +218,7 @@ def test_real_model_request_adapter_publishes_progress_before_response(store, mo
     from app.core.model_resources import client_scope
     with client_scope(client_factory=lambda **kwargs: SimpleNamespace(close=lambda: None)):
         assert store.run_task(task['id']).committed
-    message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
+    message = next(row for row in store.messages['trip-hangzhou'] if row.id == store.get_task(task['id'])['thinking_id'])
     assert message.execution_progress['steps'][-1]['status'] == 'succeeded'
 
 

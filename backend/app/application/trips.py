@@ -95,7 +95,8 @@ def save_requirements_text(self, trip_id, text, expected_revision):
         changed = _save_requirements_text(stage, trip_id, text, expected_revision)
         if changed:
             manual_barrier(stage, trip_id)
-            stage.trips[trip_id].workflow_state = bump_epoch(stage.trips[trip_id].workflow_state)
+            from app.workflow.dispatcher import invalidate
+            invalidate(stage, trip_id)
         _persist_staged_turn(self, stage, trip_id)
         return changed
 

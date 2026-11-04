@@ -150,6 +150,9 @@ def test_late_progress_failure_result_cannot_revive(store, operation):
             store.delete_trip(TRIP)
     elif operation == 'replace':
         store.submit_task(TRIP, 'chat', {'body': '新请求'}, 'replacement')
+        assert store._execution_current(context)
+        # Follow-up itself is not cancellation; explicit cancellation still fences late results.
+        store.cancel_task(TRIP, context.execution_task_id)
     else:
         store.clear_chat(TRIP)
     before = deepcopy((store.trips, store.messages, store.tasks))
@@ -194,7 +197,7 @@ def test_v6_backup_marker_unknown_fields_and_interruption(tmp_path, monkeypatch)
     assert reload(store).get_task(row['id']) == restored
     assert len(list((tmp_path / 'backups').glob('*.sqlite3'))) == 1
     with sqlite3.connect(path) as connection:
-        assert connection.execute('SELECT name FROM storage_migrations ORDER BY name').fetchall() == [('requirements_text_v10',), ('task_history_v7',), ('trip_model_v9',)]
+        assert connection.execute('SELECT name FROM storage_migrations ORDER BY name').fetchall() == [('followup_v11',), ('requirements_text_v10',), ('task_history_v7',), ('trip_model_v9',)]
 
 
 def test_duplicate_migration_rolls_back_and_can_retry(tmp_path):
@@ -291,7 +294,8 @@ def test_state_application_storage_path_uses_same_repository(tmp_path):
     state.plans[trip.id] = TripPlan('empty', '', '未生成')
     task, created = execution.submit_task(state, trip.id, 'chat', {'body': '你好'}, 'state-request')
     assert created
-    state.tasks[task['id']]['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(state, state.tasks[task['id']]['trip_id'], task['id'])
     from app.storage.state import _persist
     _persist(state, task_upserts=[state.tasks[task['id']]])
     context = execution.capture_request_context(state, trip.id, task['id'])

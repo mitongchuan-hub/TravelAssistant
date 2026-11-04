@@ -134,7 +134,7 @@ class TurnCommit:
             display_target = resolve_display_target(self.plans[trip_id], payload)
             execution = build_execution_context(
                 trip=self.trips[trip_id], plan=self.plans[trip_id],
-                messages=self.messages[trip_id],
+                messages=[row for row in self.messages[trip_id] if row.status not in {'waiting', 'cancelled'}],
                 metrics=self.trip_metrics(trip_id), current_date=datetime.now().date().isoformat(),
                 entry=context.entry, payload=payload, display_target=display_target)
             conflict = self._turn_conflict(context)
@@ -158,7 +158,8 @@ class TurnCommit:
         from app.application.contracts import ExecutionResult
         from types import SimpleNamespace
         with self._lock:
-            if not self.plans[trip_id].has_content:
+            if not self.plans[trip_id].has_content or (
+                    self.plans[trip_id].status == '已确认' and self.trips[trip_id].status == '已确认'):
                 return None
             context = self.capture_request_context(trip_id, entry='confirm', body='确认当前已显示的行程')
             execution = SimpleNamespace(trip=deepcopy(self.trips[trip_id]),
@@ -191,6 +192,8 @@ class TurnCommit:
                 receipt = self._receipt(context, committed=False, task_status='failed', reason=conflict, stage=stage)
                 from app.application.contracts import serialize
                 target['receipt'] = serialize(receipt)
+                from app.workflow.dispatcher import pause
+                pause(stage, task['trip_id'], 'failed')
                 self._persist_staged_turn(stage, task['trip_id'])
                 return receipt
             reason = str(exc) if isinstance(exc, ValueError) else '本次处理未完成，请重新发送消息。已有内容已保留。'
@@ -294,6 +297,13 @@ class TurnCommit:
                     committed_effect_kinds=crud_kinds,
                     submission_digest=submission_digest,
                     result_url=f'/workspace/{trip_id}?tab=' + ('itinerary' if has_itinerary else 'chat'))
+            from app.workflow.dispatcher import pause, touch, invalidate
+            if failed:
+                pause(stage, trip_id, 'failed')
+            else:
+                touch(stage, trip_id)
+            if context.entry == 'confirm':
+                invalidate(stage, trip_id, 'manual_write')
             if context.entry == 'confirm' or (failed and crud_kinds):
                 manual_barrier(stage, trip_id)
             elif not failed and crud_kinds:
@@ -307,6 +317,7 @@ class TurnCommit:
         """Reuse the normal builders against private aggregates, never live objects."""
         stage = copy(self)
         stage.agent_undo = deepcopy(self.agent_undo)
+        stage.dispatchers = deepcopy(self.dispatchers)
         stage.trips = dict(self.trips)
         stage.plans = dict(self.plans)
         stage.messages = dict(self.messages)
@@ -326,6 +337,7 @@ class TurnCommit:
         from app.storage.task_repository import publish_tasks
         publish_tasks(self, stage, trip_id)
         self.agent_undo = stage.agent_undo
+        self.dispatchers = stage.dispatchers
         self.display_jobs = stage.display_jobs
         self._display_changed.notify_all()
 

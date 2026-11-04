@@ -4,7 +4,7 @@ from contextlib import closing
 import json
 import sqlite3
 
-ACTIVE = {'queued', 'running'}
+ACTIVE = {'waiting', 'queued', 'running'}
 
 
 def ensure_task_schema(connection):
@@ -53,8 +53,14 @@ class SQLiteTaskRepository:
     def recent(self, trip_id, limit=20):
         return list(reversed(self._query('SELECT payload FROM execution_tasks WHERE trip_id = ? ORDER BY accepted_seq DESC LIMIT ?', (trip_id, limit))))
 
+    def unfinished(self, trip_id):
+        return self._query("SELECT payload FROM execution_tasks WHERE trip_id = ? AND status IN ('waiting', 'queued', 'running') ORDER BY accepted_seq", (trip_id,))
+
+    def waiting(self, trip_id):
+        return self._query("SELECT payload FROM execution_tasks WHERE trip_id = ? AND status = 'waiting' ORDER BY accepted_seq", (trip_id,))
+
     def active(self):
-        return self._query("SELECT payload FROM execution_tasks WHERE status IN ('queued', 'running') ORDER BY accepted_seq")
+        return self._query("SELECT payload FROM execution_tasks WHERE status IN ('waiting', 'queued', 'running') ORDER BY accepted_seq")
 
 
 class MemoryTaskRepository:
@@ -71,6 +77,12 @@ class MemoryTaskRepository:
 
     def recent(self, trip_id, limit=20):
         return deepcopy([row for row in self._rows.values() if row['trip_id'] == trip_id][-limit:])
+
+    def unfinished(self, trip_id):
+        return [row for row in self.active() if row['trip_id'] == trip_id]
+
+    def waiting(self, trip_id):
+        return [row for row in self.unfinished(trip_id) if row['status'] == 'waiting']
 
     def active(self):
         return deepcopy([row for row in self._rows.values() if row['status'] in ACTIVE])

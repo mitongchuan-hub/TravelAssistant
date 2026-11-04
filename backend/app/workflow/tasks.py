@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from app.services.itinerary.plan_display import text_hash
 from app.application.progress import advance_progress, finish_progress
 
-ACTIVE = {'queued', 'running'}
+ACTIVE = {'waiting', 'queued', 'running'}
 BASIS_FIELDS = {'expected_plan_id', 'source_hash', 'expected_requirements_revision'}
 EXECUTION_STRATEGIES = {'task_execution'}
 
@@ -92,9 +92,9 @@ def validate_display_target_metadata(plan, metadata):
 
 
 class TravelTasks:
-    def submit_task(self, trip_id, kind, payload, request_id):
+    def submit_task(self, trip_id, kind, payload, request_id, *, chat_generation=None):
         from app.application.execution import submit_task
-        return submit_task(self, trip_id, kind, payload, request_id)
+        return submit_task(self, trip_id, kind, payload, request_id, chat_generation=chat_generation)
 
     def get_task(self, task_id, *, trip_id=None):
         with self._lock:
@@ -134,51 +134,23 @@ class TravelTasks:
                 # Observability must never turn a valid business request into a failure.
                 message.execution_progress = previous
 
-    def run_task(self, task_id):
+    def get_queue(self, trip_id):
+        from app.workflow.dispatcher import queue_state
         with self._lock:
-            task = self.tasks.get(task_id)
-            if not task or task['status'] != 'queued':
-                return None
-            previous = (task['status'], task['message'], task['updated_at'])
-            task['status'], task['message'], task['updated_at'] = (
-                'running', '正在处理，请稍候；可以离开页面，回来查看结果。', now()
-            )
-            try:
-                self._persist(task_upserts=[task])
-            except Exception:
-                task['status'], task['message'], task['updated_at'] = previous
-                raise
-            trip_id = task['trip_id']
-        self._task_context.task_id = task_id
-        try:
-            with self._agent_lock(trip_id):
-                return self.execute_turn(task_id)
-        except Exception as exc:
-            from app.application.execution import TurnPersistenceError
-            if isinstance(exc, TurnPersistenceError):
-                return None
-            try:
-                return self.fail_execution(task_id, exc)
-            except TurnPersistenceError:
-                return None
-        finally:
-            if hasattr(self._task_context, 'task_id'):
-                del self._task_context.task_id
-            self._notify_display_worker()
+            return queue_state(self, trip_id)
+
+    def resume_queue(self, trip_id, expected_revision, chat_generation):
+        from app.workflow.dispatcher import resume
+        return resume(self, trip_id, expected_revision, chat_generation)
+
+    def drain_queue(self, trip_id):
+        from app.workflow.dispatcher import drain
+        return drain(self, trip_id)
+
+    def run_task(self, task_id):
+        from app.application.execution import run_task
+        return run_task(self, task_id)
 
     def recover_tasks(self):
-        with self._lock:
-            for trip_id in self.trips:
-                if not any(task['trip_id'] == trip_id for task in self.tasks.values()) and not any(
-                        row.status == 'thinking' for row in self.messages[trip_id]):
-                    continue
-                stage = self._stage_turn(trip_id)
-                for task in stage.tasks.values():
-                    task.update(status='failed', updated_at=now(),
-                                message='本次处理未完成，请重新发送消息。已有内容已保留。')
-                for row in stage.messages[trip_id]:
-                    if row.status == 'thinking':
-                        row.status = 'failed'
-                        row.body = '本次处理未完成，请重新发送消息。已有内容已保留。'
-                        row.execution_progress = finish_progress(row.execution_progress, 'failed')
-                self._persist_staged_turn(stage, trip_id)
+        from app.application.execution import recover_tasks
+        return recover_tasks(self)

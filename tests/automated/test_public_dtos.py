@@ -121,13 +121,13 @@ def test_message_progress_optional_steps_safe_whitelist_and_copies():
       'requirements_revision': None, 'message': '完成'}),
 ])
 def test_task_projection_missing_keys_unknown_strings_and_safe_failure(task, expected):
-    assert serializers.task_to_dict(task) == expected
+    assert serializers.task_to_dict(task) == {'body': '', **expected}
 
 
 def test_task_selected_values_are_deep_copied():
     task = {'request_id': {'legacy': ['value']}, 'payload': {'private': 'secret'}}
     public = serializers.task_to_dict(task)
-    assert public == {'request_id': {'legacy': ['value']}, 'message': ''}
+    assert public == {'request_id': {'legacy': ['value']}, 'message': '', 'body': ''}
     public['request_id']['legacy'].append('changed')
     assert task['request_id'] == {'legacy': ['value']}
 
@@ -169,7 +169,7 @@ def test_workspace_top_level_shapes_and_detached_metrics_display_state(monkeypat
     monkeypatch.setattr(deps, 'store', store)
     monkeypatch.setattr(deps, 'get_owned_trip_or_404', lambda trip_id, user: store.trips[trip_id])
     public = serializers.workspace_snapshot('trip-hangzhou', USER)
-    assert set(public) == {'trip', 'plan', 'messages', 'tasks', 'metrics', 'display_state', 'undo'}
+    assert set(public) == {'trip', 'plan', 'messages', 'tasks', 'metrics', 'display_state', 'undo', 'queue'}
     assert public['tasks'] == []
     assert public['trip']['requirements']['text'] == store.trips['trip-hangzhou'].requirements.text
     assert 'idea_cards' not in public and 'wall_cards' not in public

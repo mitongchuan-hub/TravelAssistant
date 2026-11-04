@@ -167,6 +167,7 @@ export interface DisplayState {
 }
 
 export interface Task {
+  body?: string
   id?: string
   trip_id?: string
   kind?: string
@@ -183,7 +184,17 @@ export interface Task {
 }
 
 export interface UndoState { available_count: number; latest_entry_id: string; message_id: string; version: number; can_undo: boolean; reason: string }
+export interface QueueState {
+  current_task: Task | null
+  waiting_tasks: Task[]
+  paused: boolean
+  pause_reason: string
+  revision: number
+  chat_generation: number
+  draining: boolean
+}
 export interface WorkspaceSnapshot {
+  queue: QueueState
   undo?: UndoState
   trip: Trip
   plan: Plan

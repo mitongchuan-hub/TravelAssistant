@@ -39,15 +39,7 @@ def display_enabled(self):
 def _foreground_active(self, trip_id=None):
     from app.jobs.guide_worker import start_display_worker as _fn_start_display_worker
     from app.storage.state import _persist as _fn__persist
-    for task in self.tasks.values():
-        if task['status'] in ACTIVE and (trip_id is None or task['trip_id'] == trip_id):
-            return True
-    for tid, operations in self._foreground_operations.items():
-        if trip_id is not None and tid != trip_id:
-            continue
-        if any((task_id is None or self.tasks.get(task_id, {}).get('status') in ACTIVE for task_id in operations.values())):
-            return True
-    return False
+    return DisplayTasks._foreground_active(self, trip_id)
 
 @contextmanager
 def _foreground_operation(self, trip_id):

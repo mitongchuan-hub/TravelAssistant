@@ -87,7 +87,8 @@ def proposal(store, body, args, *, task=True, kind='chat'):
         # Exercise the sealed transaction through the only new task kind.
         payload = {'feedback': body} if kind == 'revision' else {'body': body}
         row, _ = store.submit_task(key, kind, payload, __import__('uuid').uuid4().hex)
-        store.tasks[row['id']]['status'] = 'running'
+        from tests.automated.task_fixtures import activate_task
+        activate_task(store, store.tasks[row['id']]['trip_id'], row['id'])
         context = store.capture_request_context(key, row['id'])
     else:
         from tests.automated.task_fixtures import running_context
@@ -114,7 +115,8 @@ def test_normal_chat_commits_authorized_changes_atomically(store, task):
 def test_normal_chat_text_commit_preserves_business_state_and_never_triggers_display(store, monkeypatch, body):
     key = 'trip-hangzhou'
     row, _ = store.submit_task(key, 'chat', {'body': body}, 'readonly-chat')
-    store.tasks[row['id']]['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, store.tasks[row['id']]['trip_id'], row['id'])
     context = store.capture_request_context(key, row['id'])
     assert context.entry == 'main'
     before = deepcopy((store.trips[key].requirements, store.plans[key],
@@ -139,7 +141,7 @@ def test_normal_chat_text_commit_preserves_business_state_and_never_triggers_dis
             store.trips[key].requirements.text, store.display_jobs) == before
     assert [message.id for message in store.messages[key]] == message_ids
     reply = next(message for message in store.messages[key] if message.id == receipt.message_id)
-    assert reply.id == row['thinking_id']
+    assert reply.id == store.get_task(row['id'])['thinking_id']
     assert reply.body == answer
     assert reply.status == 'sent'
     assert store.get_task(row['id'])['status'] == 'succeeded'

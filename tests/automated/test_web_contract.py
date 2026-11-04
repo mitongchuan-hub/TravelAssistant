@@ -217,7 +217,8 @@ def test_task_termination_is_owned_csrf_protected_idempotent_and_preserves_data(
     owner = store.trips[trip].owner
     monkeypatch.setattr(deps, 'current_user', lambda request: owner)
     task, _ = store.submit_task(trip, 'chat', {'body': '保留这个请求'}, 'terminate-api')
-    store.tasks[task['id']]['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, store.tasks[task['id']]['trip_id'], task['id'])
     context = store.capture_request_context(trip, task['id'])
     assert _execution_current(store, context)
     before_plan = deepcopy(store.plans[trip])
@@ -232,7 +233,7 @@ def test_task_termination_is_owned_csrf_protected_idempotent_and_preserves_data(
         assert client.post(path.replace(task['id'], 'unknown-task'), json={}, headers=headers).status_code == 404
         response = client.post(path, json={}, headers=headers)
         assert response.status_code == 200
-        assert response.json()['task']['status'] == 'superseded'
+        assert response.json()['task']['status'] == 'cancelled'
         assert not _execution_current(store, context)
         state = deepcopy(store.trips[trip].workflow_state)
         assert state['epoch'] == context.epoch + 1
@@ -243,7 +244,7 @@ def test_task_termination_is_owned_csrf_protected_idempotent_and_preserves_data(
     assert store.trips[trip].requirements == before_requirements
     assert [m.id for m in store.messages[trip]] == before_ids
     assert store.fail_execution(task['id'], ValueError('late error')) is None
-    assert store.get_task(task['id'])['status'] == 'superseded'
+    assert store.get_task(task['id'])['status'] == 'cancelled'
 
 
 def test_termination_queued_terminal_and_persistence_failure(monkeypatch):
@@ -255,19 +256,19 @@ def test_termination_queued_terminal_and_persistence_failure(monkeypatch):
     store = DemoStore(persistence_enabled=False, display_worker_enabled=False)
     trip = 'trip-hangzhou'
     task, _ = store.submit_task(trip, 'chat', {'body': '排队终止'}, 'queued-stop')
-    assert cancel_task(store, trip, task['id'])['status'] == 'superseded'
+    assert cancel_task(store, trip, task['id'])['status'] == 'cancelled'
     assert store.run_task(task['id']) is None
     newer, _ = store.submit_task(trip, 'chat', {'body': '新请求'}, 'new-request')
     before = deepcopy(store.trips[trip].workflow_state)
-    assert store.cancel_task(trip, task['id'])['status'] == 'superseded'
+    assert store.cancel_task(trip, task['id'])['status'] == 'cancelled'
     assert store.trips[trip].workflow_state == before
-    assert store.get_task(newer['id'])['status'] == 'queued'
+    assert store.get_task(newer['id'])['status'] == 'waiting'
     before_messages = deepcopy(store.messages[trip])
     store.persistence_enabled = True
     monkeypatch.setattr(transactions, 'save_snapshot', lambda *a, **k: (_ for _ in ()).throw(OSError('disk failure')))
     with pytest.raises(transactions.TurnPersistenceError):
         store.cancel_task(trip, newer['id'])
-    assert store.get_task(newer['id'])['status'] == 'queued'
+    assert store.get_task(newer['id'])['status'] == 'waiting'
     assert store.messages[trip] == before_messages
     assert store.trips[trip].workflow_state == before
 
@@ -283,7 +284,8 @@ def test_termination_rejects_late_result_and_other_owner(monkeypatch):
     monkeypatch.setattr(deps, 'store', store)
     monkeypatch.setattr(deps, 'current_user', lambda request: store.trips[trip].owner)
     task, _ = store.submit_task(trip, 'chat', {'body': '迟到回复'}, 'late-stop')
-    store.tasks[task['id']]['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, store.tasks[task['id']]['trip_id'], task['id'])
     context = store.capture_request_context(trip, task['id'])
     with TestClient(app) as client:
         headers = csrf_headers(client)

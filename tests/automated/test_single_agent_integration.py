@@ -69,7 +69,8 @@ def runtime_for(store, body, model, *, kind='chat', payload=None, budget=None):
         store.tasks[task['id']].update(kind='revision', payload=deepcopy(payload))
     else:
         task, _ = store.submit_task(TRIP, kind, payload, uuid4().hex)
-    store.tasks[task['id']]['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, store.tasks[task['id']]['trip_id'], task['id'])
     context = store.capture_request_context(TRIP, task['id'])
     execution = TaskExecutionContext(
         trip=deepcopy(store.trips[TRIP]), plan=deepcopy(store.plans[TRIP]),

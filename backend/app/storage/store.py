@@ -109,8 +109,8 @@ def _manual_business_write(method):
             result = method(stage, trip_id, *args, **kwargs)
             if result is not False:
                 manual_barrier(stage, trip_id)
-                from app.workflow.counters import bump_epoch
-                stage.trips[trip_id].workflow_state = bump_epoch(stage.trips[trip_id].workflow_state)
+                from app.workflow.dispatcher import invalidate
+                invalidate(stage, trip_id)
             self._persist_staged_turn(stage, trip_id)
             return result
     return transaction
@@ -122,6 +122,8 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         self.persistence_enabled = self._resolve_persistence_enabled(persistence_enabled)
         self._lock = RLock()
         self.agent_undo = {}
+        self.dispatchers = {}
+        self._drain_owners = {}
         self._task_context = local()
         self.tasks: dict[str, dict] = {}
         from app.storage.task_repository import MemoryTaskRepository
@@ -291,18 +293,8 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         return True
 
     def clear_chat(self, trip_id: str) -> None:
-        from app.workflow.counters import clear_workflow
-        with self._lock:
-            stage = self._stage_turn(trip_id)
-            stage.trips[trip_id].workflow_state = clear_workflow(stage.trips[trip_id].workflow_state)
-            for task in stage.tasks.values():
-                if task['trip_id'] == trip_id and task['status'] in {'queued', 'running'}:
-                    task.update(status='superseded', message='聊天已清空，本轮已取消', result_url='')
-            stage.messages[trip_id] = []
-            stage.cancel_display_jobs(trip_id)
-            stage.trips[trip_id].last_activity = "聊天记录已清空"
-            self._persist_staged_turn(stage, trip_id)
-        self._notify_display_worker()
+        from app.application.execution import clear_chat
+        return clear_chat(self, trip_id)
 
     def add_user_message(self, trip_id: str, body: str, sender_id: str = "u1") -> Message:
         with self._lock:

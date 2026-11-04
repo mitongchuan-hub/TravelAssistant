@@ -61,6 +61,8 @@ def contexts():
 
     def capture(request_id):
         task, _ = store.submit_task('trip-hangzhou', 'chat', {'body': '你好'}, request_id)
+        from tests.automated.task_fixtures import activate_task
+        activate_task(store, 'trip-hangzhou', task['id'])
         context = store.capture_request_context('trip-hangzhou', task['id'])
         execution = TaskExecutionContext(
             trip=deepcopy(store.trips['trip-hangzhou']),

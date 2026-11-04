@@ -107,8 +107,32 @@ class ScriptedModel:
         return SimpleNamespace(choices=[SimpleNamespace(message=message, finish_reason='stop')])
 
 
+from threading import Event, Lock
+_followup_lock = Lock()
+_followup_blocks = {}
+
+@app.post('/__test__/followup/block', include_in_schema=False)
+def block_followup(data: dict):
+    with _followup_lock:
+        _followup_blocks[data['trip_id']] = Event()
+    return {'blocked': True}
+
+@app.post('/__test__/followup/release', include_in_schema=False)
+def release_followup(data: dict):
+    with _followup_lock:
+        event = _followup_blocks.pop(data['trip_id'], None)
+        if event:
+            event.set()
+    return {'released': event is not None}
+
+
 def generate(context, execution, *, cancelled=None, on_progress=None):
-    # Delay allows the browser to observe actual queued/running progress.
+    if context.body == 'followup 阻塞 A':
+        with _followup_lock:
+            event = _followup_blocks.get(context.trip_id)
+        if event is not None and not event.wait(60):
+            raise RuntimeError('Browser follow-up barrier was not released')
+    # Delay allows the browser to observe actual waiting/running progress.
     if on_progress:
         on_progress('模型请求', {'agent_role': 'travel_agent'})
     time.sleep(1.6)

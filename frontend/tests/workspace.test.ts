@@ -443,6 +443,117 @@ describe('workspace polling and optimistic recovery', () => {
 })
 
 
+describe('follow-up queue', () => {
+  it.each([null, {}, { ...snapshot().queue, revision: -1 }, { ...snapshot().queue, chat_generation: '1' }, { ...snapshot().queue, waiting_tasks: [{ id: 'w', status: 'running', body: 'wrong' }] }, { ...snapshot().queue, draining: undefined }])('rejects malformed queue %j', async queue => {
+    api.mockResolvedValueOnce({ ...snapshot(), queue })
+    const state = workspace(); await flushPromises()
+    expect(state.snapshot.value).toBeNull(); expect(state.canSend.value).toBe(false)
+    expect(state.error.value).toContain('前后端版本不一致')
+  })
+  it('keeps delivery uncertain and blocks a second send until exact acknowledgement', async () => {
+    api.mockResolvedValueOnce(snapshot())
+    const state = workspace(); await flushPromises()
+    api.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(snapshot()).mockResolvedValueOnce({ tasks: [] }).mockRejectedValueOnce(new Error('offline'))
+    await state.send('B')
+    expect(state.canSend.value).toBe(false)
+    expect(await state.send('C')).toBe(false)
+    const posts = api.mock.calls.filter(([, options]) => options?.method === 'POST')
+    expect(posts).toHaveLength(2)
+    expect(JSON.parse(String(posts[0]![1]?.body))).toEqual(JSON.parse(String(posts[1]![1]?.body)))
+  })
+  it('retains rejected capacity text for draft recovery without creating another request', async () => {
+    api.mockResolvedValueOnce(snapshot())
+    const state = workspace(); await flushPromises()
+    api.mockRejectedValueOnce(new ApiError(409, 'queue_full', '最多等待50条消息')).mockResolvedValueOnce(snapshot()).mockResolvedValueOnce({ tasks: [] })
+    expect(await state.send('保留这条补充')).toBe(false)
+    expect(state.pending.value?.failed).toBe(true)
+    expect(state.dismissPending()).toBe('保留这条补充')
+    expect(api.mock.calls.filter(([, options]) => options?.method === 'POST')).toHaveLength(1)
+  })
+  it('stops current A rather than pending follow-up B', async () => {
+    const current = { id: 'a', request_id: 'a-request', status: 'running', message: '' }
+    const value = snapshot(); value.queue.current_task = current
+    api.mockResolvedValueOnce(value)
+    const state = workspace(); await flushPromises()
+    const ack = deferred<unknown>(); let id = ''
+    api.mockImplementationOnce((_path, options) => { id = JSON.parse(String(options?.body)).request_id; return ack.promise })
+    const send = state.send('B'); const stop = state.cancel()
+    api.mockResolvedValueOnce({ task: { ...current, status: 'cancelled' } })
+    ack.resolve({ task: { id: 'b', request_id: id, status: 'waiting', message: '' } })
+    expect(await stop).toBe(true)
+    api.mockResolvedValueOnce(snapshot()); await send
+    expect(api.mock.calls.filter(([path]) => path.endsWith('/cancel')).map(([path]) => path)).toEqual(['/api/trips/trip-test/tasks/a/cancel'])
+  })
+  it('requires an initial valid queue before sending', async () => {
+    const first = deferred<unknown>(); api.mockReturnValueOnce(first.promise)
+    const state = workspace()
+    expect(await state.send('尚未读取')).toBe(false)
+    first.resolve({ ...snapshot(), queue: undefined }); await flushPromises()
+    expect(state.snapshot.value).toBeNull()
+    expect(state.error.value).toContain('前后端版本不一致')
+    expect(await state.send('不能发送')).toBe(false)
+    expect(api.mock.calls).toHaveLength(1)
+  })
+  it('releases the delivery slot on ACK even without messages and sends follow-ups while running', async () => {
+    const current = { id: 'a', status: 'running', message: '' }
+    const value = snapshot(); value.queue.current_task = current; value.queue.chat_generation = 4
+    api.mockResolvedValueOnce(value)
+    const state = workspace(); await flushPromises()
+    expect(state.canSend.value).toBe(true)
+    api.mockImplementationOnce(async (_path, options) => {
+      const payload = JSON.parse(String(options?.body)); expect(payload.chat_generation).toBe(4)
+      return { task: { id: 'b', request_id: payload.request_id, status: 'waiting', message: '' } }
+    }).mockResolvedValueOnce(value)
+    await state.send('B')
+    expect(state.pending.value).toBeNull()
+    expect(state.canSend.value).toBe(true)
+    expect(state.currentStop.value?.id).toBe('a')
+  })
+  it('retains all waiting tasks, cancels the specified item, and never stops waiting as current', async () => {
+    const value = snapshot(); value.queue.paused = true
+    value.queue.waiting_tasks = Array.from({ length: 25 }, (_, i) => ({ id: `w${i}`, status: 'waiting', body: `消息${i}`, message: '' }))
+    api.mockResolvedValueOnce(value)
+    const state = workspace(); await flushPromises()
+    expect(state.waiting.value).toHaveLength(25)
+    expect(state.busy.value).toBe(false)
+    expect(state.currentStop.value).toBeNull()
+    api.mockResolvedValueOnce({ task: { ...value.queue.waiting_tasks[24], status: 'cancelled' } })
+    const updated = snapshot(); updated.queue = { ...value.queue, revision: 1, waiting_tasks: value.queue.waiting_tasks.slice(0, 24) }
+    api.mockResolvedValueOnce(updated)
+    expect(await state.cancelWaiting('w24')).toBe(true)
+    expect(api.mock.calls.some(([path]) => path.endsWith('/tasks/w24/cancel'))).toBe(true)
+  })
+  it('uses explicit resume CAS once; conflicts refresh but never automatically retry', async () => {
+    const value = snapshot(); Object.assign(value.queue, { paused: true, pause_reason: 'failed', revision: 7, chat_generation: 3 })
+    api.mockResolvedValueOnce(value)
+    const state = workspace(); await flushPromises()
+    api.mockRejectedValueOnce(new ApiError(409, 'conflict', '队列已变化')).mockResolvedValueOnce(snapshot({ queue: { ...value.queue, revision: 8 } }))
+    expect(await state.resumeQueue()).toBe(false)
+    const calls = api.mock.calls.filter(([path]) => path.endsWith('/queue/resume'))
+    expect(calls).toHaveLength(1)
+    expect(JSON.parse(String(calls[0]![1]?.body))).toEqual({ expected_revision: 7, chat_generation: 3 })
+  })
+  it('never upgrades a legacy pending generation, and checks exact ACK history first', async () => {
+    sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'chat', request_id: 'legacy', payload: { body: '旧消息' } }))
+    const value = snapshot(); value.queue.chat_generation = 2
+    api.mockResolvedValueOnce(value).mockResolvedValueOnce({ tasks: [] })
+    const state = workspace(); await flushPromises()
+    expect(api.mock.calls[1]?.[0]).toContain('/tasks?request_id=legacy')
+    expect(api.mock.calls.some(([, options]) => options?.method === 'POST')).toBe(false)
+    expect(state.pending.value?.failed).toBe(true)
+    expect(state.feedback.value).toContain('草稿')
+  })
+  it('rejects snapshots older than the published queue generation/revision', async () => {
+    const value = snapshot(); value.queue.revision = 9
+    api.mockResolvedValueOnce(value)
+    const state = workspace(); await flushPromises()
+    const stale = snapshot(); stale.queue.revision = 8; stale.queue.paused = true
+    api.mockResolvedValueOnce(stale); await state.refresh()
+    expect(state.snapshot.value?.queue.revision).toBe(9)
+    expect(state.snapshot.value?.queue.paused).toBe(false)
+  })
+})
+
 describe('Agent undo recovery', () => {
   it('reuses the request id after an uncertain response and never reports failure as success', async () => {
     const original = snapshot()

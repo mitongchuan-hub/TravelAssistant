@@ -167,7 +167,7 @@ def test_migration_preserves_sql_historical_receipt_digest_and_sequence(tmp_path
     factory()
     with sqlite3.connect(path) as connection:
         assert connection.execute('SELECT accepted_seq, payload FROM execution_tasks').fetchall() == after
-    assert load_snapshot(path)['schema_version'] == 10
+    assert load_snapshot(path)['schema_version'] == 11
 
 
 @pytest.mark.parametrize('basis', [[], None, '', 7, {'unknown': []}])
@@ -198,7 +198,7 @@ def test_v7_migration_failure_rolls_back_snapshot_markers_and_projection(tmp_pat
         assert connection.execute('SELECT COUNT(*) FROM storage_migrations').fetchone()[0] == 0
         assert connection.execute('SELECT date_range FROM trips WHERE id = ?', ('t',)).fetchone()[0] == '暑假某周'
     DemoStore(db_path=str(path), persistence_enabled=True, display_worker_enabled=False, seed_demo=False)
-    assert load_snapshot(path)['schema_version'] == 10
+    assert load_snapshot(path)['schema_version'] == 11
 
 
 @pytest.mark.parametrize('operation', ['replace', 'cancel', 'clear', 'manual', 'undo'])
@@ -212,7 +212,8 @@ def test_current_counters_preserve_migrated_fences_and_reject_late_turn(operatio
         store.trips['t'].requirements.text = '可撤销'
         record_change(store, 't', before, 'm')
     task, _ = store.submit_task('t', 'chat', {'body': '旧请求'}, 'old-request')
-    store.tasks[task['id']]['status'] = 'running'
+    from tests.automated.task_fixtures import activate_task
+    activate_task(store, store.tasks[task['id']]['trip_id'], task['id'])
     context = store.capture_request_context('t', task['id'])
     assert (context.sequence, context.epoch, context.workflow_revision) == (15, 3, 20)
     assert context.conversation_task_id is None
@@ -227,6 +228,12 @@ def test_current_counters_preserve_migrated_fences_and_reject_late_turn(operatio
         store.clear_chat('t')
     else:
         store.save_requirements_text('t', '手动改动', 0)
+    if operation == 'replace':
+        # Follow-up acceptance does not replace or invalidate the active request.
+        assert store.trips['t'].workflow_state == {'revision': context.workflow_revision,
+            'sequence': context.sequence, 'epoch': context.epoch}
+        assert store._execution_current(context)
+        store.cancel_task('t', task['id'])
     counters = store.trips['t'].workflow_state
     assert set(counters) == {'revision', 'sequence', 'epoch'}
     assert counters['sequence'] > context.sequence and counters['revision'] > context.workflow_revision
@@ -244,9 +251,9 @@ def test_v7_sql_history_is_not_imported_again(tmp_path):
     with sqlite3.connect(path) as connection:
         connection.execute("INSERT INTO storage_migrations(name) VALUES ('task_history_v7')")
     store = DemoStore(db_path=str(path), persistence_enabled=True, display_worker_enabled=False, seed_demo=False)
-    assert load_snapshot(path)['schema_version'] == 10
+    assert load_snapshot(path)['schema_version'] == 11
     with sqlite3.connect(path) as connection:
-        assert connection.execute('SELECT name FROM storage_migrations ORDER BY name').fetchall() == [('requirements_text_v10',), ('task_history_v7',), ('trip_model_v9',)]
+        assert connection.execute('SELECT name FROM storage_migrations ORDER BY name').fetchall() == [('followup_v11',), ('requirements_text_v10',), ('task_history_v7',), ('trip_model_v9',)]
     DemoStore(db_path=str(path), persistence_enabled=True, display_worker_enabled=False, seed_demo=False)
     assert len(list((tmp_path / 'backups').glob('*.sqlite3'))) == 1
 
@@ -288,7 +295,7 @@ def test_schema9_physically_drops_optional_columns_atomically(tmp_path, monkeypa
         assert connection.execute('SELECT created_at FROM trips').fetchone()[0] == '2001-02-03 04:05:06'
         assert connection.execute('SELECT password_hash FROM auth_accounts').fetchone()[0] == 'hash'
     saved = load_snapshot(path)
-    assert saved['schema_version'] == 10
+    assert saved['schema_version'] == 11
     assert saved['trips']['t']['legacy_metadata'] == {'summaries': {'date_range': '暑假某周'}, 'fallback': {'date_range': True}}
     assert saved['plans']['t']['text'] == '旧行程'
     backups = list((tmp_path / 'backups').glob('*.sqlite3'))

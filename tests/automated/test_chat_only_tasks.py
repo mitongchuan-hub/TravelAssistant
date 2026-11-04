@@ -5,7 +5,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.automated.task_fixtures import save_history
+from tests.automated.task_fixtures import save_history, activate_task
 from app.application import execution
 from app.storage.store import DemoStore
 
@@ -29,6 +29,7 @@ def test_new_task_kinds_rejected_without_mutation(store, submit, kind):
 
 def test_application_and_workflow_capture_use_the_same_chat_entry(store):
     task, _ = execution.submit_task(store, TRIP, 'chat', {'body': '请生成并修改行程'}, 'application-chat')
+    activate_task(store, TRIP, task['id'])
     assert store.capture_request_context(TRIP, task['id']).entry == 'main'
     assert execution.capture_request_context(store, TRIP, task['id']).entry == 'main'
     assert task['kind'] == 'chat'
@@ -37,6 +38,7 @@ def test_application_and_workflow_capture_use_the_same_chat_entry(store):
 def old_task(store, kind):
     body = '页面操作：生成当前行程' if kind == 'plan' else '请把西湖安排改到下午'
     task, _ = store.submit_task(TRIP, 'chat', {'body': body}, uuid4().hex)
+    activate_task(store, TRIP, task['id'])
     row = store.tasks[task['id']]
     row.update(kind=kind, payload={} if kind == 'plan' else {'feedback': body}, status='failed')
     return save_history(store, row)
@@ -54,6 +56,7 @@ def test_failed_history_is_readable_and_resend_is_a_new_chat(store, kind):
     assert task['message_id'] != original['message_id']
     assert 'retry_of' not in task
     assert store.get_task(original['id']) == saved
+    activate_task(store, TRIP, task['id'])
     assert store.capture_request_context(TRIP, task['id']).entry == 'main'
     replay, created = store.submit_task(TRIP, 'chat', {'body': body}, 'new-chat')
     assert not created and replay['id'] == task['id']
@@ -91,7 +94,9 @@ def test_new_chat_does_not_recover_historical_authority(store, damage):
     assert created and source.id != row['message_id']
     assert source.sender.id == store.trips[TRIP].owner.id
     assert source.body == '请修改行程'
-    assert task['plan_basis']['plan_id'] == store.plans[TRIP].id
+    assert 'plan_basis' not in task
+    activate_task(store, TRIP, task['id'])
+    assert store.tasks[task['id']]['plan_basis']['plan_id'] == store.plans[TRIP].id
     assert store.get_task(row['id']) == saved
     assert 'retry_of' not in task
 

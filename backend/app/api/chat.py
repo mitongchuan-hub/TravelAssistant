@@ -3,8 +3,8 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from app.api import dependencies as deps
-from app.api.schemas import EmptyInput, MessageInput, TaskInput
-from app.api.serializers import message_to_dict, task_to_dict, workspace_snapshot
+from app.api.schemas import EmptyInput, MessageInput, TaskInput, ResumeQueueInput
+from app.api.serializers import message_to_dict, task_to_dict, workspace_snapshot, queue_to_dict
 from app.application.execution import TaskConflict
 
 router = APIRouter(prefix='/api/trips/{trip_id}', tags=['chat'])
@@ -17,12 +17,12 @@ def normalized_payload(data):
     return {'body': payload.get('body')}
 
 
-def submit(request, trip_id, kind, payload, request_id, background_tasks, include_messages=False):
+def submit(request, trip_id, kind, payload, request_id, background_tasks, include_messages=False, chat_generation=None):
     user = deps.require_user(request)
     with deps.store._lock:
         deps.get_owned_trip_or_404(trip_id, user)
         try:
-            task, created = deps.store.submit_task(trip_id, kind, payload, request_id)
+            task, created = deps.store.submit_task(trip_id, kind, payload, request_id, chat_generation=chat_generation)
         except TaskConflict:
             raise
         except ValueError as exc:
@@ -33,7 +33,7 @@ def submit(request, trip_id, kind, payload, request_id, background_tasks, includ
                                   if row.id in {task['message_id'], task['thinking_id']}]
     if created:
         background_tasks.add_task(deps.store.run_task, task['id'])
-    return JSONResponse(result, status_code=202 if task['status'] in {'queued', 'running'} else 200)
+    return JSONResponse(result, status_code=202 if task['status'] in {'waiting', 'queued', 'running'} else 200)
 
 
 @router.get('/tasks')
@@ -46,7 +46,7 @@ def tasks(request: Request, trip_id: str, request_id: str | None = None):
 
 @router.post('/tasks')
 def submit_task(request: Request, trip_id: str, data: TaskInput, background_tasks: BackgroundTasks):
-    return submit(request, trip_id, data.kind, normalized_payload(data), data.request_id, background_tasks)
+    return submit(request, trip_id, data.kind, normalized_payload(data), data.request_id, background_tasks, chat_generation=data.chat_generation)
 
 
 @router.post('/tasks/{task_id}/cancel')
@@ -75,7 +75,7 @@ def messages(request: Request, trip_id: str, after: str = ''):
 @router.post('/messages')
 def add_message(request: Request, trip_id: str, data: MessageInput, background_tasks: BackgroundTasks):
     return submit(request, trip_id, 'chat', {'body': data.body}, data.request_id,
-                  background_tasks, include_messages=True)
+                  background_tasks, include_messages=True, chat_generation=data.chat_generation)
 
 
 @router.delete('/messages')
@@ -90,3 +90,21 @@ def clear_messages(request: Request, trip_id: str):
 @router.post('/messages/clear')
 def clear_messages_post(request: Request, trip_id: str, data: EmptyInput):
     return clear_messages(request, trip_id)
+
+
+@router.get('/queue')
+def queue(request: Request, trip_id: str):
+    user = deps.require_user(request)
+    with deps.store._lock:
+        deps.get_owned_trip_or_404(trip_id, user)
+        return queue_to_dict(deps.store.get_queue(trip_id))
+
+
+@router.post('/queue/resume')
+def resume_queue(request: Request, trip_id: str, data: ResumeQueueInput, background_tasks: BackgroundTasks):
+    user = deps.require_user(request)
+    with deps.store._lock:
+        deps.get_owned_trip_or_404(trip_id, user)
+        result = deps.store.resume_queue(trip_id, data.expected_revision, data.chat_generation)
+    background_tasks.add_task(deps.store.drain_queue, trip_id)
+    return queue_to_dict(result)

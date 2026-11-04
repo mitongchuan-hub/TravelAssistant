@@ -52,6 +52,7 @@ def task_to_dict(task: dict[str, Any]) -> TaskDTO:
     keys = ('id', 'trip_id', 'kind', 'request_id', 'retry_of', 'status', 'created_at', 'updated_at',
             'message_id', 'thinking_id', 'plan_id', 'requirements_revision')
     result = {key: deepcopy(task[key]) for key in keys if key in task}
+    result['body'] = task.get('payload', {}).get('body', '')
     # Runtime failures can include upstream exception text; expose only a safe label.
     result['message'] = ('本次处理未完成，请重新发送消息。已有内容已保留。' if task.get('status') == 'failed'
                          else task.get('message', ''))
@@ -79,8 +80,13 @@ def workspace_snapshot(trip_id: str, user: User) -> WorkspaceDTO:
     with deps.store._lock:
         trip = deps.get_owned_trip_or_404(trip_id, user)
         from app.application.undo import metadata
-        return {'undo': metadata(deps.store, trip_id), 'trip': trip_to_dict(trip), 'plan': plan_to_dict(deps.store.plans[trip_id]),
+        return {'queue': queue_to_dict(deps.store.get_queue(trip_id)), 'undo': metadata(deps.store, trip_id), 'trip': trip_to_dict(trip), 'plan': plan_to_dict(deps.store.plans[trip_id]),
                 'messages': [message_to_dict(row) for row in deps.store.messages[trip_id]],
                 'tasks': [task_to_dict(row) for row in deps.store.list_tasks(trip_id)],
                 'metrics': cast(MetricsDTO, deepcopy(deps.store.trip_metrics(trip_id))),
                 'display_state': cast(DisplayStateDTO, deepcopy(deps.store.get_display_state(trip_id)))}
+
+
+def queue_to_dict(queue):
+    return {**queue, 'current_task': task_to_dict(queue['current_task']) if queue['current_task'] else None,
+            'waiting_tasks': [task_to_dict(row) for row in queue['waiting_tasks']]}

@@ -158,6 +158,7 @@ class TaskDTO(TypedDict, total=False):
     trip_id: str
     kind: str
     request_id: str
+    body: str
     retry_of: str
     status: str
     created_at: str
@@ -224,7 +225,18 @@ class UndoDTO(TypedDict):
     reason: str
 
 
+class QueueDTO(TypedDict):
+    current_task: TaskDTO | None
+    waiting_tasks: list[TaskDTO]
+    paused: bool
+    pause_reason: str
+    revision: int
+    chat_generation: int
+    draining: bool
+
+
 class WorkspaceDTO(TypedDict):
+    queue: QueueDTO
     undo: UndoDTO
     trip: TripDTO
     plan: PlanDTO
@@ -257,7 +269,13 @@ class CityInput(InputDTO):
     poi_id: StrictStr = Field(default='', max_length=200)
 
 
+class ResumeQueueInput(InputDTO):
+    expected_revision: StrictInt = Field(ge=0)
+    chat_generation: StrictInt = Field(ge=0)
+
+
 class MessageInput(InputDTO):
+    chat_generation: StrictInt | None = Field(default=None, ge=0)
     body: StrictStr = Field(min_length=1, max_length=MAX_MESSAGE_LENGTH)
     request_id: StrictStr = Field(min_length=1, max_length=100)
 
@@ -268,6 +286,7 @@ class MessageInput(InputDTO):
 
 
 class TaskInput(InputDTO):
+    chat_generation: StrictInt | None = Field(default=None, ge=0)
     kind: Literal['chat']
     request_id: StrictStr = Field(min_length=1, max_length=100)
     payload: dict = Field(default_factory=dict)
