@@ -88,13 +88,48 @@ def test_native_map_calls_count_as_business_in_scope_checks():
 
 def test_scope_eval_food_and_auxiliary_review_cases_are_present():
     """Review rubrics are coverage, not evidence of real-model compliance."""
-    cases = {case[0]: case for case in scope_eval.CASES}
+    cases = {case['id'] if isinstance(case, dict) else case[0]: case for case in scope_eval.CASES}
     assert {'tomato_recipe', 'tomato_restaurant', 'tomato_bare', 'tomato_mixed',
             'recipe_save', 'travel_cost', 'travel_menu'} <= cases.keys()
     assert '不给比例或步骤' in cases['tomato_recipe'][2]
     assert '合法餐厅查询' in cases['tomato_restaurant'][2]
     assert '澄清用途' in cases['tomato_bare'][2]
     assert 'user_quote' in cases['tomato_mixed'][2]
+
+
+def test_planning_review_case_preserves_explicit_preferences_at_model_boundary(monkeypatch):
+    """No planned answer is faked: assert real evaluator input/snapshot plumbing."""
+    seen = []
+
+    def request(client, model, messages, **kwargs):
+        context = json.loads(messages[1]['content'])
+        seen.append(context)
+        known = context['requirements']['known']
+        assert known['text'] == '避开热门，不去博物馆。'
+        assert context['requirements']['missing_for_generation'] == []
+        assert known['lodging']['longitude'] == 120.15
+        assert known['lodging']['latitude'] == 30.25
+        assert not {'traveler_profile', 'party_size', 'budget', 'health'} & known.keys()
+        return response('离线占位，不代表真实模型偏好处理。')
+
+    monkeypatch.setattr(scope_eval, 'request_completion', request)
+    result = scope_eval.run_case(dict(id='preferences', input='请生成路线。',
+        rubric='不覆盖已有偏好。', requirements_text='避开热门，不去博物馆。'), None, 'offline')
+    assert len(seen) == 1
+    assert not result['failed'], result['errors']
+    assert result['initial_requirements']['text'] == '避开热门，不去博物馆。'
+    assert result['unchanged'] and not result['submitted']
+
+
+def test_scope_eval_dry_run_filters_dictionary_planning_cases_without_loading_environment(monkeypatch, capsys):
+    def forbidden(*args, **kwargs):
+        pytest.fail('dry run loaded model environment')
+
+    monkeypatch.setattr(scope_eval.config, 'load_environment', forbidden)
+    monkeypatch.setattr('sys.argv', ['scope_eval', '--ids', 'planning_no_preferences'])
+    scope_eval.main()
+    cases = json.loads(capsys.readouterr().out)
+    assert len(cases) == 1 and cases[0]['id'] == 'planning_no_preferences'
 
 
 def test_direct_requirements_submission_is_captured_but_not_committed(monkeypatch):

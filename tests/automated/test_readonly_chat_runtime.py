@@ -96,6 +96,32 @@ def test_scope_policy_is_injected_for_food_and_travel_auxiliary_requests(body):
     assert json.loads(script.transcripts[0][1]['content'])['message']['text'] == body
 
 
+@pytest.mark.parametrize('policy', [
+    '未给偏好的部分，暂按首次到访视角、节奏适中规划',
+    '有条件兼顾代表景点、本地美食、特色街区和文化体验，不为凑齐类别硬塞活动',
+    '信息足够时直接查询并规划，不逐项追问兴趣',
+    '系统安全、受理范围、同城限制和固定创建资料始终优先',
+    '用户明确偏好、禁忌及指定安排高于默认假设',
+    '按地理就近组织路线，减少无意义折返',
+    '预约时段、开放条件和用户指定顺序优先于就近',
+    '现实条件冲突时说明冲突并让用户取舍，不假装全部满足',
+    '一句话说明实际采用的假设，不把首次到访当作用户事实',
+    '不把默认假设写入 requirements_text，不推断人数、预算或健康状况',
+])
+def test_default_planning_policy_reaches_real_model_boundary_without_filling_user_facts(policy):
+    """Checks real prompt injection only; the scripted reply proves no semantics."""
+    script = Script('离线占位，不代表真实模型规划。')
+    runner = runtime(script, body='请生成同城路线。')
+    runner.run()
+    prompt = script.transcripts[0][0]['content']
+    assert policy in prompt
+    context = json.loads(script.transcripts[0][1]['content'])
+    known = context['requirements']['known']
+    assert known['text'] == ''
+    assert not {'traveler_profile', 'party_size', 'budget', 'health'} & known.keys()
+    assert context['message']['text'] == '请生成同城路线。'
+
+
 def test_retained_main_prompt_matches_active_travel_prompt():
     prompts = Path(__file__).resolve().parents[2] / 'backend/app/agents/prompts'
     assert (prompts / 'main.txt').read_text(encoding='utf-8') == (
