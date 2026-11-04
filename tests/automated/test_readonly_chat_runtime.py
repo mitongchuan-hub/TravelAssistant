@@ -99,14 +99,14 @@ def test_scope_policy_is_injected_for_food_and_travel_auxiliary_requests(body):
 @pytest.mark.parametrize('policy', [
     '未给偏好的部分，暂按首次到访视角、节奏适中规划',
     '有条件兼顾代表景点、本地美食、特色街区和文化体验，不为凑齐类别硬塞活动',
-    '信息足够时直接查询并规划，不逐项追问兴趣',
-    '系统安全、受理范围、同城限制和固定创建资料始终优先',
+    '信息足够时直接查询并规划，只澄清会阻碍规划的关键缺项或冲突',
+    '系统安全、受理范围、同城限制和固定创建资料优先',
     '用户明确偏好、禁忌及指定安排高于默认假设',
     '按地理就近组织路线，减少无意义折返',
-    '预约时段、开放条件和用户指定顺序优先于就近',
-    '现实条件冲突时说明冲突并让用户取舍，不假装全部满足',
-    '一句话说明实际采用的假设，不把首次到访当作用户事实',
-    '不把默认假设写入 requirements_text，不推断人数、预算或健康状况',
+    '预约时段、开放条件和用户指定顺序优先',
+    '现实条件冲突时说明冲突并让用户取舍，不悄悄删除难安排的愿望或假装全部满足',
+    '一句话说明实际采用的假设，不把首次到访当用户事实或写入 requirements_text',
+    '人数、预算和健康情况未知就保持未知',
 ])
 def test_default_planning_policy_reaches_real_model_boundary_without_filling_user_facts(policy):
     """Checks loaded method delivery only; a scripted reply proves no semantics."""
@@ -134,17 +134,17 @@ def test_retained_main_prompt_matches_active_travel_prompt():
 def test_main_sequential_multiple_calls_and_responses_replay():
     calls = [call('read_context', {'section': 'requirements'}, 'a'),
              call('read_context', {'section': 'messages'}, 'b')]
-    script = Script([calls[0]], [calls[1]], '完成')
+    script = Script(calls, '完成')
     runner = runtime(script)
     assert not runner.run().failed
-    messages = script.transcripts[2]
+    messages = script.transcripts[1]
     assert [row['tool_call_id'] for row in messages if row['role'] == 'tool'] == ['a', 'b']
     assistant = messages[2]
-    assert len(assistant['tool_calls']) == 1
+    assert len(assistant['tool_calls']) == 2
     replay = responses_input(messages)
     assert len([row for row in replay if row.get('type') == 'function_call']) == 2
     assert [row['call_id'] for row in replay if row.get('type') == 'function_call_output'] == ['a', 'b']
-    assert len([row for row in replay if row.get('type') == 'reasoning']) == 2
+    assert len([row for row in replay if row.get('type') == 'reasoning']) == 1
 
 
 @pytest.mark.parametrize('ids', [('same', 'same'), ('ok', ''), ('ok', None)])
@@ -234,11 +234,10 @@ def test_budget_none_counts_but_still_cancels_and_times_out():
         TurnBudget(max_models=0).model()
 
 
-def test_chat_keeps_serial_contract_and_correction_limit():
-    script = Script(*[[call('read_context', {'section': 'messages'}, f'{i}a'),
-                       call('read_context', {'section': 'ideas'}, f'{i}b')] for i in range(2)])
+def test_chat_accepts_multiple_local_calls_without_batch_size_limit():
+    script = Script([call('read_context', {'section': 'messages'}, f'{i}') for i in range(8)], '完成')
     runner = runtime(script, entry='main')
-    assert runner.run().failed and runner.budget.tool_calls == 0
+    assert not runner.run().failed and runner.budget.tool_calls == 8
     assert runner.budget.max_models is None and 'save_trip_changes' in runner.registry
     assert runner.config.max_steps == 16
     assert 'generation_question' not in runner._initial_context()

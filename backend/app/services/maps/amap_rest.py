@@ -134,22 +134,25 @@ def _get(endpoint, parameters, *, deadline=None):
     _remaining(deadline)
     try:
         key = config.amap_api_key()
-        seconds = min(config.amap_rest_timeout(), _remaining(deadline))
+        request_deadline = monotonic() + min(config.amap_rest_timeout(), _remaining(deadline))
+        deadline = min(deadline, request_deadline) if deadline is not None else request_deadline
     except config.ConfigurationError:
         raise AmapRESTError('高德REST密钥或超时配置无效') from None
     try:
-        with borrow_client() as client:
-            amap_mcp.consume_call()
-            with client.stream('GET', endpoint, params={**parameters, 'key': key},
-                    timeout=httpx.Timeout(seconds), follow_redirects=False) as response:
-                if response.status_code != 200:
-                    raise AmapRESTError('高德REST HTTP请求暂不可用')
-                body = bytearray()
-                for chunk in response.iter_bytes(chunk_size=65536):
-                    _remaining(deadline)
-                    if len(body) + len(chunk) > MAX_RESPONSE_BYTES:
-                        raise AmapRESTError('高德REST响应体超出大小上限')
-                    body.extend(chunk)
+        with amap_mcp.request_slot(deadline=deadline, error_factory=AmapRESTError):
+            seconds = _remaining(deadline)
+            with borrow_client() as client:
+                amap_mcp.consume_call()
+                with client.stream('GET', endpoint, params={**parameters, 'key': key},
+                        timeout=httpx.Timeout(seconds), follow_redirects=False) as response:
+                    if response.status_code != 200:
+                        raise AmapRESTError('高德REST HTTP请求暂不可用')
+                    body = bytearray()
+                    for chunk in response.iter_bytes(chunk_size=65536):
+                        _remaining(deadline)
+                        if len(body) + len(chunk) > MAX_RESPONSE_BYTES:
+                            raise AmapRESTError('高德REST响应体超出大小上限')
+                        body.extend(chunk)
         try:
             payload = json.loads(body)
         except (ValueError, UnicodeError):

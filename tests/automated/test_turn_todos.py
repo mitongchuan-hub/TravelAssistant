@@ -92,13 +92,17 @@ def test_repeated_invalid_submission_fails_closed_without_success_claim():
     assert runtime.usage['tool_calls'] <= 3
 
 
-def test_parallel_submission_batch_is_never_partially_executed():
-    responses = iter([response(calls=[call(arguments=changes()), call(arguments=changes())]),
-                      response('未执行这批修改。')])
-    runtime = make_runtime(lambda *a, **kw: next(responses))
+def test_terminal_in_batch_ends_at_first_success_without_merging_later_saves():
+    requested = []
+    def request(*args, **kwargs):
+        requested.append(True)
+        return response(calls=[call(arguments=changes(), call_id='first'),
+                               call(arguments={**changes(), 'requirements_text': '不覆盖'}, call_id='later')])
+    runtime = make_runtime(request)
     proposal = runtime.run()
-    assert not proposal.failed
-    assert not proposal.changes
+    assert not proposal.failed and proposal.changes['args'] == changes()
+    assert len(requested) == 1
+    assert runtime.usage['tool_calls'] == 1
     assert runtime.execution_context.trip.requirements.text == ''
 
 

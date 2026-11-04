@@ -3,6 +3,7 @@ from contextlib import contextmanager, asynccontextmanager
 from contextvars import ContextVar
 from datetime import timedelta
 from time import monotonic
+from threading import BoundedSemaphore
 import json
 import logging
 import os
@@ -25,6 +26,10 @@ _budget_context = ContextVar('amap_mcp_budget', default=None)
 _phase_context = ContextVar('amap_mcp_phase', default=None)
 _phase_observer = ContextVar('amap_mcp_phase_observer', default=None)
 logger = logging.getLogger(__name__)
+# One process-wide pool for actual MCP HTTP and REST streams, not per transport.
+_request_slots = BoundedSemaphore(3)
+# Long-lived server notification streams must leave a slot for POST/DELETE/REST.
+_get_stream_slots = BoundedSemaphore(2)
 
 
 class AmapMCPError(RuntimeError):
@@ -150,6 +155,29 @@ def remaining_budget():
     return scope['budget'].remaining() if scope else float('inf')
 
 
+@contextmanager
+def request_slot(*, deadline, error_factory=AmapMCPError):
+    """Queue without opening a connection; cancellation and wait consume wall time.
+
+    Owners hold a slot through transport closure. Callers must not nest this scope
+    (e.g. close the search MCP session before fetching REST details).
+    """
+    def remaining():
+        seconds = min(remaining_budget(), deadline - monotonic())
+        if seconds <= 0:
+            raise error_factory('本次高德查询排队超时，信息待核实')
+        return seconds
+
+    while not _request_slots.acquire(timeout=min(.05, remaining())):
+        pass
+    try:
+        # Cancellation/deadline can race acquisition. Never start stale work.
+        remaining()
+        yield
+    finally:
+        _request_slots.release()
+
+
 def consume_call():
     scope = _budget_context.get()
     if scope:
@@ -179,9 +207,81 @@ def result_object(result):
     return value
 
 
+class _SlottedStream(httpx.AsyncByteStream):
+    def __init__(self, inner, release):
+        self.inner, self.release = inner, release
+
+    async def __aiter__(self):
+        async for chunk in self.inner:
+            yield chunk
+
+    async def aclose(self):
+        if self.release is None:
+            return
+        release, self.release = self.release, None
+        try:
+            with anyio.CancelScope(shield=True):
+                await self.inner.aclose()
+        finally:
+            release()
+
+
+class _LimitedTransport(httpx.AsyncBaseTransport):
+    """Count actual HTTP streams, including SDK background GET and DELETE.
+
+    GET first queues for its smaller notification pool, then the common pool;
+    it never holds a common slot while awaiting the notification reservation.
+    """
+    def __init__(self, seconds, *, inner=None):
+        self.deadline = monotonic() + seconds
+        self.inner = inner if inner is not None else httpx.AsyncHTTPTransport()
+
+    async def handle_async_request(self, request):
+        held = []
+
+        def release():
+            while held:
+                held.pop().release()
+
+        def remaining():
+            seconds = min(remaining_budget(), self.deadline - monotonic())
+            if seconds <= 0:
+                raise AmapMCPError('本次高德MCP请求排队超时，信息待核实')
+            return seconds
+
+        try:
+            for semaphore in ([_get_stream_slots, _request_slots]
+                              if request.method == 'GET' else [_request_slots]):
+                while True:
+                    remaining()
+                    if semaphore.acquire(blocking=False):
+                        held.append(semaphore)
+                        break
+                    await anyio.sleep(min(.05, remaining()))
+            seconds = remaining()
+            # HTTPX builds phase timeouts before transport dispatch; shrink them
+            # again after queueing so the wait cannot reset the request budget.
+            request.extensions['timeout'] = {
+                key: min(value, seconds) if value is not None else seconds
+                for key, value in request.extensions.get('timeout', {}).items()}
+            response = await self.inner.handle_async_request(request)
+            if response.is_closed:
+                release()
+            else:
+                response.stream = _SlottedStream(response.stream, release)
+            return response
+        except BaseException:
+            release()
+            raise
+
+    async def aclose(self):
+        await self.inner.aclose()
+
+
 @asynccontextmanager
 async def _connection(url, seconds):
-    async with httpx.AsyncClient(timeout=httpx.Timeout(seconds), follow_redirects=False) as http:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(seconds), follow_redirects=False,
+                                transport=_LimitedTransport(seconds)) as http:
         async with streamable_http_client(url, http_client=http) as (read, write, _):
             async with ClientSession(read, write, read_timeout_seconds=timedelta(seconds=seconds)) as client:
                 with phase('initialize'):

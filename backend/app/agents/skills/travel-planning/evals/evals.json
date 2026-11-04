@@ -1,10 +1,10 @@
 {
   "skill_name": "travel-planning",
-  "version": 1,
+  "version": 2,
   "status": "not_run",
   "protocol": {
     "model": "use current project configuration after explicit budget approval",
-    "comparison": "same base safety prompt, business tools, inputs, fixed evidence, model parameters and budget; with_skill adds catalog and read_skill, without_skill omits both and never receives skill content",
+    "comparison": "same base safety prompt, business tools, inputs, fixed evidence, model parameters and budget; with_skill adds catalog and read_skill with the single complete main resource (version 2), without_skill omits both and never receives skill content",
     "external_services": "fixed synthetic fixtures only; no real maps/weather/store/booking",
     "grading": "inspect transcript and source evidence for objective checks; human review for comfort, tradeoffs and readability; keyword occurrence is not sufficient evidence",
     "fixture_status": "scenario definitions only; freeze concrete POI/detail/routes/weather fixtures and input snapshots before any live comparison",
@@ -53,7 +53,7 @@
       "id": 3,
       "name": "only-second-afternoon-revision",
       "prompt": "第一天和第二天上午都保留，只把第二天下午的龙井村换成博物馆。午餐别改，晚上还是回原住宿，不要顺便重排其他安排。",
-      "expected_output": "主文与修改参考按需加载，基于已保存完整两日行程只调整第二天下午及必要前后衔接，复核午餐到新地点和新地点返回住宿的依据；其他日期与未授权需求保持。不能保证全部逐字不变或编新路线时间。",
+      "expected_output": "一次加载完整主文并复用其中局部修改方法，基于已保存完整两日行程只调整第二天下午及必要前后衔接，复核午餐到新地点和新地点返回住宿的依据；其他日期与未授权需求保持。不能保证全部逐字不变或编新路线时间。",
       "files": [],
       "context_requirements": {
         "city": "杭州",
@@ -65,7 +65,7 @@
         "requirements_text": "不吃辣。第二天午餐地点已确定。",
         "plan": "freeze full two-day draft before live; includes first day, second morning, fixed lunch, second afternoon Longjing, return lodging"
       },
-      "review_checks": ["读取局部修改参考并使用已保存正文", "保留第一天第二天上午和午餐", "仅替换第二天下午与必要衔接", "路线方向及端点对应新活动而非照搬旧依据", "不更换住宿不改需求正文", "交付完整更新行程或明确关键阻碍"],
+      "review_checks": ["读取单一完整主文并使用已保存正文", "保留第一天第二天上午和午餐", "仅替换第二天下午与必要衔接", "路线方向及端点对应新活动而非照搬旧依据", "不更换住宿不改需求正文", "交付完整更新行程或明确关键阻碍"],
       "human_review": ["关联调整是否确有必要", "是否把局部修改扩大成全局重排", "变化说明是否简洁清晰"]
     }
   ],

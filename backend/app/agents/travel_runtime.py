@@ -1,6 +1,8 @@
 """单旅行 Agent：一个上下文、原生地图与独立天气工具、一次终止提交。"""
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+from contextvars import copy_context
 from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -108,6 +110,8 @@ class TaskExecutionRuntime:
             save_trip_changes=partial(save_trip_changes, request_context=self.request_context,
                 execution_context=self.execution_context, evidence=self.evidence, budget=self.budget),
             query=self._query)
+        self._map_handlers = {name: spec.handler for name, spec in self.registry.items()
+                              if name in PLACE_TOOLS or name in ROUTE_TOOLS}
         self._corrections = 0
         self._failures = {}
         self.messages = []
@@ -174,12 +178,6 @@ class TaskExecutionRuntime:
                         # 没有线路依据时不透传可能捏造的线路说明，也不另调模型复核。
                         answer = self._route_unavailable_answer(detail_warning)
                     return ExecutionResult(answer=answer)
-                if len(calls) != 1:
-                    if self._record_failure('serial', '一次响应只能调用一个工具，本批未执行。'):
-                        return ExecutionResult.failure('模型重复违反串行工具合同。')
-                    # 不把无效并行调用写入正式工具转录，避免生成多条工具响应。
-                    self.messages.append({'role': 'user', 'content': '刚才的多个工具调用均未执行。每次仅调用一个工具。'})
-                    continue
                 used_ids = {row.get('tool_call_id') for row in self.messages if row['role'] == 'tool'}
                 for call in calls:
                     call_id = getattr(call, 'id', None)
@@ -187,27 +185,9 @@ class TaskExecutionRuntime:
                         return ExecutionResult.failure('模型工具调用标识缺失或重复，未执行本次工具。')
                     used_ids.add(call_id)
                 self.messages.append(self._assistant_message(assistant, calls))
-                for call in calls:
-                    self.budget.tools(1)
-                    try:
-                        spec = self.registry.get(call.function.name)
-                        if spec is None:
-                            raise ValueError('未知工具')
-                        arguments = json.loads(call.function.arguments or '{}')
-                        self.budget.remaining()
-                        output = self._execute_tool(spec, arguments)
-                        if spec.terminal:
-                            return output
-                        self.budget.remaining()
-                    except (ValueError, TypeError, KeyError, ValidationError) as exc:
-                        if isinstance(exc, IncompleteModelOutput):
-                            raise
-                        reason = exc.message if isinstance(exc, ValidationError) else str(exc)
-                        if self._record_failure(call.function.name, reason):
-                            return ExecutionResult.failure('无效工具调用重复或纠正次数已达上限，未保存任何修改。')
-                        output = {'status': 'invalid_arguments', 'reason': reason, 'recoverable': True}
-                    self.messages.append({'role': 'tool', 'tool_call_id': call.id,
-                                          'content': json.dumps(output, ensure_ascii=False, default=str)})
+                result = self._execute_batch(calls)
+                if result is not None:
+                    return result
             return ExecutionResult.failure('本轮执行步数已达上限，未保存任何修改。')
         except (AgentBudgetError, TimeoutError, IncompleteModelOutput) as exc:
             return ExecutionResult.failure(str(exc))
@@ -217,6 +197,91 @@ class TaskExecutionRuntime:
         finally:
             self.event('Task Runtime预算', self.usage)
             self.event('Task Runtime耗时', {'seconds': round(monotonic() - started, 3)})
+
+    def _execute_batch(self, calls):
+        """Only map I/O runs in workers; trusted state and transcript stay on this thread."""
+        pending = []
+        invalid_limit = False
+
+        def receipt(call, output=None, error=None):
+            nonlocal invalid_limit
+            if error is not None:
+                if isinstance(error, IncompleteModelOutput) or not isinstance(
+                        error, (ValueError, TypeError, KeyError, ValidationError)):
+                    raise error
+                reason = error.message if isinstance(error, ValidationError) else str(error)
+                invalid_limit = self._record_failure(call.function.name, reason) or invalid_limit
+                output = {'status': 'invalid_arguments', 'reason': reason, 'recoverable': True}
+            self.messages.append({'role': 'tool', 'tool_call_id': call.id,
+                                  'content': json.dumps(output, ensure_ascii=False, default=str)})
+
+        def flush():
+            # Consume in model order, even when I/O completed out of order.
+            rows, pending[:] = list(pending), []
+            for call, spec, prepared, future, started in rows:
+                output, error = None, None
+                try:
+                    output = self._finalize_query(prepared, future.result())
+                except Exception as exc:
+                    error = exc
+                self.event('工具执行', {'role': self.config.name, 'name': spec.name,
+                    'arguments': prepared['arguments'], 'seconds': round(monotonic() - started, 3),
+                    'result': output, 'error_type': type(error).__name__ if error else None})
+                receipt(call, output, error)
+
+        with ThreadPoolExecutor(max_workers=3, thread_name_prefix='travel-map') as pool:
+            for index, call in enumerate(calls):
+                spec = self.registry.get(call.function.name)
+                is_map = (spec is not None and spec.name in self._map_handlers
+                          and spec.handler is self._map_handlers[spec.name])
+                if not is_map:
+                    flush()  # Local, weather and terminal tools are execution barriers.
+                try:
+                    self.budget.tools(1)
+                    if spec is None:
+                        raise ValueError('未知工具')
+                    arguments = json.loads(call.function.arguments or '{}')
+                    self.budget.remaining()
+                    if is_map:
+                        spec.validate(arguments)
+                        try:
+                            prepared = self._prepare_query(spec.name, arguments)
+                        except (ValueError, TypeError, KeyError):
+                            if not pending:
+                                raise
+                            # Earlier searches/details may authorize this call, never guess IDs/refs.
+                            flush()
+                            prepared = self._prepare_query(spec.name, arguments)
+                        if any(row[2]['key'] == prepared['key'] for row in pending):
+                            flush()
+                            prepared = self._prepare_query(spec.name, arguments)
+                        if 'cached' in prepared:
+                            flush()
+                            receipt(call, prepared['cached'])
+                            continue
+                        started = monotonic()
+                        self.event('工具开始', {'role': self.config.name, 'name': spec.name, 'arguments': arguments})
+                        future = pool.submit(copy_context().run, self._query_io, prepared)
+                        pending.append((call, spec, prepared, future, started))
+                        continue
+                    if spec.terminal and invalid_limit:
+                        return ExecutionResult.failure('无效工具调用重复或纠正次数已达上限，未保存任何修改。')
+                    output = self._execute_tool(spec, arguments)
+                    if spec.terminal:
+                        for skipped in calls[index + 1:]:
+                            self.event('工具跳过', {'name': skipped.function.name,
+                                'tool_call_id': skipped.id, 'status': 'skipped_due_to_terminal'})
+                        return output
+                    self.budget.remaining()
+                except (ValueError, TypeError, KeyError, ValidationError) as exc:
+                    flush()
+                    receipt(call, error=exc)
+                else:
+                    receipt(call, output)
+            flush()
+        if invalid_limit:
+            return ExecutionResult.failure('无效工具调用重复或纠正次数已达上限，未保存任何修改。')
+        return None
 
     def _record_failure(self, name, reason):
         # 按错误类别与原因计数，不能靠更换无效参数绕开重复上限。
@@ -317,6 +382,12 @@ class TaskExecutionRuntime:
         return deepcopy(point)
 
     def _query(self, name, args):
+        prepared = self._prepare_query(name, args)
+        if 'cached' in prepared:
+            return prepared['cached']
+        return self._finalize_query(prepared, self._query_io(prepared))
+
+    def _prepare_query(self, name, args):
         self.budget.remaining()
         city = self.trip.requirements.city.removesuffix('市')
         if name not in ROUTE_TOOLS and name not in PLACE_TOOLS and name != 'query_weather':
@@ -343,17 +414,27 @@ class TaskExecutionRuntime:
         key = (name, json.dumps(args, sort_keys=True, ensure_ascii=False))
         if key in self.external_results:
             self.event('查询缓存复用', {'tool': name, 'scope': 'current_turn'})
-            return deepcopy(self.external_results[key])
+            return {'name': name, 'arguments': args, 'key': key,
+                    'cached': deepcopy(self.external_results[key])}
+        return {'name': name, 'arguments': deepcopy(args), 'key': key, 'endpoints': endpoints,
+                'started': monotonic()}
+
+    def _query_io(self, prepared):
+        name, args = prepared['name'], prepared['arguments']
         from app.services.maps.amap_mcp import budget_scope
         from app.agents.tools.weather import budget_scope as weather_scope
         scope = weather_scope if name == 'query_weather' else budget_scope
-        started = monotonic()
         local_departure_rejection = (name == 'maps_direction_transit_integrated'
                                      and args.get('departure_at') is not None)
         if name != 'query_weather' and not local_departure_rejection:
             self.budget.external()
         with scope(self.budget):
             output = tools.run_tool(name, args, place_catalog=self.catalog, route_cache=self.cache)
+        return output
+
+    def _finalize_query(self, prepared, output):
+        name, args, key = prepared['name'], prepared['arguments'], prepared['key']
+        endpoints, started = prepared['endpoints'], prepared['started']
         self.budget.remaining()
         normalized = output
         if name in PLACE_TOOLS:

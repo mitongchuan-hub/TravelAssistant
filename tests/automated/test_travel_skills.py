@@ -9,17 +9,17 @@ from jsonschema import ValidationError
 from tests.automated.test_readonly_chat_runtime import Script, call, runtime
 
 
-def test_registered_reader_default_main_and_progressive_reference():
+def test_registered_reader_defaults_to_the_only_complete_main_resource():
     runner = runtime(Script('完成'))
     assert 'read_skill' in runner.registry
     reader = runner.registry['read_skill']
     main = reader.execute({'name': 'travel-planning'})
     assert main['name'] == 'travel-planning' and main['resource'] == 'main'
     assert main['hash'] == hashlib.sha256(main['content'].encode()).hexdigest()
-    assert main['version'] == '1'
+    assert main['version'] == '2'
     assert main['content'].startswith('---\nname: travel-planning\n')
-    reference = reader.execute({'name': 'travel-planning', 'resource': 'output-and-revision'})
-    assert reference['content'] != main['content']
+    assert reader.execute({'name': 'travel-planning', 'resource': 'main'}) == main
+    assert reader.parameters['properties']['resource']['default'] == 'main'
     assert 'path' not in main
     assert [name for name, spec in runner.registry.items() if spec.terminal] == ['save_trip_changes']
 
@@ -29,6 +29,9 @@ def test_registered_reader_default_main_and_progressive_reference():
     {'name': 'travel-planning', 'resource': 'C:\\secret'},
     {'name': 'travel-planning', 'resource': '/etc/passwd'},
     {'name': 'travel-planning', 'resource': 'https://example.com'},
+    {'name': 'travel-planning', 'resource': 'evidence-and-routing'},
+    {'name': 'travel-planning', 'resource': 'output-and-revision'},
+    {'name': 'travel-planning', 'resource': 'unknown'},
     {'name': 'travel-planning', 'path': 'SKILL.md'}, {},
 ])
 def test_reader_rejects_paths_unknown_resources_and_extra_parameters(args):
@@ -38,18 +41,17 @@ def test_reader_rejects_paths_unknown_resources_and_extra_parameters(args):
         runner.registry['read_skill'].execute(args)
 
 
-def test_skill_and_reference_reach_model_without_external_calls_or_evidence():
+def test_single_skill_read_reaches_model_without_external_calls_or_evidence():
     script = Script([call('read_skill', {'name': 'travel-planning'}, 'skill')],
-                    [call('read_skill', {'name': 'travel-planning', 'resource': 'output-and-revision'}, 'ref')],
                     '需要先补齐创建资料。')
     runner = runtime(script, body='生成同城行程')
     result = runner.run()
     assert not result.failed and result.answer == '需要先补齐创建资料。'
-    assert runner.budget.tool_calls == 2 and runner.budget.external_calls == 0
+    assert runner.budget.tool_calls == 1 and runner.budget.external_calls == 0
     assert not runner.evidence and not result.changes
     messages = script.transcripts[-1]
     loaded = [json.loads(row['content']) for row in messages if row['role'] == 'tool']
-    assert [r['resource'] for r in loaded] == ['main', 'output-and-revision']
+    assert [r['resource'] for r in loaded] == ['main']
     assert loaded[0]['content'] not in messages[0]['content']
     assert 'travel-planning' in messages[0]['content']
     assert '只记录不生成' in messages[0]['content']
@@ -74,8 +76,8 @@ def test_resource_io_fails_closed_without_server_paths(monkeypatch):
     assert 'private' not in str(exc.value)
 
 
-@pytest.mark.parametrize('escaped', ['travel-planning', 'output-and-revision.md'])
-def test_skill_directory_and_reference_cannot_escape_root(monkeypatch, tmp_path, escaped):
+@pytest.mark.parametrize('escaped', ['travel-planning', 'SKILL.md'])
+def test_skill_directory_and_main_cannot_escape_root(monkeypatch, tmp_path, escaped):
     from app.agents import skills
     original = Path.resolve
     def resolve(path, *args, **kwargs):
@@ -84,7 +86,7 @@ def test_skill_directory_and_reference_cannot_escape_root(monkeypatch, tmp_path,
         return original(path, *args, **kwargs)
     monkeypatch.setattr(Path, 'resolve', resolve)
     with pytest.raises(ValueError, match='不可用'):
-        skills.read_skill_resource('travel-planning', 'output-and-revision')
+        skills.read_skill_resource('travel-planning')
 
 
 def test_loaded_method_stays_out_of_terminal_change_evidence():
@@ -117,7 +119,7 @@ def test_catalog_metadata_comes_from_main_document():
     catalog = skill_catalog()
     content = read_skill_resource('travel-planning')['content']
     assert f"description: {catalog[0]['description']}" in content
-    assert catalog[0]['resources'] == ['main', 'evidence-and-routing', 'output-and-revision']
+    assert catalog[0]['resources'] == ['main']
 
 
 def test_skill_schema_and_catalog_share_resource_allowlist():
@@ -138,6 +140,42 @@ def test_trigger_definitions_are_not_run_and_do_not_enter_model_input():
     script = Script('你好')
     assert not runtime(script).run().failed
     assert data['evals'][0]['prompt'] not in json.dumps(script.transcripts, ensure_ascii=False)
+
+
+def test_main_contains_complete_planning_method_without_followup_resources():
+    from app.agents import skills
+    from app.agents.roles import travel_role
+    main = skills.read_skill_resource('travel-planning')['content']
+    # Representative methods formerly split across references must survive consolidation.
+    for method in ['bus.buslines', '秒', '候车', '人均', '全队', '机动', '未知',
+                   'revision_scope', '午餐', '完整正文', '100—180', '500—900',
+                   'itinerary.text', '住宿', '雨备']:
+        assert method in main
+    assert len(main.splitlines()) <= 150
+    assert len(main.encode('utf-8')) <= 16384
+    assert 'read_skill(' not in main
+    assert 'references/' not in main
+    assert not (Path(skills.__file__).parent / 'travel-planning/references').exists()
+    prompt = travel_role().prompt
+    assert main not in prompt
+    assert '一次读取' in prompt and '直接复用' in prompt
+    assert '再按任务需要读取参考资源' not in prompt
+
+
+@pytest.mark.parametrize('resource', ['evidence-and-routing', 'output-and-revision', 'unknown'])
+def test_loader_itself_rejects_unknown_resources(resource):
+    from app.agents.skills import read_skill_resource
+    with pytest.raises(ValueError, match='未知'):
+        read_skill_resource('travel-planning', resource)
+
+
+def test_repeated_main_reads_remain_normal_budgeted_calls():
+    script = Script([call('read_skill', {'name': 'travel-planning'}, 'first')],
+                    [call('read_skill', {'name': 'travel-planning'}, 'second')], '完成')
+    runner = runtime(script)
+    assert not runner.run().failed
+    assert runner.budget.tool_calls == 2 and runner.budget.external_calls == 0
+    assert not runner.evidence
 
 
 def test_oversized_resource_is_rejected_not_truncated(monkeypatch):

@@ -4,9 +4,7 @@ from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parent
 _NAME = 'travel-planning'
-_RESOURCES = {'main': ('SKILL.md', 16384),
-              'evidence-and-routing': ('references/evidence-and-routing.md', 24576),
-              'output-and-revision': ('references/output-and-revision.md', 24576)}
+_RESOURCES = {'main': ('SKILL.md', 16384)}
 
 
 def read_skill_resource(name: str, resource: str = 'main') -> dict:
@@ -27,7 +25,7 @@ def read_skill_resource(name: str, resource: str = 'main') -> dict:
         content = raw.decode('utf-8')
     except (OSError, UnicodeError, RuntimeError):
         raise ValueError('规划技能资源不可用，未加载') from None
-    return {'name': name, 'resource': resource, 'version': '1', 'content': content,
+    return {'name': name, 'resource': resource, 'version': '2', 'content': content,
             'hash': sha256(raw).hexdigest()}
 
 

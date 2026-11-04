@@ -10,7 +10,7 @@ READ_SKILL_TOOL_SPEC = {
             'type': 'object',
             'properties': {
                 'name': {'type': 'string', 'enum': ['travel-planning']},
-                'resource': {'type': 'string', 'enum': ['main', 'evidence-and-routing', 'output-and-revision'],
+                'resource': {'type': 'string', 'enum': ['main'],
                              'default': 'main'},
             },
             'required': ['name'],

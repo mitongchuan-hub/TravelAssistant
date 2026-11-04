@@ -237,6 +237,7 @@ def test_budget_timeout_minimum_and_exhaustion_not_swallowed(monkeypatch):
         calls.append(req)
         return httpx.Response(200, json=envelope())
     monkeypatch.setattr(amap_rest, 'monotonic', lambda: 100)
+    monkeypatch.setattr(amap_mcp, 'monotonic', lambda: 100)
     with scope(handler), amap_mcp.budget_scope(budget):
         budget.external()  # The dispatch owns the first reservation.
         amap_rest.detail('park', deadline=100.25)
