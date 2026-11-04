@@ -41,7 +41,7 @@ def _detail(name, arguments):
         return ''
     if name == 'read_context':
         return {'requirements': '出行需求', 'plan': '当前行程', 'evidence': '已查询资料',
-                'messages': '聊天记录', 'ideas': '想法墙'}.get(arguments.get('section'), '')
+                'messages': '聊天记录'}.get(arguments.get('section'), '')
     if name not in {'query_weather', 'search_places', 'search_food', 'maps_text_search'}:
         return ''
     # Only these user-facing query fields may leave the internal trace.

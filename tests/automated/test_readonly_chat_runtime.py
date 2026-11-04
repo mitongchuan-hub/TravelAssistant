@@ -1,5 +1,6 @@
 """Offline read-only chat loop checks; no Store, database, dotenv or network."""
 from copy import deepcopy
+from pathlib import Path
 import json
 from types import SimpleNamespace as NS
 
@@ -36,12 +37,12 @@ class Script:
         return NS(choices=[NS(message=message, finish_reason='stop')])
 
 
-def runtime(script, *, entry='main', budget=None):
-    trip = Trip('trip', '', '', '', '', '', User('owner', '测试', '测'), '', '',
+def runtime(script, *, entry='main', budget=None, body='解释地铁和Python'):
+    trip = Trip('trip', '', User('owner', '测试', '测'), '', '',
                 requirements=TripRequirements(city='杭州'))
-    ctx = RequestContext('trip', 'owner', 'task', None, 'req', 'message', '解释地铁和Python',
+    ctx = RequestContext('trip', 'owner', 'task', None, 'req', 'message', body,
                          entry, 'task_execution', 0, plan_basis(None), 0, 0, 0)
-    execution = TaskExecutionContext(trip, [], [], None, {}, '2030-01-01', entry=entry)
+    execution = TaskExecutionContext(trip, [],  None, {}, '2030-01-01', entry=entry)
     return TaskExecutionRuntime(None, 'offline', ctx, execution, script, budget=budget)
 
 
@@ -53,11 +54,11 @@ def forbid_network(monkeypatch):
 
 
 def test_main_prompt_context_and_plain_finish():
-    script = Script('Python是一种编程语言。')
-    runner = runtime(script)
+    script = Script('可以帮你查询同城交通。')
+    runner = runtime(script, body='能查询同城交通吗？')
     result = runner.run()
     assert not result.failed and not result.changes and not result.changes
-    assert result.answer == 'Python是一种编程语言。'
+    assert result.answer == '可以帮你查询同城交通。'
     assert len(runner.registry) == 8 and 'submit_changes' in runner.registry
     context = json.loads(script.transcripts[0][1]['content'])
     assert context['requirements']['missing_for_generation']
@@ -65,8 +66,40 @@ def test_main_prompt_context_and_plain_finish():
     assert 'environment' not in context
     assert 'travel_window' not in context
     assert context['requirements']['known']['dates'] is None
-    assert '普通聊天可自由回答非旅行问题' in runner.config.prompt
+    assert '不提供非旅行任务的实质回答' in runner.config.prompt
+    assert '普通聊天可自由回答非旅行问题' not in runner.config.prompt
     assert runner.config.max_steps == 16
+
+
+@pytest.mark.parametrize('body', [
+    '教我做番茄炒蛋，给出配料比例和完整步骤。',
+    '杭州西湖附近哪家餐厅能吃到番茄炒蛋？',
+    '番茄炒蛋',
+    '这次旅行想吃番茄炒蛋，记下来；再给我完整菜谱。',
+    '旅行餐费每人80元，3人一共多少？',
+    '在外国餐馆用餐，帮我翻译菜单上的 tomato omelette。',
+])
+def test_scope_policy_is_injected_for_food_and_travel_auxiliary_requests(body):
+    """A scripted model proves prompt delivery only, NOT semantic compliance."""
+    script = Script('离线占位回复，不代表模型的范围判断。')
+    runner = runtime(script, body=body)
+    assert not runner.run().failed
+    prompt = script.transcripts[0][0]['content']
+    assert prompt == runner.config.prompt
+    assert '按请求意图和上下文判断，不按菜名或关键词封禁' in prompt
+    assert '番茄炒蛋怎么做' in prompt
+    assert '番茄炒蛋' in prompt and '先结合上下文澄清用途' in prompt
+    assert '旅行费用计算、外国餐馆菜单翻译' in prompt
+    assert '混合请求只处理旅行部分' in prompt
+    assert '普通文字、工具查询与转述、submit_changes 的全部字段' in prompt
+    assert '不把纯菜谱或其他越界内容保存为需求正文' in prompt
+    assert json.loads(script.transcripts[0][1]['content'])['message']['text'] == body
+
+
+def test_retained_main_prompt_matches_active_travel_prompt():
+    prompts = Path(__file__).resolve().parents[2] / 'backend/app/agents/prompts'
+    assert (prompts / 'main.txt').read_text(encoding='utf-8') == (
+        prompts / 'travel.txt').read_text(encoding='utf-8')
 
 
 def test_main_sequential_multiple_calls_and_responses_replay():

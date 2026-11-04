@@ -10,10 +10,10 @@ from app.domain.models import Message, TripRequirements
 from app.services.itinerary.freshness import plan_freshness
 from app.services.itinerary.plan_display import text_hash, dates_from_snapshot
 from app.services.itinerary.guide_html import validate_guide_display
-from app.storage.legacy.workflow import normalize_workflow
+from app.workflow.counters import normalize_workflow
 from app.workflow.tasks import TaskConflict
 
-FIELDS = ('destination', 'date_range', 'budget', 'style', 'note', 'status', 'mode', 'lodging')
+FIELDS = ('status',)
 
 
 def state(store, trip_id):
@@ -32,7 +32,7 @@ def capture(store, trip_id):
         except (ValueError, TypeError, KeyError):
             pass
     return {'trip': {key: deepcopy(getattr(trip, key)) for key in FIELDS},
-            'requirements': asdict(trip.requirements), 'ideas': [asdict(c) for c in store.idea_cards[trip_id]],
+            'requirements': {'text': trip.requirements.text, 'revision': trip.requirements.revision},
             'plan': raw, 'freshness': plan_freshness(trip, plan)['basis_status']}
 
 
@@ -54,7 +54,9 @@ def _business_content(snapshot):
     raw['requirements'].pop('revision', None)
     for key in ('id', 'requirements_revision', 'display', 'display_status', 'display_source_hash', 'display_style'):
         raw['plan'].pop(key, None)
-    raw['plan'].get('requirements_snapshot', {}).pop('revision', None)
+    snapshot = raw['plan'].get('requirements_snapshot')
+    if isinstance(snapshot, dict):
+        snapshot.pop('revision', None)
     return raw
 
 
@@ -100,21 +102,20 @@ def undo(store, trip_id, entry_id, request_id, expected_version):
         saved = target['entries'].pop()['before']
         trip = stage.trips[trip_id]
         revision = trip.requirements.revision + 1
-        for key, value in saved['trip'].items():
-            setattr(trip, key, deepcopy(value))
-        trip.requirements = TripRequirements(**{**saved['requirements'], 'revision': revision})
-        from app.storage.persistence import _plan, _idea
+        trip.status = saved['trip']['status']
+        trip.requirements.text = saved['requirements']['text']
+        trip.requirements.revision = revision
+        from app.storage.persistence import _plan
         plan = _plan(saved['plan'], False)
         plan.id = 'plan-' + uuid4().hex
         if saved['freshness'] == 'fresh':
             plan.requirements_revision = revision
             plan.requirements_snapshot = asdict(trip.requirements)
-        elif saved['freshness'] == 'stale' and plan.requirements_snapshot:
+        elif saved['freshness'] == 'stale' and isinstance(plan.requirements_snapshot, dict) and plan.requirements_snapshot:
             plan.requirements_revision = revision - 1
             plan.requirements_snapshot['revision'] = revision - 1
-        elif saved['freshness'] == 'unknown' and plan.requirements_snapshot == saved['requirements']:
-            plan.requirements_revision = revision
-            plan.requirements_snapshot['revision'] = revision
+        if saved['freshness'] == 'unknown':
+            plan.requirements_basis_complete = False
         if plan.display is not None:
             try:
                 if plan.display_source_hash != text_hash(plan.text):
@@ -123,10 +124,8 @@ def undo(store, trip_id, entry_id, request_id, expected_version):
             except (ValueError, TypeError, KeyError):
                 plan.display, plan.display_status, plan.display_source_hash = None, 'not_requested', ''
         stage.plans[trip_id] = plan
-        stage.idea_cards[trip_id] = [_idea(c, False) for c in saved['ideas']]
         workflow = normalize_workflow(trip.workflow_state)
         workflow.update(revision=workflow['revision'] + 1, sequence=workflow['sequence'] + 1, epoch=workflow['epoch'] + 1)
-        workflow['active_question'] = None
         trip.workflow_state = workflow
         stage._discard_display_jobs(trip_id)
         if plan.text and plan.display_status != 'ready':
@@ -139,7 +138,7 @@ def undo(store, trip_id, entry_id, request_id, expected_version):
             users = USERS
         message_id = 'm-' + uuid4().hex
         stage.messages[trip_id].append(Message(message_id, users['agent'], 'agent',
-            '已撤销本次修改：恢复当时的旅行需求、住宿、想法和行程；聊天记录已保留。', datetime.now().strftime('%H:%M')))
+            '已撤销本次修改：恢复当时的需求正文和行程，固定创建资料不变；聊天记录已保留。', datetime.now().strftime('%H:%M')))
         target['version'] += 1
         if target['entries']:
             target['entries'][-1]['expected_after'] = fingerprint(stage, trip_id)

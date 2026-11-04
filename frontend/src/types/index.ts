@@ -3,25 +3,12 @@ export interface User { id: string; name: string; initials: string }
 export interface TripRequirements {
   start_date: string
   end_date: string
-  arrival_time: string
-  departure_time: string
   city: string
-  arrival_location: string
-  departure_location: string
   day_count: number | null
-  travelers: number | null
-  budget_amount: string
-  budget_scope: string
-  budget_coverage: string
   transport_mode: string
-  must_visit: string[]
-  avoid: string[]
-  dietary: string[]
-  pace: string
   lodging_address: string
-  outing_start_time: string
-  outing_end_time: string
   revision: number
+  text: string
 }
 
 // The server whitelists only fields present in the saved place; {} is valid.
@@ -52,9 +39,6 @@ export interface Trip {
   id: string
   destination: string
   date_range: string
-  budget: string
-  style: string
-  note: string
   owner: User
   status: string
   last_activity: string
@@ -76,6 +60,7 @@ export interface ProgressStep {
 
 export interface Progress {
   state?: string
+  reason?: 'cancelled' | 'superseded'
   revision?: number
   started_at?: number
   updated_at?: number
@@ -105,7 +90,6 @@ export interface ChatMessage {
   agent_card?: AgentCard | null
 }
 
-export interface Idea { id: string; kind: string; title: string; body: string; author: string; status: string; rotation: string }
 
 export interface LegacyRoute {
   origin_poi_id?: string
@@ -205,14 +189,19 @@ export interface WorkspaceSnapshot {
   plan: Plan
   messages: ChatMessage[]
   tasks: Task[]
-  idea_cards: Idea[]
-  wall_cards: Idea[]
   metrics: Record<string, unknown>
   display_state: DisplayState
 }
 
 export interface Session { user: User | null; csrf_token: string }
-export type CityOutingValues = Record<string, string>
+export interface CityOutingValues {
+  lodging_address: string
+  transport_mode: string
+  start_date: string
+  day_count: string
+  revision: string
+}
+export interface LodgingChoice { choice_token: string; poi_id: string }
 export interface RequirementsResponse { trip: Trip; values: CityOutingValues }
 export type SaveTripResponse =
   | { status: 'saved'; trip: Trip }

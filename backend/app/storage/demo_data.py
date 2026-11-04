@@ -1,7 +1,7 @@
 """演示数据纯工厂：每次返回新的业务对象，不创建 Store、不读写数据库。"""
 from collections.abc import Mapping, Sequence
 
-from app.domain.models import AgentAction, AgentCard, IdeaCard, Message, TripDay, TripItem, TripPlan, User
+from app.domain.models import AgentAction, AgentCard, Message, TripDay, TripItem, TripPlan, User
 
 
 def seed_messages(users: Mapping[str, User]) -> list[Message]:
@@ -47,57 +47,6 @@ def seed_messages(users: Mapping[str, User]) -> list[Message]:
                 bullets=["每天 2-3 个主要安排", "下午保留休息时间", "预算按人均 1500 控制"],
                 actions=[AgentAction(label="查看行程", target="itinerary")],
             ),
-        ),
-    ]
-
-
-
-def seed_idea_cards(rotations: Sequence[str]) -> list[IdeaCard]:
-    return [
-        IdeaCard(
-            id="idea-place-1",
-            kind="地点",
-            title="西湖傍晚散步",
-            body="第一天傍晚去断桥和白堤，避开中午高温，也留出自由时间。",
-            author="你",
-            status="已采纳",
-            rotation=rotations[0],
-        ),
-        IdeaCard(
-            id="idea-place-2",
-            kind="地点",
-            title="龙井茶园",
-            body="安排半天慢一点的茶园体验，不要只打卡拍照。",
-            author="对话",
-            status="候选",
-            rotation=rotations[1],
-        ),
-        IdeaCard(
-            id="idea-budget-1",
-            kind="预算",
-            title="人均 1500 左右",
-            body="住宿、餐饮和交通都按轻松但不奢侈来筛选。",
-            author="对话",
-            status="约束",
-            rotation=rotations[2],
-        ),
-        IdeaCard(
-            id="idea-pace-1",
-            kind="节奏",
-            title="不要每天太赶",
-            body="每天最多 2-3 个主要安排，下午保留休息窗口。",
-            author="你",
-            status="已采纳",
-            rotation=rotations[3],
-        ),
-        IdeaCard(
-            id="idea-taboo-1",
-            kind="禁忌",
-            title="避免连续长距离移动",
-            body="Agent 提醒：如果茶园、运河街区和西湖分散安排，会和轻松旅行目标冲突。",
-            author="Agent",
-            status="冲突提醒",
-            rotation=rotations[4],
         ),
     ]
 

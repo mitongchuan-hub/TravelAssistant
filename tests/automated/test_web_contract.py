@@ -1,3 +1,4 @@
+import pytest
 """JSON contracts replacing server-rendered routes (coverage map).
 
 Route signatures/static/Jinja -> JSON routing/error DTOs; auth redirects -> session
@@ -118,17 +119,22 @@ def test_trip_creation_choice_revision_and_cleanup_contract(monkeypatch):
     place = {'poi_id': 'hotel-1', 'name': '测试酒店', 'address': '测试路1号',
              'longitude': 120.15, 'latitude': 30.25, 'city': '杭州市', 'district': '西湖区',
              'source': '高德地图 POI', 'fetched_at': '2030-05-01T00:00:00+00:00'}
-    monkeypatch.setattr(trip_routes, 'search_places', lambda args: {
-        'status': 'available', 'total_matched': 2,
-        'candidates': [place, place | {'poi_id': 'hotel-2', 'name': '测试酒店分店'}]})
-    values = {'lodging_address': '测试酒店', 'start_date': '2030-05-01',
-              'day_count': '2', 'transport_mode': 'transit', 'travelers': '2'}
+    searches = []
+    def search(args):
+        searches.append(args)
+        return {'status': 'available', 'total_matched': 2,
+                'candidates': [place, place | {'poi_id': 'hotel-2', 'name': '测试酒店分店'}]}
+    monkeypatch.setattr(trip_routes, 'search_places', search)
+    values = {'lodging_address': '杭州测试酒店', 'start_date': '2030-05-01',
+              'day_count': '2', 'transport_mode': 'transit'}
     with TestClient(app) as client:
         headers = csrf_headers(client)
         before = len(store.trips)
         choices = client.post('/api/trips', json=values, headers=headers)
         assert choices.status_code == 200 and choices.json()['status'] == 'choices_required'
         assert len(store.trips) == before
+        assert searches == [{'city': '', 'keywords': '杭州测试酒店'}]
+        assert set(choices.json()['values']) == {'lodging_address', 'start_date', 'day_count', 'transport_mode', 'revision'}
         token = choices.json()['choice_token']
         changed = client.post('/api/trips', json={'choice_token': token, 'poi_id': 'hotel-1',
                              'day_count': '3'}, headers=headers)
@@ -137,14 +143,17 @@ def test_trip_creation_choice_revision_and_cleanup_contract(monkeypatch):
         assert saved.status_code == 200 and saved.json()['status'] == 'saved'
         trip = saved.json()['trip']
         key = trip['id']
+        assert not {'budget', 'style', 'note'} & trip.keys()
+        assert set(trip['requirements']) == {'start_date', 'end_date', 'city', 'day_count', 'transport_mode', 'lodging_address', 'text', 'revision'}
         assert trip['lodging']['poi_id'] == 'hotel-1'
         assert trip['requirements']['end_date'] == '2030-05-02'
         replay = client.post('/api/trips', json={'choice_token': token, 'poi_id': 'hotel-1'}, headers=headers)
         assert replay.status_code == 400 and len(store.trips) == before + 1
         form = client.get(f'/api/trips/{key}/requirements').json()['values']
         changed = client.put(f'/api/trips/{key}/requirements', json=form | {'day_count': '3'}, headers=headers)
-        assert changed.status_code == 200
-        assert client.put(f'/api/trips/{key}/requirements', json=form, headers=headers).status_code == 409
+        assert changed.status_code == 405
+        assert client.put(f'/api/trips/{key}/requirements', json=form, headers=headers).status_code == 405
+        assert store.trips[key].requirements.day_count == 2
         draft = deps.lodging_choices.add(owner.id, form, [place], key)
         deleted = client.request('DELETE', f'/api/trips/{key}', json={}, headers=headers)
         assert deleted.status_code == 200 and deleted.json() == {'deleted': True}
@@ -300,7 +309,7 @@ def test_shared_dependency_seam_and_owner_isolation(monkeypatch):
     with TestClient(app) as client:
         response = client.get('/api/trips/trip-hangzhou/workspace')
         assert response.status_code == 200
-        assert {'trip', 'plan', 'messages', 'tasks', 'idea_cards', 'wall_cards', 'metrics', 'display_state'} <= response.json().keys()
+        assert {'trip', 'plan', 'messages', 'tasks', 'metrics', 'display_state'} <= response.json().keys()
         monkeypatch.setattr(deps, 'store', second)
         assert client.get('/api/trips/trip-hangzhou/tasks').status_code == 404
         monkeypatch.setattr(deps, 'store', first)
@@ -309,3 +318,22 @@ def test_shared_dependency_seam_and_owner_isolation(monkeypatch):
             assert client.get('/api/trips/trip-hangzhou/' + suffix).status_code == 404
         monkeypatch.setattr(deps, 'current_user', lambda request: None)
         assert client.get('/api/trips/trip-hangzhou/tasks').status_code == 401
+
+
+@pytest.mark.parametrize('key', ['city_hint', 'travelers', 'budget_amount', 'budget_scope', 'budget_coverage',
+                                'pace', 'must_visit', 'avoid', 'dietary', 'note',
+                                'outing_start_time', 'outing_end_time'])
+def test_removed_city_inputs_rejected_before_maps(key, monkeypatch):
+    from app.api import dependencies as deps, trips as trip_routes
+    from app.main import app
+    from app.storage.store import DemoStore
+    store = DemoStore(persistence_enabled=False, display_worker_enabled=False)
+    monkeypatch.setattr(deps, 'store', store)
+    monkeypatch.setattr(deps, 'current_user', lambda request: store.trips['trip-hangzhou'].owner)
+    monkeypatch.setattr(trip_routes, 'search_places', lambda *args: pytest.fail('invalid input must not query maps'))
+    with TestClient(app) as client:
+        headers = csrf_headers(client)
+        values = {'lodging_address': '杭州测试酒店', 'start_date': '2030-05-01',
+                  'day_count': '2', 'transport_mode': 'transit', key: ''}
+        assert client.post('/api/trips', json=values, headers=headers).status_code == 422
+        assert client.put('/api/trips/trip-hangzhou/requirements', json=values, headers=headers).status_code == 405

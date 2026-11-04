@@ -24,9 +24,14 @@ class ToolSpec:
     terminal: bool = False
 
     def model_spec(self) -> dict:
+        parameters = deepcopy(self.parameters)
+        if self.name == 'submit_changes':
+            # The configured llama.cpp endpoint emits {} with a root anyOf.
+            # Keep the full schema for local validation; only project the wire schema.
+            parameters.pop('anyOf', None)
         return {'type': 'function', 'function': {
             'name': self.name, 'description': self.description,
-            'parameters': deepcopy(self.parameters)}}
+            'parameters': parameters}}
 
     def validate(self, arguments: dict) -> None:
         Draft202012Validator(self.parameters).validate(arguments)

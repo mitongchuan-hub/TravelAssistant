@@ -85,8 +85,58 @@ def test_superseded_request_keeps_history_and_rejects_late_events(store):
     before = deepcopy(store.messages['trip-hangzhou'])
     store.record_task_progress(task['id'], '模型响应', {'agent_role': 'main_execution'})
     assert store.messages['trip-hangzhou'] == before
+    message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
     assert message.execution_progress['state'] == 'superseded'
+    assert message.execution_progress['reason'] == 'superseded'
     assert store.tasks[next_task['id']]['status'] == 'queued'
+
+
+@pytest.mark.parametrize('status', ['queued', 'running'])
+def test_cancelled_request_keeps_explicit_reason_and_rejects_late_events(store, status):
+    task = running(store)
+    store.record_task_progress(task['id'], '模型请求', {'agent_role': 'main_execution'})
+    store.tasks[task['id']]['status'] = status
+    result = store.cancel_task('trip-hangzhou', task['id'])
+    assert result['status'] == 'superseded'  # Existing task/receipt contract is unchanged.
+    message = next(row for row in store.messages['trip-hangzhou'] if row.id == task['thinking_id'])
+    assert message.execution_progress['state'] == 'superseded'
+    assert message.execution_progress['reason'] == 'cancelled'
+    assert message.execution_progress['steps'][0]['status'] == 'stopped'
+    before = deepcopy(message.execution_progress)
+    store.record_task_progress(task['id'], '模型响应', {'agent_role': 'main_execution'})
+    store.cancel_task('trip-hangzhou', task['id'])
+    assert message.execution_progress == before
+
+
+@pytest.mark.parametrize('reason,heading', [
+    ('cancelled', '已终止'),
+    ('superseded', '已由新消息替代'),
+    (None, '处理已停止'),
+])
+def test_stopped_progress_reason_survives_snapshot_and_public_dto(reason, heading):
+    from dataclasses import asdict
+    from app.domain.models import Message, User
+    from app.api.serializers import message_to_dict
+    from app.storage.persistence import _message
+    from app.views.chat_presentation import chat_progress_view
+
+    kwargs = {'reason': reason} if reason is not None else {}
+    progress = finish_progress(new_progress(timestamp=0), 'superseded', timestamp=1000, **kwargs)
+    assert progress.get('reason') == reason
+    assert chat_progress_view(progress)['heading'] == heading
+    message = Message('m', User('agent', '助手', 'AI'), 'agent', '历史正文不作推断', '10:00',
+                      'superseded', execution_progress=progress)
+    restored = _message(asdict(message))
+    assert restored.execution_progress == progress
+    dto = message_to_dict(restored)
+    assert dto['execution_progress'].get('reason') == reason
+    assert dto['body'] == message.body
+
+
+def test_generic_budget_cancellation_does_not_claim_a_new_message():
+    from app.agents.budget import AgentBudgetError, TurnBudget
+    with pytest.raises(AgentBudgetError, match='本次处理已停止。'):
+        TurnBudget(cancelled=lambda: True).check_current()
 
 
 def test_progress_write_failure_restores_message_without_affecting_task(store, monkeypatch):

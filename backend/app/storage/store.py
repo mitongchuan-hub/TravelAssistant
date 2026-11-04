@@ -12,11 +12,10 @@ from contextlib import contextmanager
 from itertools import count
 
 from app.core.config import boolean, database_path
-from app.storage.demo_data import seed_idea_cards, seed_messages, seed_plan
+from app.storage.demo_data import seed_messages, seed_plan
 from app.domain.models import (
     AgentAction,
     AgentCard,
-    IdeaCard,
     Message,
     Trip,
     TripPlan,
@@ -28,7 +27,8 @@ from app.domain.models import (
 from app.workflow.display_tasks import DisplayTasks
 from app.workflow.tasks import ACTIVE, TravelTasks, validate_display_target_metadata
 from app.workflow.turn_commit import TurnCommit, TurnPersistenceError
-from app.domain.requirements import chat_changes, initial_requirements, update_requirements
+from app.domain.requirements import initialize_requirements, update_requirements
+from app.domain.summaries import legacy_summaries
 from app.views.trip_welcome import trip_welcome
 from app.storage.persistence import CURRENT_SCHEMA_VERSION, backup_database, ensure_relational_schema, load_snapshot, restore_state, save_snapshot, serialize_state
 
@@ -39,8 +39,7 @@ USERS = {
 
 _id_counter = count(100)
 
-IDEA_WALL_LIMIT = 8
-IDEA_ROTATIONS = ["-1.4deg", "1deg", "0.6deg", "-0.8deg", "1.3deg", "0.8deg", "-0.7deg", "1.1deg"]
+
 
 
 def _date_range_bounds(value: str) -> tuple[date, date] | None:
@@ -110,7 +109,7 @@ def _manual_business_write(method):
             result = method(stage, trip_id, *args, **kwargs)
             if result is not False:
                 manual_barrier(stage, trip_id)
-                from app.storage.legacy.workflow import bump_epoch
+                from app.workflow.counters import bump_epoch
                 stage.trips[trip_id].workflow_state = bump_epoch(stage.trips[trip_id].workflow_state)
             self._persist_staged_turn(stage, trip_id)
             return result
@@ -125,6 +124,8 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         self.agent_undo = {}
         self._task_context = local()
         self.tasks: dict[str, dict] = {}
+        from app.storage.task_repository import MemoryTaskRepository
+        self.task_repository = MemoryTaskRepository() if not self.persistence_enabled else None
         self._agent_locks: dict[str, RLock] = {}
         self._init_display_tasks(display_worker_enabled)
         # Demo content is opt-in for isolated demos/tests. Production starts
@@ -132,16 +133,12 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         self.trips: dict[str, Trip] = {}
         self.messages: dict[str, list[Message]] = {}
         self.plans: dict[str, TripPlan] = {}
-        self.idea_cards: dict[str, list[IdeaCard]] = {}
         if seed_demo:
             self.trips = {
                 "trip-hangzhou": Trip(
                     id="trip-hangzhou",
                     destination="杭州周末旅行",
-                    date_range="8月24日 - 8月26日",
-                    budget="人均 1500",
-                    style="轻松、少排队、适合慢慢逛",
-                    note="想轻松一点，少排队，多留自由时间。",
+                    legacy_metadata=legacy_summaries("8月24日 - 8月26日"),
                     owner=USERS["u1"],
                     status="草案",
                     last_activity="Agent 已生成初版行程",
@@ -149,9 +146,7 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             }
             self.messages = {"trip-hangzhou": seed_messages(USERS)}
             self.plans = {"trip-hangzhou": seed_plan()}
-            self.idea_cards = {"trip-hangzhou": seed_idea_cards(IDEA_ROTATIONS)}
-            for trip in self.trips.values():
-                trip.requirements = initial_requirements(trip.budget, trip.style)
+            self.trips["trip-hangzhou"].requirements.text = "想去西湖，节奏轻松。"
         self._load_persisted_state()
         if self.persistence_enabled:
             ensure_relational_schema(self.db_path)
@@ -165,31 +160,26 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
     def _load_persisted_state(self) -> None:
         if not self.persistence_enabled:
             return
-        snapshot = load_snapshot(self.db_path)
-        if not snapshot:
+        from app.storage.persistence import load_persisted_state
+        next_value = load_persisted_state(self, USERS)
+        if next_value is None:
             return
-        legacy_snapshot = int(snapshot.get("schema_version", 1)) < CURRENT_SCHEMA_VERSION
-        if legacy_snapshot:
-            backup_database(self.db_path)
         global _id_counter
-        _id_counter = count(restore_state(self, snapshot, USERS))
-        # Restoring a snapshot preserves every card. Content and titles are not
-        # reliable identifiers for placeholders or duplicate records.
-        if legacy_snapshot:
-            self._persist()
+        _id_counter = count(next_value)
         # Background tasks cannot survive a process restart. Keep the user's text
         # and replace interrupted placeholders with the existing failure response.
-        for trip_id, messages in self.messages.items():
-            for message in list(messages):
-                if message.status == "thinking":
-                    self.fail_agent_task(trip_id, message.id)
         self.recover_tasks()
         self.recover_display_jobs()
 
     @_state_locked
-    def _persist(self) -> None:
-        if self.persistence_enabled and not getattr(self, '_defer_persist', 0):
-            save_snapshot(self.db_path, serialize_state(self, USERS))
+    def _persist(self, *, task_upserts=(), delete_trip_ids=()) -> None:
+        if getattr(self, '_defer_persist', 0):
+            return
+        if self.persistence_enabled:
+            save_snapshot(self.db_path, serialize_state(self, USERS), initialize=False,
+                          task_upserts=task_upserts, delete_trip_ids=delete_trip_ids)
+        else:
+            self.task_repository.apply(task_upserts, delete_trip_ids)
 
     def list_trips(self, owner_id: str | None = None) -> list[Trip]:
         trips = list(self.trips.values())
@@ -211,19 +201,8 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             raise ValueError("这趟旅行还有任务正在进行，请稍后再删除")
         if trip_id not in self.trips:
             return False
-        del self.trips[trip_id]
-        self.messages.pop(trip_id, None)
-        self.plans.pop(trip_id, None)
-        self.idea_cards.pop(trip_id, None)
-        self.agent_undo.pop(trip_id, None)
-        self._agent_locks.pop(trip_id, None)
-        self._discard_display_jobs(trip_id)
-        self.tasks = {
-            task_id: task for task_id, task in self.tasks.items()
-            if task.get("trip_id") != trip_id
-        }
-        self._persist()
-        return True
+        from app.storage.transactions import delete_trip_atomically
+        return delete_trip_atomically(self, trip_id)
 
     def create_user(self, display_name: str) -> User:
         clean_name = display_name.strip()[:20] or "旅行者"
@@ -235,17 +214,13 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             return user
 
     def trip_metrics(self, trip_id: str) -> dict[str, int | str]:
-        cards = self.idea_cards[trip_id]
         plan = self.plans[trip_id]
         display_days = (plan.display or {}).get('days', [])
         plan_items = sum(len(day['items']) for day in display_days) if display_days else sum(len(day.items) for day in plan.days)
-        basis = plan.requirements_snapshot
+        basis = plan.requirements_snapshot if isinstance(plan.requirements_snapshot, dict) else {}
         plan_date_range = (f"{basis['start_date']} — {basis['end_date']}" if basis.get('start_date') and basis.get('end_date') else self.trips[trip_id].date_range)
         return {
             "message_count": len(self.messages[trip_id]),
-            "idea_count": len(cards),
-            "constraint_count": sum(card.kind != "待归类" for card in cards),
-            "reminder_count": sum(card.kind == "禁忌" or card.status == "冲突提醒" for card in cards),
             "plan_day_count": len(display_days) or len((plan.display or {}).get('dates', [])) or len(plan.days),
             "plan_date_range": plan_date_range,
             "plan_item_count": plan_items,
@@ -253,26 +228,25 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         }
 
     @_state_locked
-    def create_trip(self, destination: str, date_range: str, budget: str, style: str, note: str, owner: User | None = None, *, requirements: dict | None = None, mode='city', lodging=None) -> Trip:
+    def create_trip(self, destination: str, date_range: str = '', owner: User | None = None, *, requirements: dict | None = None, mode='city', lodging=None) -> Trip:
         owner = owner or USERS["u1"]
         trip_id = f"trip-{next(_id_counter)}"
         trip = Trip(
             id=trip_id,
             destination=destination.strip() or "未命名旅行",
-            date_range=date_range.strip() or "时间待定",
-            budget=budget.strip() or "预算待定",
-            style=style.strip() or "风格待定",
-            note=note.strip(),
+            legacy_metadata=legacy_summaries(date_range.strip()),
             owner=owner,
             status="未生成",
             last_activity="旅行已创建，开始和 Agent 对话",
-            requirements=initial_requirements(budget, style),
+
             mode=mode,
         )
         if mode != 'city':
             raise ValueError('不支持的行程类型')
+        if requirements is None:
+            raise ValueError('请通过完整创建表单新建旅行')
         if requirements is not None:
-            trip = update_requirements(trip, requirements)
+            trip = initialize_requirements(trip, requirements)
             if mode == 'city':
                 trip.lodging = self._validated_lodging(lodging, trip.requirements.city)
             from app.domain.itinerary.prerequisites import planning_brief
@@ -292,7 +266,6 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             )
         ]
         self.plans[trip_id] = TripPlan(id="empty", title="还没有行程计划", status="未生成", days=[])
-        self.idea_cards[trip_id] = []
         self._persist()
         return trip
 
@@ -306,34 +279,19 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
         return deepcopy(next(iter(trusted.values())))
 
     @_manual_business_write
-    def update_city_outing(self, trip_id, changes, expected_revision, lodging):
-        trip = self.trips[trip_id]
-        if trip.requirements.revision != expected_revision:
-            raise ValueError('游玩设置已经更新，请刷新后重新保存')
-        candidate = deepcopy(trip)
-        candidate.mode = 'city'
-        updated = update_requirements(candidate, changes)
-        updated.lodging = self._validated_lodging(lodging, updated.requirements.city)
-        if trip.destination == f'{trip.requirements.city}同城游玩':
-            updated.destination = f'{updated.requirements.city}同城游玩'
-        updated.last_activity = '游玩设置已更新'
-        self.trips[trip_id] = updated
-        self._persist()
-        return updated
-
-    @_manual_business_write
-    def update_trip_requirements(self, trip_id: str, changes: dict, expected_revision: int) -> Trip:
+    def save_requirements_text(self, trip_id, text, expected_revision):
         trip = self.trips[trip_id]
         if expected_revision != trip.requirements.revision:
-            raise ValueError("旅行需求已经更新，请刷新后再编辑，当前内容未被覆盖")
-        updated = update_requirements(trip, changes)
-        updated.last_activity = "旅行需求已更新"
+            raise ValueError('需求正文已经更新，请刷新后重新保存，当前内容未被覆盖')
+        updated = update_requirements(trip, {'text': text})
+        if updated.requirements.revision == trip.requirements.revision:
+            return False
+        updated.last_activity = '需求正文已更新'
         self.trips[trip_id] = updated
-        self._persist()
-        return updated
+        return True
 
     def clear_chat(self, trip_id: str) -> None:
-        from app.storage.legacy.workflow import clear_workflow
+        from app.workflow.counters import clear_workflow
         with self._lock:
             stage = self._stage_turn(trip_id)
             stage.trips[trip_id].workflow_state = clear_workflow(stage.trips[trip_id].workflow_state)
@@ -439,147 +397,8 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             self.trips[trip_id].last_activity = "Agent 整理失败，等待新消息"
             self._persist()
 
-    @_state_locked
-    def summarize_chat(self, trip_id: str) -> Message:
-        message = self._local_summary_reply(trip_id)
-        self.messages[trip_id].append(message)
-        self.trips[trip_id].last_activity = "Agent 已整理最近对话"
-        self._persist()
-        return message
-
-    @_manual_business_write
-    def delete_idea(self, trip_id: str, idea_id: str) -> bool:
-        cards = self.idea_cards[trip_id]
-        remaining = [card for card in cards if card.id != idea_id]
-        if len(remaining) == len(cards):
-            return False
-        self.idea_cards[trip_id] = remaining
-        self.trips[trip_id].last_activity = "已删除一条旅行想法"
-        self._persist()
-        return True
-
-    @_manual_business_write
-    def add_idea(self, trip_id: str, body: str) -> IdeaCard:
-        rotation = IDEA_ROTATIONS[len(self.idea_cards[trip_id]) % len(IDEA_ROTATIONS)]
-        card = IdeaCard(
-            id=f"idea-{next(_id_counter)}",
-            kind="待归类",
-            title=body.strip(),
-            body=body.strip(),
-            author="你",
-            status="待整理",
-            rotation=rotation,
-        )
-        self.idea_cards[trip_id].append(card)
-        self.trips[trip_id].last_activity = "已添加新的旅行想法"
-        self._persist()
-        return card
-
     def confirm_plan(self, trip_id: str):
         return self.confirm_current_turn(trip_id)
-
-    def _add_agent_idea_cards(self, trip_id: str, raw_cards: list[dict], sender: User | None = None) -> None:
-        if not raw_cards:
-            return
-
-        source = "对话" if sender else "Agent"
-        for raw_card in raw_cards:
-            kind = str(raw_card.get("kind") or "待归类")
-            title = str(raw_card.get("title") or "新的旅行想法").strip()
-            body = str(raw_card.get("body") or title).strip()
-            status = str(raw_card.get("status") or "已整理").strip()
-            if not title or not body:
-                continue
-            existing_index = self._find_similar_idea_index(trip_id, kind, title, body)
-            if existing_index is not None:
-                previous = self.idea_cards[trip_id][existing_index]
-                self.idea_cards[trip_id][existing_index] = IdeaCard(
-                    id=previous.id,
-                    kind=kind,
-                    title=title,
-                    body=body,
-                    author=previous.author if previous.author == "你" else source,
-                    status=status,
-                    rotation=previous.rotation,
-                )
-                continue
-            rotation = IDEA_ROTATIONS[len(self.idea_cards[trip_id]) % len(IDEA_ROTATIONS)]
-            self.idea_cards[trip_id].append(
-                IdeaCard(
-                    id=f"idea-{next(_id_counter)}",
-                    kind=kind,
-                    title=title,
-                    body=body,
-                    author=source,
-                    status=status,
-                    rotation=rotation,
-                )
-            )
-
-    def _local_summary_reply(self, trip_id: str) -> Message:
-        recent_user_messages = [message for message in self.messages[trip_id][-12:] if message.sender_type == "user"]
-        raw_cards = []
-        bullets = []
-        for message in recent_user_messages:
-            kind = self._kind_from_text(message.body)
-            if not kind:
-                continue
-            status = "冲突提醒" if kind == "禁忌" or any(word in message.body for word in ("不要", "不能", "太累", "冲突")) else "已整理"
-            raw_cards.append(
-                {
-                    "kind": kind,
-                    "title": self._title_from_text(kind, message.body),
-                    "body": message.body,
-                    "status": status,
-                }
-            )
-            bullet = f"{kind}：{message.body[:36]}"
-            if bullet not in bullets:
-                bullets.append(bullet)
-        self._add_agent_idea_cards(trip_id, raw_cards, self.trips[trip_id].owner)
-        return Message(
-            id=f"m-{next(_id_counter)}",
-            sender=USERS["agent"],
-            sender_type="agent",
-            body="我整理了最近对话里的旅行需求。",
-            created_at=_now_label(),
-            agent_card=AgentCard(
-                kind="requirement-summary",
-                title="旅行偏好整理好了",
-                summary="最近对话已拆成预算、地点、节奏和不能接受的安排。",
-                bullets=bullets[-4:] or ["先补充预算", "再确认想去地点", "最后补充不能接受的安排"],
-                actions=[AgentAction(label="查看旅行想法", target="board")],
-            ),
-        )
-
-    @staticmethod
-    def _kind_from_text(body: str) -> str | None:
-        if any(word in body for word in ("预算", "人均", "钱", "贵", "便宜")):
-            return "预算"
-        if any(word in body for word in ("想去", "地点", "景点", "海", "湖", "古城", "地铁", "住")):
-            return "地点"
-        if any(word in body for word in ("不要", "不能", "忌口", "不想")):
-            return "禁忌"
-        if any(word in body for word in ("节奏", "轻松", "太累", "休息", "慢")):
-            return "节奏"
-        return None
-
-    @staticmethod
-    def _title_from_text(kind: str, body: str) -> str:
-        title_by_kind = {"预算": "预算约束", "地点": "地点偏好", "节奏": "节奏偏好", "禁忌": "不能接受"}
-        return title_by_kind.get(kind, body.strip()[:12] or "新的旅行想法")
-
-    def _find_similar_idea_index(self, trip_id: str, kind: str, title: str, body: str) -> int | None:
-        normalized_title = _normalize_idea_text(title)
-        normalized_body = _normalize_idea_text(body)
-        for index, card in enumerate(self.idea_cards[trip_id]):
-            if _normalize_idea_text(card.title) == normalized_title:
-                return index
-            if _normalize_idea_text(card.body) == normalized_body:
-                return index
-            if card.kind == kind == "预算":
-                return index
-        return None
 
     @_state_locked
     def _apply_text_plan(self, trip_id: str, text: str, evidence: list[dict] | None = None, *, display=None, display_source_hash='', display_status='not_requested', preserve_plan_basis=False) -> None:
@@ -604,99 +423,13 @@ class DemoStore(TurnCommit, TravelTasks, DisplayTasks):
             display=deepcopy(display), display_source_hash=display_source_hash, display_status=display_status,
             display_style=previous.display_style,
             requirements_snapshot=requirements_snapshot, lodging_snapshot=lodging_snapshot,
+            requirements_basis_complete=previous.requirements_basis_complete if preserve_plan_basis else True,
+            requirements_legacy_stale=previous.requirements_legacy_stale if preserve_plan_basis else False,
         )
         self.trips[trip_id].status = "草案"
         self._discard_display_jobs(trip_id)
         if display_status == 'pending':
             self._queue_display(trip_id)
-
-    def _fallback_plan_from_ideas(self, trip_id: str) -> dict:
-        trip = self.trips[trip_id]
-        cards = self.idea_cards[trip_id]
-        place_titles = [card.title for card in cards if card.kind in {"地点", "待归类"}][:3]
-        pace_cards = [card.title for card in cards if card.kind == "节奏"][:2]
-        budget_cards = [card.title for card in cards if card.kind == "预算"][:1]
-        first_place = place_titles[0] if place_titles else "目的地核心区域"
-        second_place = place_titles[1] if len(place_titles) > 1 else "轻松散步和自由时间"
-        return {
-            "title": f"{trip.destination}行程草案",
-            "status": "草案",
-            "overview": "围绕核心景点安排慢走和当地用餐，每天保留自由调整空间。",
-            "constraints_met": ["轻松节奏", "减少跨区域往返", "优先安排已提到的地点"],
-            "pending_items": ["住宿区域和具体酒店", "餐厅与预约情况", "天气对应的衣物准备"],
-            "risks": ["周末景点可能拥挤，建议避开热门时段"],
-            "preparation": {
-                "clothing": [{"title": "根据天气准备衣物", "body": "温度和降雨待确认，建议准备舒适鞋和方便增减的外套。", "status": "待确认"}],
-                "accommodation": [{"title": "住宿区域待确认", "body": "建议选择靠近主要景点且方便公共交通的区域。", "status": "待确认"}],
-            },
-            "days": [
-                {
-                    "label": "Day 1",
-                    "date": "出发日",
-                    "theme": "抵达与西湖慢走",
-                    "items": [
-                        {
-                            "time": "10:00",
-                            "title": first_place,
-                            "location": trip.destination,
-                            "duration": "2-3 小时",
-                            "reason": "优先满足对话里明确提到的地点需求。",
-                            "notes": "具体交通和预约信息后续继续确认。",
-                            "satisfies": ["地点偏好"],
-                            "category": "activity",
-                        },
-                        {
-                            "time": "12:30",
-                            "title": "当地特色午餐",
-                            "location": "第一处景点附近",
-                            "duration": "1 小时",
-                            "reason": "在景点附近用餐，减少往返移动。",
-                            "notes": "具体菜品、忌口和预算待确认。",
-                            "satisfies": budget_cards or ["预算可控"],
-                            "category": "meal",
-                            "meal": {
-                                "meal_type": "午餐",
-                                "recommendation": "当地特色菜（待确认）",
-                                "cuisine": "当地菜",
-                                "budget": "预算待确认",
-                                "reservation": "待确认",
-                            },
-                        },
-                        {
-                            "time": "15:00",
-                            "title": second_place,
-                            "location": "同区域附近",
-                            "duration": "2 小时",
-                            "reason": "保持轻松节奏，减少来回移动。",
-                            "notes": "可按当天体力临时调整。",
-                            "satisfies": pace_cards or ["轻松节奏"],
-                            "category": "activity",
-                        },
-                    ],
-                },
-                {
-                    "label": "Day 2",
-                    "date": "第二天",
-                    "theme": "茶园与自由时间",
-                    "items": [
-                        {
-                            "time": "10:30",
-                            "title": "补充候选地点",
-                            "location": "待确认",
-                            "duration": "半天",
-                            "reason": "保留弹性，等待你继续补充想法。",
-                            "notes": "Agent 会根据新消息继续调整下一版。",
-                            "satisfies": budget_cards or ["预算可控"],
-                            "category": "activity",
-                        }
-                    ],
-                },
-            ],
-        }
-
-    @staticmethod
-    def _is_summary_command(body: str) -> bool:
-        return any(keyword in body for keyword in ("整理", "总结", "需求", "偏好", "冲突", "缺失"))
 
 
 def _now_label() -> str:

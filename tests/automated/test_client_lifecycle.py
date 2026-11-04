@@ -66,7 +66,7 @@ def contexts():
             trip=deepcopy(store.trips['trip-hangzhou']),
             plan=deepcopy(store.plans['trip-hangzhou']),
             messages=deepcopy(store.messages['trip-hangzhou']),
-            idea_cards=deepcopy(store.idea_cards['trip-hangzhou']),
+
             metrics={}, current_date='2030-05-01', entry=context.entry)
         return context, execution
 

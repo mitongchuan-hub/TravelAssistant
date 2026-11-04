@@ -5,7 +5,7 @@ from typing import Any, cast
 
 from app.api import dependencies as deps
 from app.api.schemas import (
-    AgentCardDTO, DisplayStateDTO, IdeaDTO, MessageDTO, MetricsDTO, PlaceDTO,
+    AgentCardDTO, DisplayStateDTO, MessageDTO, MetricsDTO, PlaceDTO,
     PlanDTO, ProgressDTO, TaskDTO, TripDTO, UserDTO, WorkspaceDTO,
 )
 from app.domain.models import Message, Trip, TripPlan, User
@@ -24,7 +24,7 @@ def place_to_dict(place: dict[str, Any]) -> PlaceDTO:
 
 def trip_to_dict(trip: Trip) -> TripDTO:
     return cast(TripDTO, {**{key: getattr(trip, key) for key in
-               ('id', 'destination', 'date_range', 'budget', 'style', 'note', 'status', 'last_activity', 'mode')},
+               ('id', 'destination', 'date_range', 'status', 'last_activity', 'mode')},
             'owner': user_to_dict(trip.owner), 'requirements': asdict(trip.requirements),
             'lodging': place_to_dict(trip.lodging)})
 
@@ -35,6 +35,8 @@ def message_to_dict(message: Message) -> MessageDTO:
     public_progress = {key: deepcopy(progress[key]) for key in
                        ('state', 'started_at', 'updated_at', 'duration_ms', 'revision', 'omitted') if key in progress}
     if progress:
+        if progress.get('reason') in ('cancelled', 'superseded'):
+            public_progress['reason'] = progress['reason']
         public_progress['steps'] = [
             {key: deepcopy(step[key]) for key in
              ('id', 'kind', 'label', 'detail', 'status', 'started_at', 'duration_ms') if key in step}
@@ -67,13 +69,8 @@ def plan_to_dict(plan: TripPlan) -> PlanDTO:
 def requirements_values(trip: Trip) -> dict[str, str]:
     values = {}
     for key in CITY_FORM_FIELDS:
-        if key == 'city_hint':
-            values[key] = ''
-        elif key == 'note':
-            values[key] = trip.note
-        else:
-            value = getattr(trip.requirements, key, '')
-            values[key] = '\n'.join(value) if isinstance(value, list) else '' if value is None else str(value)
+        value = getattr(trip.requirements, key)
+        values[key] = '' if value is None else str(value)
     return values
 
 
@@ -82,11 +79,8 @@ def workspace_snapshot(trip_id: str, user: User) -> WorkspaceDTO:
     with deps.store._lock:
         trip = deps.get_owned_trip_or_404(trip_id, user)
         from app.application.undo import metadata
-        cards = deps.store.idea_cards[trip_id]
         return {'undo': metadata(deps.store, trip_id), 'trip': trip_to_dict(trip), 'plan': plan_to_dict(deps.store.plans[trip_id]),
                 'messages': [message_to_dict(row) for row in deps.store.messages[trip_id]],
                 'tasks': [task_to_dict(row) for row in deps.store.list_tasks(trip_id)],
-                'idea_cards': cast(list[IdeaDTO], [asdict(row) for row in cards]),
-                'wall_cards': cast(list[IdeaDTO], [asdict(row) for row in cards[-deps.IDEA_WALL_LIMIT:]]),
                 'metrics': cast(MetricsDTO, deepcopy(deps.store.trip_metrics(trip_id))),
                 'display_state': cast(DisplayStateDTO, deepcopy(deps.store.get_display_state(trip_id)))}

@@ -1,5 +1,7 @@
 # V3 旅行 Agent 架构讨论：借鉴 Pi，减少不必要的复杂度
 
+> 历史架构讨论：下文旧 `agent_client.py/task_runtime.py/main_input.py/agent_roles.py` 已删除。当前分别使用 `backend/app/agents/entrypoints.py`（请求入口）、`travel_runtime.py`（主循环）、`inputs/context.py`（输入投影）和 `roles.py`（角色）；模型请求与轨迹位于 `model_client.py`、`trace.py`。
+
 - 日期：2026-10-28
 - 工作分支：`v3.0.0`
 - 状态：研究与讨论稿，尚未批准实施

@@ -17,6 +17,23 @@ vi.mock('vue-router', () => ({ useRoute: () => ({ params: { id: 'trip-test' }, q
 (window as unknown as { happyDOM: { settings: { disableIframePageLoading: boolean } } }).happyDOM.settings.disableIframePageLoading = true
 afterEach(() => { document.body.innerHTML = ''; vi.restoreAllMocks() })
 
+describe('workspace generation prerequisites', () => {
+  it('keeps legacy incomplete trips usable with explicit generation guidance and no fixed-info editor', async () => {
+    sessionStorage.clear()
+    const initial = snapshot()
+    initial.trip.requirements.start_date = ''
+    vi.mocked(apiRequest).mockReset().mockResolvedValueOnce(initial)
+    const wrapper = mount(WorkspacePage, { global: { stubs: { RouterLink: true, GuidePreview: true } } })
+    await flushPromises()
+    expect(wrapper.text()).toContain('不能生成或重排行程，请新建旅行填写完整资料')
+    expect(wrapper.find('button[aria-label="发送消息"]').exists()).toBe(true)
+    expect(wrapper.find('[name="lodging_address"]').exists()).toBe(false)
+    expect(wrapper.findAll('button').some(button => button.text() === '攻略')).toBe(true)
+    expect(wrapper.findAll('button').some(button => /撤销上次修改/.test(button.text()))).toBe(false)
+    wrapper.unmount()
+  })
+})
+
 describe('workspace 终止 composer', () => {
   it('keeps historical failed tasks readable without a retry control', async () => {
     sessionStorage.clear()
@@ -43,6 +60,8 @@ describe('workspace 终止 composer', () => {
     const stop = wrapper.get('button[aria-label="终止处理"]')
     expect(stop.attributes('type')).toBe('button')
     expect(stop.attributes('title')).toBe('终止处理')
+    expect(stop.text()).toBe('')
+    expect(stop.find('svg[aria-hidden="true"] rect').exists()).toBe(true)
     const result = deferred<unknown>(); api.mockReturnValueOnce(result.promise)
     await stop.trigger('click')
     expect(wrapper.get('button[aria-label="正在终止"]').attributes('disabled')).toBeDefined()
@@ -115,6 +134,19 @@ describe('message and progress disclosure', () => {
     expect(wrapper.findAll('.chat-message-action')).toHaveLength(1)
     await wrapper.get('.chat-message-action').trigger('click')
     expect(wrapper.emitted('guide')).toHaveLength(1)
+    wrapper.unmount()
+  })
+  it.each([
+    ['cancelled', '已终止'],
+    ['superseded', '已由新消息替代'],
+    [undefined, '处理已停止'],
+  ] as const)('shows factual stopped progress for reason %s', (reason, heading) => {
+    const wrapper = mount(ChatProgress, { props: { progress: { state: 'superseded', reason, duration_ms: 1000, steps: [{ label: '查询地图', status: 'stopped' }] } } })
+    expect(wrapper.get('.chat-progress-heading').text()).toBe(heading)
+    expect(wrapper.get('summary').attributes('aria-label')).toBe(`${heading}，展开或收起执行过程`)
+    expect(wrapper.get<HTMLDetailsElement>('details').element.open).toBe(false)
+    expect(wrapper.text()).toContain('已停止')
+    if (reason !== 'superseded') expect(wrapper.text()).not.toContain('新消息替代')
     wrapper.unmount()
   })
   it('opens active progress, collapses completion, and allows reopening full steps', async () => {

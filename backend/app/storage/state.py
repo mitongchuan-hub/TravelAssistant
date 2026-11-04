@@ -10,8 +10,7 @@ from app.storage.persistence import (
     load_snapshot, restore_state, save_snapshot, serialize_state,
 )
 
-IDEA_WALL_LIMIT = 8
-IDEA_ROTATIONS = ['-1.4deg', '1deg', '0.6deg', '-0.8deg', '1.3deg', '0.8deg', '-0.7deg', '1.1deg']
+
 
 
 class State:
@@ -23,8 +22,10 @@ class State:
         self._task_context = local()
         self._ids = count(100)
         self.users = {'agent': User('agent', '旅行规划 Agent', 'AI')}
-        self.trips, self.messages, self.plans, self.idea_cards = {}, {}, {}, {}
+        self.trips, self.messages, self.plans = {}, {}, {}
         self.tasks, self.display_jobs, self._agent_locks = {}, {}, {}
+        from app.storage.task_repository import MemoryTaskRepository
+        self.task_repository = MemoryTaskRepository() if not self.persistence_enabled else None
         self._foreground_operations = {}
         self._display_changed = Condition(self._lock)
         self._display_wakeup, self._display_stop = Event(), Event()
@@ -32,22 +33,26 @@ class State:
         self._display_executing = {}
         self.display_worker_enabled = display_worker_enabled
         if self.persistence_enabled:
-            snapshot = load_snapshot(self.db_path)
-            if snapshot:
-                legacy = int(snapshot.get('schema_version', 1)) < CURRENT_SCHEMA_VERSION
-                if legacy:
-                    backup_database(self.db_path)
-                self._ids = count(restore_state(self, snapshot, self.users))
-            ensure_relational_schema(self.db_path)
-            if snapshot and legacy:
-                _persist(self)
+            from app.storage.persistence import load_persisted_state
+            next_value = load_persisted_state(self, self.users)
+            if next_value is not None:
+                self._ids = count(next_value)
+            from app.application.execution import recover_tasks
+            recover_tasks(self)
 
 
 def next_id(state):
     return next(state._ids)
 
 
-def _persist(state):
+def _persist(state, *, task_upserts=(), delete_trip_ids=()):
     with state._lock:
-        if state.persistence_enabled and not getattr(state, '_defer_persist', 0):
-            save_snapshot(state.db_path, serialize_state(state, state.users), initialize=False)
+        if getattr(state, '_defer_persist', 0):
+            return
+        if state.persistence_enabled:
+            from app.storage.transactions import _users
+            users = _users(state)
+            save_snapshot(state.db_path, serialize_state(state, users), initialize=False,
+                          task_upserts=task_upserts, delete_trip_ids=delete_trip_ids)
+        else:
+            state.task_repository.apply(task_upserts, delete_trip_ids)

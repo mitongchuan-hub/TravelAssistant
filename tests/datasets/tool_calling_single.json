@@ -1,0 +1,2934 @@
+{
+  "version": 1,
+  "current_date": "2026-11-03",
+  "context": {
+    "requirements": {
+      "start_date": "2026-11-04",
+      "end_date": "2026-11-04",
+      "city": "杭州",
+      "day_count": 1,
+      "transport_mode": "transit",
+      "text": "",
+      "revision": 1
+    },
+    "lodging": {
+      "poi_id": "B0EVAL000",
+      "name": "测试住宿甲",
+      "city": "杭州",
+      "longitude": 120.1,
+      "latitude": 30.2,
+      "source": "synthetic"
+    },
+    "plan": {
+      "id": "eval-plan",
+      "title": "合成测试行程",
+      "status": "draft",
+      "requirements_revision": 1,
+      "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+      "days": [],
+      "has_content": true
+    }
+  },
+  "cases": [
+    {
+      "id": "read-01",
+      "input": "请重新读取完整需求正文，这一步只取原始数据，不修改。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "requirements"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "read-02",
+      "input": "我要核对完整需求正文，请重新取一次保存内容，不要仅复述已有摘要。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "requirements"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "read-03",
+      "input": "请重新读取当前保存的行程原文，这一步只取原始数据，不修改。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "plan"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "read-04",
+      "input": "我要核对当前保存的行程原文，请重新取一次保存内容，不要仅复述已有摘要。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "plan"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "read-05",
+      "input": "请调取完整历史消息，先给默认第一页。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "messages"
+        },
+        "alternatives": {},
+        "optional": {
+          "offset": 0,
+          "limit": 20,
+          "query": ""
+        }
+      }
+    },
+    {
+      "id": "read-06",
+      "input": "请在完整历史消息里检索“西湖”，只读不修改。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "messages",
+          "query": "西湖"
+        },
+        "alternatives": {},
+        "optional": {
+          "offset": 0,
+          "limit": 20
+        }
+      }
+    },
+    {
+      "id": "read-07",
+      "input": "请读取完整历史消息，跳过前20条，再取20条。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "messages",
+          "offset": 20,
+          "limit": 20
+        },
+        "alternatives": {},
+        "optional": {
+          "query": ""
+        }
+      }
+    },
+    {
+      "id": "read-08",
+      "input": "请从完整历史消息的第1条开始只取1条。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "messages",
+          "offset": 0,
+          "limit": 1
+        },
+        "alternatives": {},
+        "optional": {
+          "query": ""
+        }
+      }
+    },
+    {
+      "id": "read-09",
+      "input": "请读取完整历史消息的前100条。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "messages",
+          "limit": 100
+        },
+        "alternatives": {},
+        "optional": {
+          "offset": 0,
+          "query": ""
+        }
+      }
+    },
+    {
+      "id": "read-10",
+      "input": "在完整历史消息中搜索“餐厅”，跳过前3条匹配，再读取5条。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "messages",
+          "query": "餐厅",
+          "offset": 3,
+          "limit": 5
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "read-11",
+      "input": "请调取服务器查询依据，先给默认第一页。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "evidence"
+        },
+        "alternatives": {},
+        "optional": {
+          "offset": 0,
+          "limit": 20,
+          "query": ""
+        }
+      }
+    },
+    {
+      "id": "read-12",
+      "input": "请在服务器查询依据里检索“西湖”，只读不修改。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "evidence",
+          "query": "西湖"
+        },
+        "alternatives": {},
+        "optional": {
+          "offset": 0,
+          "limit": 20
+        }
+      }
+    },
+    {
+      "id": "read-13",
+      "input": "请读取服务器查询依据，跳过前20条，再取20条。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "evidence",
+          "offset": 20,
+          "limit": 20
+        },
+        "alternatives": {},
+        "optional": {
+          "query": ""
+        }
+      }
+    },
+    {
+      "id": "read-14",
+      "input": "请从服务器查询依据的第1条开始只取1条。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "evidence",
+          "offset": 0,
+          "limit": 1
+        },
+        "alternatives": {},
+        "optional": {
+          "query": ""
+        }
+      }
+    },
+    {
+      "id": "read-15",
+      "input": "请读取服务器查询依据的前100条。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "evidence",
+          "limit": 100
+        },
+        "alternatives": {},
+        "optional": {
+          "offset": 0,
+          "query": ""
+        }
+      }
+    },
+    {
+      "id": "read-16",
+      "input": "在服务器查询依据中搜索“餐厅”，跳过前3条匹配，再读取5条。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "read_context",
+        "arguments": {
+          "section": "evidence",
+          "query": "餐厅",
+          "offset": 3,
+          "limit": 5
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-01",
+      "input": "请把需求正文完整设为“不吃辣。”，只记录，不生成行程。",
+      "context": {
+        "requirements": {
+          "start_date": "2026-11-04",
+          "end_date": "2026-11-04",
+          "city": "杭州",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "text": "",
+          "revision": 1
+        }
+      },
+      "prior_calls": [],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "请把需求正文完整设为“不吃辣。”，只记录，不生成行程。",
+          "requirements_text": "不吃辣。"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-02",
+      "input": "把需求正文设为“每天九点出门。”，只保存这句。",
+      "context": {
+        "requirements": {
+          "start_date": "2026-11-04",
+          "end_date": "2026-11-04",
+          "city": "杭州",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "text": "",
+          "revision": 1
+        }
+      },
+      "prior_calls": [],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "把需求正文设为“每天九点出门。”，只保存这句。",
+          "requirements_text": "每天九点出门。"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-03",
+      "input": "原有“不吃辣。”保留，换行追加“少走路。”，只记录。",
+      "context": {
+        "requirements": {
+          "start_date": "2026-11-04",
+          "end_date": "2026-11-04",
+          "city": "杭州",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "text": "不吃辣。",
+          "revision": 1
+        }
+      },
+      "prior_calls": [],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "原有“不吃辣。”保留，换行追加“少走路。”，只记录。",
+          "requirements_text": "不吃辣。\n少走路。"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-04",
+      "input": "原有“带老人。”保留，换行追加“不爬山。”，只记录。",
+      "context": {
+        "requirements": {
+          "start_date": "2026-11-04",
+          "end_date": "2026-11-04",
+          "city": "杭州",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "text": "带老人。",
+          "revision": 1
+        }
+      },
+      "prior_calls": [],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "原有“带老人。”保留，换行追加“不爬山。”，只记录。",
+          "requirements_text": "带老人。\n不爬山。"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-05",
+      "input": "只把需求正文中的“少走路”改为“多步行”，其余不变，不生成。",
+      "context": {
+        "requirements": {
+          "start_date": "2026-11-04",
+          "end_date": "2026-11-04",
+          "city": "杭州",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "text": "少走路。\n不吃辣。",
+          "revision": 1
+        }
+      },
+      "prior_calls": [],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "只把需求正文中的“少走路”改为“多步行”，其余不变，不生成。",
+          "requirements_text": "多步行。\n不吃辣。"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-06",
+      "input": "只删除需求正文里的“想喝茶。”这一行，保留其他要求。",
+      "context": {
+        "requirements": {
+          "start_date": "2026-11-04",
+          "end_date": "2026-11-04",
+          "city": "杭州",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "text": "想喝茶。\n不吃辣。",
+          "revision": 1
+        }
+      },
+      "prior_calls": [],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "只删除需求正文里的“想喝茶。”这一行，保留其他要求。",
+          "requirements_text": "不吃辣。"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-07",
+      "input": "明确清空全部自由需求正文，不清空行程。",
+      "context": {
+        "requirements": {
+          "start_date": "2026-11-04",
+          "end_date": "2026-11-04",
+          "city": "杭州",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "text": "不吃辣。",
+          "revision": 1
+        }
+      },
+      "prior_calls": [],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "明确清空全部自由需求正文，不清空行程。",
+          "requirements_text": ""
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-08",
+      "input": "请清除所有已记录的自由需求，不动已保存行程。",
+      "context": {
+        "requirements": {
+          "start_date": "2026-11-04",
+          "end_date": "2026-11-04",
+          "city": "杭州",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "text": "想喝茶。",
+          "revision": 1
+        }
+      },
+      "prior_calls": [],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "请清除所有已记录的自由需求，不动已保存行程。",
+          "requirements_text": ""
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-09",
+      "input": "在当前行程末尾精确追加一行“晚上早点休息。”，不要润色，不改其他字。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "在当前行程末尾精确追加一行“晚上早点休息。”，不要润色，不改其他字。",
+          "itinerary": {
+            "action": "edit_text",
+            "operation": "append",
+            "old_text": null,
+            "new_text": "晚上早点休息。"
+          }
+        },
+        "alternatives": {
+          "itinerary": [
+            {
+              "action": "edit_text",
+              "operation": "append",
+              "old_text": "",
+              "new_text": "晚上早点休息。"
+            }
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-10",
+      "input": "在当前行程末尾精确追加一行“带好雨伞。”，不要润色，不改其他字。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "在当前行程末尾精确追加一行“带好雨伞。”，不要润色，不改其他字。",
+          "itinerary": {
+            "action": "edit_text",
+            "operation": "append",
+            "old_text": null,
+            "new_text": "带好雨伞。"
+          }
+        },
+        "alternatives": {
+          "itinerary": [
+            {
+              "action": "edit_text",
+              "operation": "append",
+              "old_text": "",
+              "new_text": "带好雨伞。"
+            }
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-11",
+      "input": "在当前行程末尾精确追加一行“出门前检查天气。”，不要润色，不改其他字。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "在当前行程末尾精确追加一行“出门前检查天气。”，不要润色，不改其他字。",
+          "itinerary": {
+            "action": "edit_text",
+            "operation": "append",
+            "old_text": null,
+            "new_text": "出门前检查天气。"
+          }
+        },
+        "alternatives": {
+          "itinerary": [
+            {
+              "action": "edit_text",
+              "operation": "append",
+              "old_text": "",
+              "new_text": "出门前检查天气。"
+            }
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-12",
+      "input": "在当前行程末尾精确追加一行“带上水杯。”，不要润色，不改其他字。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "在当前行程末尾精确追加一行“带上水杯。”，不要润色，不改其他字。",
+          "itinerary": {
+            "action": "edit_text",
+            "operation": "append",
+            "old_text": null,
+            "new_text": "带上水杯。"
+          }
+        },
+        "alternatives": {
+          "itinerary": [
+            {
+              "action": "edit_text",
+              "operation": "append",
+              "old_text": "",
+              "new_text": "带上水杯。"
+            }
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-13",
+      "input": "精确把当前行程中的“西湖散步”替换成“西湖慢走”，其他内容逐字不变。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "精确把当前行程中的“西湖散步”替换成“西湖慢走”，其他内容逐字不变。",
+          "itinerary": {
+            "action": "edit_text",
+            "operation": "replace",
+            "old_text": "西湖散步",
+            "new_text": "西湖慢走"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-14",
+      "input": "精确把当前行程中的“清淡”替换成“不辣”，其他内容逐字不变。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "精确把当前行程中的“清淡”替换成“不辣”，其他内容逐字不变。",
+          "itinerary": {
+            "action": "edit_text",
+            "operation": "replace",
+            "old_text": "清淡",
+            "new_text": "不辣"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-15",
+      "input": "精确把当前行程中的“喝茶”替换成“休息”，其他内容逐字不变。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "精确把当前行程中的“喝茶”替换成“休息”，其他内容逐字不变。",
+          "itinerary": {
+            "action": "edit_text",
+            "operation": "replace",
+            "old_text": "喝茶",
+            "new_text": "休息"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-16",
+      "input": "精确把当前行程中的“上午”替换成“早上”，其他内容逐字不变。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "精确把当前行程中的“上午”替换成“早上”，其他内容逐字不变。",
+          "itinerary": {
+            "action": "edit_text",
+            "operation": "replace",
+            "old_text": "上午",
+            "new_text": "早上"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-17",
+      "input": "确认当前看到的行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "确认当前看到的行程。",
+          "itinerary": {
+            "action": "confirm"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-18",
+      "input": "这份当前方案我确认了，不改内容。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "这份当前方案我确认了，不改内容。",
+          "itinerary": {
+            "action": "confirm"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-19",
+      "input": "就按眼前这份行程，正式确认。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "就按眼前这份行程，正式确认。",
+          "itinerary": {
+            "action": "confirm"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-20",
+      "input": "我已看完当前方案，请确认，不重排。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "我已看完当前方案，请确认，不重排。",
+          "itinerary": {
+            "action": "confirm"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-21",
+      "input": "明确清空当前全部行程，不动需求。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "明确清空当前全部行程，不动需求。",
+          "itinerary": {
+            "action": "clear"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-22",
+      "input": "删除已保存的整份行程，需求保留。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "删除已保存的整份行程，需求保留。",
+          "itinerary": {
+            "action": "clear"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-23",
+      "input": "整份行程不要了，请清空，不是取消单个景点。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "整份行程不要了，请清空，不是取消单个景点。",
+          "itinerary": {
+            "action": "clear"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "submit-24",
+      "input": "清空当前行程正文，其他资料都别动。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "read_context",
+          "arguments": {
+            "section": "plan"
+          },
+          "result": {
+            "text": "上午西湖散步。\n午餐清淡。\n下午喝茶。",
+            "status": "draft"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "submit_changes",
+        "arguments": {
+          "user_quote": "清空当前行程正文，其他资料都别动。",
+          "itinerary": {
+            "action": "clear"
+          }
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-01",
+      "input": "只查杭州2026-11-04的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-11-04"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-02",
+      "input": "只查杭州2026-11-05的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-11-05"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-03",
+      "input": "只查苏州2026-11-06的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "苏州",
+          "date": "2026-11-06"
+        },
+        "alternatives": {
+          "city": [
+            "苏州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-04",
+      "input": "只查南京2026-11-07的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "南京",
+          "date": "2026-11-07"
+        },
+        "alternatives": {
+          "city": [
+            "南京市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-05",
+      "input": "只查上海2026-11-08的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "上海",
+          "date": "2026-11-08"
+        },
+        "alternatives": {
+          "city": [
+            "上海市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-06",
+      "input": "只查宁波2026-11-09的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "宁波",
+          "date": "2026-11-09"
+        },
+        "alternatives": {
+          "city": [
+            "宁波市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-07",
+      "input": "只查杭州明天的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-11-04"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-08",
+      "input": "只查杭州后天的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "杭州",
+          "date": "2026-11-05"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-09",
+      "input": "只查苏州今天的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "苏州",
+          "date": "2026-11-03"
+        },
+        "alternatives": {
+          "city": [
+            "苏州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-10",
+      "input": "只查南京大后天的天气预报，不改行程。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "南京",
+          "date": "2026-11-06"
+        },
+        "alternatives": {
+          "city": [
+            "南京市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-11",
+      "input": "查杭州近期天气，尚未确定查询日期，不要自行指定某一天。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "weather-12",
+      "input": "查上海近期天气，尚未确定查询日期，不要自行指定某一天。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "query_weather",
+        "arguments": {
+          "city": "上海"
+        },
+        "alternatives": {
+          "city": [
+            "上海市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "search-01",
+      "input": "搜索杭州的“西湖”地点候选，只限该市范围。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "西湖",
+          "city": "杭州",
+          "citylimit": true
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "search-02",
+      "input": "搜索杭州的“灵隐寺”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "灵隐寺",
+          "city": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {
+          "citylimit": false
+        }
+      }
+    },
+    {
+      "id": "search-03",
+      "input": "搜索杭州的“龙井村”地点候选，只限该市范围。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "龙井村",
+          "city": "杭州",
+          "citylimit": true
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "search-04",
+      "input": "搜索杭州的“楼外楼”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "楼外楼",
+          "city": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {
+          "citylimit": false
+        }
+      }
+    },
+    {
+      "id": "search-05",
+      "input": "搜索杭州的“素食餐厅”地点候选，只限该市范围。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "素食餐厅",
+          "city": "杭州",
+          "citylimit": true
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "search-06",
+      "input": "搜索杭州的“杭帮菜餐厅”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "杭帮菜餐厅",
+          "city": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {
+          "citylimit": false
+        }
+      }
+    },
+    {
+      "id": "search-07",
+      "input": "搜索杭州的“公共厕所”地点候选，只限该市范围。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "公共厕所",
+          "city": "杭州",
+          "citylimit": true
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "search-08",
+      "input": "搜索杭州的“地铁站”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "地铁站",
+          "city": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {
+          "citylimit": false
+        }
+      }
+    },
+    {
+      "id": "search-09",
+      "input": "搜索苏州的“苏州博物馆”地点候选，只限该市范围。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "苏州博物馆",
+          "city": "苏州",
+          "citylimit": true
+        },
+        "alternatives": {
+          "city": [
+            "苏州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "search-10",
+      "input": "搜索南京的“南京博物院”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "南京博物院",
+          "city": "南京"
+        },
+        "alternatives": {
+          "city": [
+            "南京市"
+          ]
+        },
+        "optional": {
+          "citylimit": false
+        }
+      }
+    },
+    {
+      "id": "search-11",
+      "input": "搜索上海的“咖啡馆”地点候选，只限该市范围。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "咖啡馆",
+          "city": "上海",
+          "citylimit": true
+        },
+        "alternatives": {
+          "city": [
+            "上海市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "search-12",
+      "input": "搜索宁波的“天一阁”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "天一阁",
+          "city": "宁波"
+        },
+        "alternatives": {
+          "city": [
+            "宁波市"
+          ]
+        },
+        "optional": {
+          "citylimit": false
+        }
+      }
+    },
+    {
+      "id": "search-13",
+      "input": "搜索杭州的“无障碍公园”地点候选，只限该市范围。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "无障碍公园",
+          "city": "杭州",
+          "citylimit": true
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "search-14",
+      "input": "搜索杭州的“药店”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "药店",
+          "city": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {
+          "citylimit": false
+        }
+      }
+    },
+    {
+      "id": "search-15",
+      "input": "搜索杭州的“停车场”地点候选，只限该市范围。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "停车场",
+          "city": "杭州",
+          "citylimit": true
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "search-16",
+      "input": "搜索杭州的“书店”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_text_search",
+        "arguments": {
+          "keywords": "书店",
+          "city": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ]
+        },
+        "optional": {
+          "citylimit": false
+        }
+      }
+    },
+    {
+      "id": "detail-01",
+      "input": "请查刚才候选里“测试住宿甲”（编号B0EVAL000）的详细信息，不要重新关键词搜索。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_text_search",
+          "arguments": {
+            "keywords": "测试地点",
+            "city": "杭州"
+          },
+          "result": {
+            "pois": [
+              {
+                "id": "B0EVAL000",
+                "name": "测试住宿甲"
+              },
+              {
+                "id": "B0EVAL001",
+                "name": "测试公园乙"
+              },
+              {
+                "id": "B0EVAL002",
+                "name": "测试餐厅丙"
+              },
+              {
+                "id": "B0EVAL003",
+                "name": "测试茶馆丁"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_search_detail",
+        "arguments": {
+          "id": "B0EVAL000"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "detail-02",
+      "input": "请查刚才候选里“测试公园乙”（编号B0EVAL001）的详细信息，不要重新关键词搜索。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_text_search",
+          "arguments": {
+            "keywords": "测试地点",
+            "city": "杭州"
+          },
+          "result": {
+            "pois": [
+              {
+                "id": "B0EVAL000",
+                "name": "测试住宿甲"
+              },
+              {
+                "id": "B0EVAL001",
+                "name": "测试公园乙"
+              },
+              {
+                "id": "B0EVAL002",
+                "name": "测试餐厅丙"
+              },
+              {
+                "id": "B0EVAL003",
+                "name": "测试茶馆丁"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_search_detail",
+        "arguments": {
+          "id": "B0EVAL001"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "detail-03",
+      "input": "请查刚才候选里“测试餐厅丙”（编号B0EVAL002）的详细信息，不要重新关键词搜索。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_text_search",
+          "arguments": {
+            "keywords": "测试地点",
+            "city": "杭州"
+          },
+          "result": {
+            "pois": [
+              {
+                "id": "B0EVAL000",
+                "name": "测试住宿甲"
+              },
+              {
+                "id": "B0EVAL001",
+                "name": "测试公园乙"
+              },
+              {
+                "id": "B0EVAL002",
+                "name": "测试餐厅丙"
+              },
+              {
+                "id": "B0EVAL003",
+                "name": "测试茶馆丁"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_search_detail",
+        "arguments": {
+          "id": "B0EVAL002"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "detail-04",
+      "input": "请查刚才候选里“测试茶馆丁”（编号B0EVAL003）的详细信息，不要重新关键词搜索。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_text_search",
+          "arguments": {
+            "keywords": "测试地点",
+            "city": "杭州"
+          },
+          "result": {
+            "pois": [
+              {
+                "id": "B0EVAL000",
+                "name": "测试住宿甲"
+              },
+              {
+                "id": "B0EVAL001",
+                "name": "测试公园乙"
+              },
+              {
+                "id": "B0EVAL002",
+                "name": "测试餐厅丙"
+              },
+              {
+                "id": "B0EVAL003",
+                "name": "测试茶馆丁"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_search_detail",
+        "arguments": {
+          "id": "B0EVAL003"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "detail-05",
+      "input": "我选的是编号B0EVAL000那一项，只查该POI的详情，不要选同类其他店。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_text_search",
+          "arguments": {
+            "keywords": "测试地点",
+            "city": "杭州"
+          },
+          "result": {
+            "pois": [
+              {
+                "id": "B0EVAL000",
+                "name": "测试住宿甲"
+              },
+              {
+                "id": "B0EVAL001",
+                "name": "测试公园乙"
+              },
+              {
+                "id": "B0EVAL002",
+                "name": "测试餐厅丙"
+              },
+              {
+                "id": "B0EVAL003",
+                "name": "测试茶馆丁"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_search_detail",
+        "arguments": {
+          "id": "B0EVAL000"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "detail-06",
+      "input": "我选的是编号B0EVAL001那一项，只查该POI的详情，不要选同类其他店。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_text_search",
+          "arguments": {
+            "keywords": "测试地点",
+            "city": "杭州"
+          },
+          "result": {
+            "pois": [
+              {
+                "id": "B0EVAL000",
+                "name": "测试住宿甲"
+              },
+              {
+                "id": "B0EVAL001",
+                "name": "测试公园乙"
+              },
+              {
+                "id": "B0EVAL002",
+                "name": "测试餐厅丙"
+              },
+              {
+                "id": "B0EVAL003",
+                "name": "测试茶馆丁"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_search_detail",
+        "arguments": {
+          "id": "B0EVAL001"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "detail-07",
+      "input": "我选的是编号B0EVAL002那一项，只查该POI的详情，不要选同类其他店。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_text_search",
+          "arguments": {
+            "keywords": "测试地点",
+            "city": "杭州"
+          },
+          "result": {
+            "pois": [
+              {
+                "id": "B0EVAL000",
+                "name": "测试住宿甲"
+              },
+              {
+                "id": "B0EVAL001",
+                "name": "测试公园乙"
+              },
+              {
+                "id": "B0EVAL002",
+                "name": "测试餐厅丙"
+              },
+              {
+                "id": "B0EVAL003",
+                "name": "测试茶馆丁"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_search_detail",
+        "arguments": {
+          "id": "B0EVAL002"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "detail-08",
+      "input": "我选的是编号B0EVAL003那一项，只查该POI的详情，不要选同类其他店。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_text_search",
+          "arguments": {
+            "keywords": "测试地点",
+            "city": "杭州"
+          },
+          "result": {
+            "pois": [
+              {
+                "id": "B0EVAL000",
+                "name": "测试住宿甲"
+              },
+              {
+                "id": "B0EVAL001",
+                "name": "测试公园乙"
+              },
+              {
+                "id": "B0EVAL002",
+                "name": "测试餐厅丙"
+              },
+              {
+                "id": "B0EVAL003",
+                "name": "测试茶馆丁"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_search_detail",
+        "arguments": {
+          "id": "B0EVAL003"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "walk-01",
+      "input": "只查从“测试住宿甲”到“测试公园乙”的步行路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_walking",
+        "arguments": {
+          "origin": "120.100,30.200",
+          "destination": "120.130,30.240"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "walk-02",
+      "input": "只查从“测试公园乙”到“测试住宿甲”的步行路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_walking",
+        "arguments": {
+          "origin": "120.130,30.240",
+          "destination": "120.100,30.200"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "walk-03",
+      "input": "只查从“测试住宿甲”到“测试餐厅丙”的步行路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_walking",
+        "arguments": {
+          "origin": "120.100,30.200",
+          "destination": "120.170,30.260"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "walk-04",
+      "input": "只查从“测试餐厅丙”到“测试住宿甲”的步行路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_walking",
+        "arguments": {
+          "origin": "120.170,30.260",
+          "destination": "120.100,30.200"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "walk-05",
+      "input": "只查从“测试公园乙”到“测试餐厅丙”的步行路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_walking",
+        "arguments": {
+          "origin": "120.130,30.240",
+          "destination": "120.170,30.260"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "walk-06",
+      "input": "只查从“测试餐厅丙”到“测试公园乙”的步行路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_walking",
+        "arguments": {
+          "origin": "120.170,30.260",
+          "destination": "120.130,30.240"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "walk-07",
+      "input": "只查从“测试餐厅丙”到“测试茶馆丁”的步行路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL003"
+          },
+          "result": {
+            "id": "B0EVAL003",
+            "name": "测试茶馆丁",
+            "location": "120.190,30.280",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_walking",
+        "arguments": {
+          "origin": "120.170,30.260",
+          "destination": "120.190,30.280"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "walk-08",
+      "input": "只查从“测试茶馆丁”到“测试餐厅丙”的步行路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL003"
+          },
+          "result": {
+            "id": "B0EVAL003",
+            "name": "测试茶馆丁",
+            "location": "120.190,30.280",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_walking",
+        "arguments": {
+          "origin": "120.190,30.280",
+          "destination": "120.170,30.260"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "drive-01",
+      "input": "只查从“测试住宿甲”到“测试公园乙”的驾车路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_driving",
+        "arguments": {
+          "origin": "120.100,30.200",
+          "destination": "120.130,30.240"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "drive-02",
+      "input": "只查从“测试公园乙”到“测试住宿甲”的驾车路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_driving",
+        "arguments": {
+          "origin": "120.130,30.240",
+          "destination": "120.100,30.200"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "drive-03",
+      "input": "只查从“测试住宿甲”到“测试餐厅丙”的驾车路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_driving",
+        "arguments": {
+          "origin": "120.100,30.200",
+          "destination": "120.170,30.260"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "drive-04",
+      "input": "只查从“测试餐厅丙”到“测试住宿甲”的驾车路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_driving",
+        "arguments": {
+          "origin": "120.170,30.260",
+          "destination": "120.100,30.200"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "drive-05",
+      "input": "只查从“测试公园乙”到“测试餐厅丙”的驾车路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_driving",
+        "arguments": {
+          "origin": "120.130,30.240",
+          "destination": "120.170,30.260"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "drive-06",
+      "input": "只查从“测试餐厅丙”到“测试公园乙”的驾车路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_driving",
+        "arguments": {
+          "origin": "120.170,30.260",
+          "destination": "120.130,30.240"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "drive-07",
+      "input": "只查从“测试餐厅丙”到“测试茶馆丁”的驾车路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL003"
+          },
+          "result": {
+            "id": "B0EVAL003",
+            "name": "测试茶馆丁",
+            "location": "120.190,30.280",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_driving",
+        "arguments": {
+          "origin": "120.170,30.260",
+          "destination": "120.190,30.280"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "drive-08",
+      "input": "只查从“测试茶馆丁”到“测试餐厅丙”的驾车路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL003"
+          },
+          "result": {
+            "id": "B0EVAL003",
+            "name": "测试茶馆丁",
+            "location": "120.190,30.280",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_driving",
+        "arguments": {
+          "origin": "120.190,30.280",
+          "destination": "120.170,30.260"
+        },
+        "alternatives": {},
+        "optional": {}
+      }
+    },
+    {
+      "id": "transit-01",
+      "input": "只查从“测试住宿甲”到“测试公园乙”的公共交通（公交或地铁）路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_transit_integrated",
+        "arguments": {
+          "origin": "120.100,30.200",
+          "destination": "120.130,30.240",
+          "city": "杭州",
+          "cityd": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ],
+          "cityd": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "transit-02",
+      "input": "只查从“测试公园乙”到“测试住宿甲”的公共交通（公交或地铁）路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_transit_integrated",
+        "arguments": {
+          "origin": "120.130,30.240",
+          "destination": "120.100,30.200",
+          "city": "杭州",
+          "cityd": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ],
+          "cityd": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "transit-03",
+      "input": "只查从“测试住宿甲”到“测试餐厅丙”的公共交通（公交或地铁）路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_transit_integrated",
+        "arguments": {
+          "origin": "120.100,30.200",
+          "destination": "120.170,30.260",
+          "city": "杭州",
+          "cityd": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ],
+          "cityd": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "transit-04",
+      "input": "只查从“测试餐厅丙”到“测试住宿甲”的公共交通（公交或地铁）路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL000"
+          },
+          "result": {
+            "id": "B0EVAL000",
+            "name": "测试住宿甲",
+            "location": "120.100,30.200",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_transit_integrated",
+        "arguments": {
+          "origin": "120.170,30.260",
+          "destination": "120.100,30.200",
+          "city": "杭州",
+          "cityd": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ],
+          "cityd": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "transit-05",
+      "input": "只查从“测试公园乙”到“测试餐厅丙”的公共交通（公交或地铁）路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_transit_integrated",
+        "arguments": {
+          "origin": "120.130,30.240",
+          "destination": "120.170,30.260",
+          "city": "杭州",
+          "cityd": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ],
+          "cityd": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "transit-06",
+      "input": "只查从“测试餐厅丙”到“测试公园乙”的公共交通（公交或地铁）路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL001"
+          },
+          "result": {
+            "id": "B0EVAL001",
+            "name": "测试公园乙",
+            "location": "120.130,30.240",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_transit_integrated",
+        "arguments": {
+          "origin": "120.170,30.260",
+          "destination": "120.130,30.240",
+          "city": "杭州",
+          "cityd": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ],
+          "cityd": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "transit-07",
+      "input": "只查从“测试餐厅丙”到“测试茶馆丁”的公共交通（公交或地铁）路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL003"
+          },
+          "result": {
+            "id": "B0EVAL003",
+            "name": "测试茶馆丁",
+            "location": "120.190,30.280",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_transit_integrated",
+        "arguments": {
+          "origin": "120.170,30.260",
+          "destination": "120.190,30.280",
+          "city": "杭州",
+          "cityd": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ],
+          "cityd": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    },
+    {
+      "id": "transit-08",
+      "input": "只查从“测试茶馆丁”到“测试餐厅丙”的公共交通（公交或地铁）路线，不是反方向，不改行程。",
+      "context": {},
+      "prior_calls": [
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL003"
+          },
+          "result": {
+            "id": "B0EVAL003",
+            "name": "测试茶馆丁",
+            "location": "120.190,30.280",
+            "city": "杭州"
+          }
+        },
+        {
+          "tool": "maps_search_detail",
+          "arguments": {
+            "id": "B0EVAL002"
+          },
+          "result": {
+            "id": "B0EVAL002",
+            "name": "测试餐厅丙",
+            "location": "120.170,30.260",
+            "city": "杭州"
+          }
+        }
+      ],
+      "expected": {
+        "tool": "maps_direction_transit_integrated",
+        "arguments": {
+          "origin": "120.190,30.280",
+          "destination": "120.170,30.260",
+          "city": "杭州",
+          "cityd": "杭州"
+        },
+        "alternatives": {
+          "city": [
+            "杭州市"
+          ],
+          "cityd": [
+            "杭州市"
+          ]
+        },
+        "optional": {}
+      }
+    }
+  ]
+}

@@ -58,34 +58,15 @@ def project_requirements(trip: Any, missing: Iterable[str] | None = None) -> dic
     known: dict[str, Any] = {}
     if profile is not None:
         raw = asdict(profile) if is_dataclass(profile) else dict(profile)
-        raw.pop("revision", None)
-        for key in ('arrival_time', 'departure_time', 'arrival_location', 'departure_location'):
-            raw.pop(key, None)
-        # Keep every normalized field, including empty lists, 0 and False.  The
-        # current model has no provenance bit for an explicit clear, so omitting
-        # empty values would make a clear indistinguishable from an unknown.
-        known.update(deepcopy(raw))
-
-    # 补充旅行级文字信息，规范化需求中的已有值优先。
+        from app.domain.requirements import PROFILE_FIELDS
+        known.update({key: deepcopy(value) for key, value in raw.items() if key in PROFILE_FIELDS | {"text", "revision"}})
     destination = _text(_get(trip, "destination", ""))
-    note = _text(_get(trip, "note", ""))
-    style = _text(_get(trip, "style", ""))
     if destination:
         known["destination"] = destination
-    if note:
-        known["note"] = note
-    if style and not known.get("pace"):
-        known["style"] = style
-    # Preserve legacy-only fields when the normalized profile does not carry
-    # an equivalent value. Do not overwrite a known normalized field.
     if not (_text(_get(profile, "start_date", "")) and _text(_get(profile, "end_date", ""))):
         legacy_dates = _text(_get(trip, "date_range", ""))
         if legacy_dates:
             known["date_range"] = legacy_dates
-    if not _text(_get(profile, "budget_amount", "")):
-        legacy_budget = _text(_get(trip, "budget", ""))
-        if legacy_budget:
-            known["budget"] = legacy_budget
 
     # 住宿地图标识来自服务端匹配记录，供路线工具直接引用。
     lodging = _get(trip, "lodging", {}) or {}
@@ -232,9 +213,6 @@ def project_conversation(messages: Iterable[Any], current_message_id: str, *, li
 _READ_LIMIT = 20
 _MAX_READ_LIMIT = 100
 _MAX_TEXT = 4000
-_IDEA_WALL_LIMIT = 8
-_IDEA_WALL_TITLE_LIMIT = 120
-_IDEA_WALL_BODY_LIMIT = 500
 
 
 # 校验上下文检索词、分页起点和条数，限制一次读取的范围。
@@ -289,55 +267,9 @@ def project_messages(raw: Any, *, current_message_id: str = "", query: str = "",
     return _paged(selected, query=query, offset=offset, limit=limit)
 
 
-# 按关键词筛选想法卡片并分页，去掉与模型决策无关的界面字段。
-def project_ideas(raw: Any, *, query: str = "", offset: int = 0,
-                  limit: int = _READ_LIMIT) -> dict[str, Any]:
-    """Project idea cards while omitting UI-only presentation fields."""
-    values = raw if isinstance(raw, (list, tuple)) else []
-    selected = []
-    needle = query.casefold()
-    for idea in values:
-        ref = _text(_get(idea, "id", ""))
-        if not ref:
-            continue
-        item = {"ref": ref, "kind": _get(idea, "kind", ""),
-                "title": _get(idea, "title", ""), "body": _get(idea, "body", ""),
-                "status": _get(idea, "status", ""), "author": _get(idea, "author", "")}
-        if needle and needle not in json.dumps(item, ensure_ascii=False).casefold():
-            continue
-        selected.append(item)
-    return _paged(selected, query=query, offset=offset, limit=limit)
-
-
 # 按字符数截断文本，防止摘要占用过多模型上下文。
 def _clip_text(value: Any, maximum: int = _MAX_TEXT) -> str:
     return value[:maximum] if isinstance(value, str) else ""
-
-
-# 生成有长度上限的近期想法墙摘要；卡片内容本身不构成工具执行授权。
-def project_idea_wall(raw: Any, *, include_body: bool = False,
-                      limit: int = _IDEA_WALL_LIMIT) -> dict[str, Any]:
-    """Project bounded user wishes; card contents do not grant tool authority."""
-    values = list(raw) if isinstance(raw, (list, tuple)) else []
-    if type(limit) is not int or limit < 1:
-        limit = _IDEA_WALL_LIMIT
-    selected = values[-limit:]
-    items = []
-    for idea in selected:
-        ref = _text(_get(idea, "id", ""))
-        if not ref:
-            continue
-        item = {
-            "ref": ref,
-            "title": _clip_text(_text(_get(idea, "title", "")), _IDEA_WALL_TITLE_LIMIT),
-        }
-        if include_body:
-            item["kind"] = _text(_get(idea, "kind", ""))
-            item["status"] = _text(_get(idea, "status", ""))
-            item["body"] = _clip_text(_text(_get(idea, "body", "")), _IDEA_WALL_BODY_LIMIT)
-            item["author"] = _text(_get(idea, "author", ""))
-        items.append(item)
-    return {"items": items, "total": len(values), "truncated": len(values) > len(selected)}
 
 
 # 只保留简单标量事实，排除未经筛选的嵌套数据。
@@ -455,16 +387,11 @@ def project_main_read_context(section: str, raw: Any, *, trip: Any = None, plan:
     query, offset, limit = _page_args(request_args if request_args is not None else raw)
     if section == "requirements":
         view = project_requirements(trip, required_information(trip))
-        if isinstance(raw, Mapping) and 'items' in raw:
-            view['items'] = project_ideas(raw['items'], query=query, offset=offset, limit=limit)
         return view
     if section == "messages":
         source = _get(raw, "items", []) if isinstance(raw, Mapping) else raw
         return project_messages(source, current_message_id=current_message_id,
                                 query=query, offset=offset, limit=limit)
-    if section == "ideas":
-        source = _get(raw, "items", []) if isinstance(raw, Mapping) else raw
-        return project_ideas(source, query=query, offset=offset, limit=limit)
     if section == "plan":
         if expected_basis is not None and plan_basis(plan) != PlanBasis.from_value(expected_basis):
             raise ValueError("当前行程与本轮请求版本不一致，请基于最新行程重试")
@@ -485,7 +412,6 @@ def project_main_context(*, request_context: Any, execution_context: Any,
     """Build the single-agent view without mutating its server snapshot."""
     trip = execution_context.trip
     requirements = project_requirements(trip, missing_requirements)
-    requirements['items'] = project_idea_wall(execution_context.idea_cards, include_body=True)
     if request_context.entry == 'main':
         return {
             "message": {"ref": request_context.message_id, "text": request_context.body},
@@ -511,7 +437,7 @@ def project_main_context(*, request_context: Any, execution_context: Any,
 
 # 列出供运行器调用的公共投影函数，内部校验和裁剪工具不对外导出。
 __all__ = [
-    "project_conversation", "project_idea_wall", "project_ideas",
+    "project_conversation",
     "project_evidence", "project_main_context", "project_main_read_context", "project_messages",
     "project_plan", "project_requirements",
 ]

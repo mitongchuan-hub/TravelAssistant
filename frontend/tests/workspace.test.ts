@@ -15,6 +15,56 @@ function workspace(trip = 'trip-test', user = 'user-test'): WorkspaceStore {
 beforeEach(() => { vi.useFakeTimers(); api.mockReset(); sessionStorage.clear(); Object.defineProperty(document, 'hidden', { configurable: true, value: false }) })
 afterEach(() => { scopes.forEach(scope => scope.stop()); scopes = []; vi.useRealTimers() })
 
+describe('workspace response contract', () => {
+  it.each([
+    ['missing requirements', undefined],
+    ['null requirements', null],
+    ['legacy cards without text', { revision: 1, cards: [{ text: '旧卡片' }] }],
+    ['null text', { revision: 1, text: null }],
+    ['numeric text', { revision: 1, text: 42 }],
+    ['array text', { revision: 1, text: [] }],
+    ['object text', { revision: 1, text: {} }],
+    ['missing revision', { text: '' }],
+    ['string revision', { revision: '1', text: '' }],
+    ['null revision', { revision: null, text: '' }],
+    ['negative revision', { revision: -1, text: '' }],
+    ['fractional revision', { revision: 1.5, text: '' }],
+    ['infinite revision', { revision: Infinity, text: '' }],
+    ['NaN revision', { revision: NaN, text: '' }],
+    ['unsafe revision', { revision: Number.MAX_SAFE_INTEGER + 1, text: '' }],
+  ])('rejects %s without publishing an unsafe snapshot', async (_name, requirements) => {
+    const value = snapshot()
+    api.mockResolvedValueOnce({ ...value, trip: { ...value.trip, requirements } })
+    const state = workspace(); await flushPromises()
+    expect(state.snapshot.value).toBeNull()
+    expect(state.loading.value).toBe(false)
+    expect(state.error.value).toBe('前后端版本不一致，请重启后端后重新读取。')
+    api.mockResolvedValueOnce(snapshot())
+    await state.refresh()
+    expect(state.snapshot.value?.trip.requirements.text).toBe('')
+    expect(state.error.value).toBe('')
+  })
+  it.each([0, 1, Number.MAX_SAFE_INTEGER])('accepts a string body and safe non-negative revision %s', async revision => {
+    const value = snapshot(); value.trip.requirements.revision = revision
+    api.mockResolvedValueOnce(value)
+    const state = workspace(); await flushPromises()
+    expect(state.snapshot.value).toEqual(value)
+    expect(state.error.value).toBe('')
+  })
+  it.each(['refresh', 'cancel'] as const)('retains a safe snapshot when %s receives an old DTO', async operation => {
+    const safe = snapshot(); safe.trip.requirements.text = '已保存的正文'
+    api.mockResolvedValueOnce(safe)
+    const state = workspace(); await flushPromises()
+    const previous = state.snapshot.value
+    api.mockResolvedValueOnce({ ...safe, trip: { ...safe.trip, requirements: { revision: 2, cards: [] } } })
+    await state[operation]()
+    expect(state.snapshot.value).toBe(previous)
+    expect(state.snapshot.value?.trip.requirements.text).toBe('已保存的正文')
+    expect(state.error.value).toContain('前后端版本不一致')
+    expect(api.mock.calls.every(call => call[1]?.method !== 'POST')).toBe(true)
+  })
+})
+
 describe('workspace polling and optimistic recovery', () => {
   it('does not replay an old unsent plan request as chat authorization', async () => {
     sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'plan', request_id: 'old-plan', payload: {} }))
@@ -75,6 +125,15 @@ describe('workspace polling and optimistic recovery', () => {
     expect(second.snapshot.value?.trip.id).toBe('new-trip')
     expect(api.mock.calls[1]![0]).toBe('/api/trips/new-trip/workspace')
   })
+  it('saves the exact requirements body with the captured revision via the narrow PUT endpoint', async () => {
+    api.mockResolvedValueOnce(snapshot())
+    const state = workspace(); await flushPromises()
+    api.mockResolvedValueOnce(snapshot()); api.mockResolvedValueOnce(snapshot())
+    expect(await state.saveRequirements('', 7)).toBe(true)
+    expect(api.mock.calls[1]?.[0]).toBe('/api/trips/trip-test/requirements-text')
+    expect(api.mock.calls[1]?.[1]?.method).toBe('PUT')
+    expect(JSON.parse(String(api.mock.calls[1]?.[1]?.body))).toEqual({ text: '', expected_revision: 7 })
+  })
   it('does not overwrite a newer mutation with an in-flight stale poll', async () => {
     const original = snapshot(); api.mockResolvedValueOnce(original)
     const state = workspace(); await flushPromises()
@@ -82,7 +141,7 @@ describe('workspace polling and optimistic recovery', () => {
     api.mockReturnValueOnce(stale.promise)
     const refresh = state.refresh()
     api.mockResolvedValueOnce({})
-    const action = state.addIdea('夜骑')
+    const action = state.saveRequirements('夜骑', 1)
     await flushPromises()
     stale.resolve(snapshot({ plan: { ...original.plan, title: 'stale response' } }))
     await refresh; await action
@@ -103,11 +162,32 @@ describe('workspace polling and optimistic recovery', () => {
     expect(state.messages.value.filter(message => message.body === '晚上夜骑')).toHaveLength(1)
     expect(api.mock.calls.filter(call => call[1]?.method === 'POST')).toHaveLength(1)
   })
+  it('looks up a lost acknowledgement outside the latest 20 tasks without replaying the POST', async () => {
+    api.mockResolvedValueOnce(snapshot())
+    const state = workspace(); await flushPromises()
+    let id = ''
+    api.mockImplementationOnce(async (_path, options) => {
+      id = JSON.parse(String(options?.body)).request_id
+      throw new ApiError(0, 'network_error', 'lost acknowledgement')
+    })
+    const recent = Array.from({ length: 20 }, (_, i) => ({ id: `recent-${i}`, kind: 'chat', request_id: `recent-request-${i}`, status: 'succeeded', message: '' }))
+    api.mockResolvedValueOnce(snapshot({ tasks: recent, messages: [] }))
+    api.mockImplementationOnce(async path => {
+      expect(path).toBe(`/api/trips/trip-test/tasks?request_id=${encodeURIComponent(id)}`)
+      return { tasks: [{ id: 'historical', kind: 'chat', request_id: id, status: 'succeeded', message: '', message_id: 'deleted' }] }
+    })
+    await state.send('已在历史中完成')
+    expect(state.pending.value).toBeNull()
+    expect(state.messages.value).toEqual([])
+    expect(state.busy.value).toBe(false)
+    expect(api.mock.calls.filter(call => call[1]?.method === 'POST')).toHaveLength(1)
+  })
   it('persists uncertain sends only within the current user and trip, and retries with the same identifier', async () => {
     api.mockResolvedValueOnce(snapshot())
     const state = workspace(); await flushPromises()
     api.mockRejectedValueOnce(new ApiError(0, 'network_error', 'offline'))
     api.mockResolvedValueOnce(snapshot())
+    api.mockResolvedValueOnce({ tasks: [] })
     api.mockRejectedValueOnce(new ApiError(0, 'network_error', 'offline'))
     await state.send('保留我的输入')
     const stored = sessionStorage.getItem('travelassistant:pending:user-test:trip-test')
@@ -223,15 +303,131 @@ describe('workspace polling and optimistic recovery', () => {
     const send = state.send('不确定送达')
     const cancel = state.cancel()
     api.mockResolvedValueOnce(snapshot())
+    api.mockResolvedValueOnce({ tasks: [] })
     ack.reject(new ApiError(0, 'network_error', 'offline'))
     expect(await cancel).toBe(false)
     await send
     expect(state.feedback.value).toContain('终止失败')
     expect(state.pending.value?.cancel_requested).toBe(true)
     api.mockResolvedValueOnce(snapshot())
+    api.mockResolvedValueOnce({ tasks: [] })
     await state.refresh()
     expect(api.mock.calls.filter(call => call[1]?.method === 'POST')).toHaveLength(1)
     expect(sessionStorage.getItem('travelassistant:pending:user-test:trip-test')).toContain('cancel_requested')
+  })
+  it('recovers a persisted cancel intent from exact history and accepts terminal cancellation', async () => {
+    const id = 'old/request ?'
+    sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'chat', request_id: id, payload: { body: '停止' }, cancel_requested: true }))
+    const task = { id: 'old-task', kind: 'chat', request_id: id, status: 'succeeded', message: '' }
+    api.mockResolvedValueOnce(snapshot()).mockResolvedValueOnce({ tasks: [task] })
+    const state = workspace(); await flushPromises()
+    expect(state.pending.value?.cancel_requested).toBe(true)
+    expect(api.mock.calls[1]![0]).toBe(`/api/trips/trip-test/tasks?request_id=${encodeURIComponent(id)}`)
+    api.mockResolvedValueOnce(snapshot()).mockResolvedValueOnce({ tasks: [task] })
+    api.mockResolvedValueOnce({ task })
+    expect(await state.cancel()).toBe(true)
+    expect(state.pending.value).toBeNull()
+    expect(state.busy.value).toBe(false)
+    expect(state.feedback.value).toContain('已结束')
+    expect(state.snapshot.value?.tasks).toContainEqual(task)
+    expect(api.mock.calls.filter(call => call[1]?.method === 'POST').map(call => call[0])).toEqual(['/api/trips/trip-test/tasks/old-task/cancel'])
+  })
+  it('cancels a running historical pending task rather than resending its message', async () => {
+    sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'chat', request_id: 'pending-stop', payload: {}, cancel_requested: true }))
+    api.mockResolvedValueOnce(snapshot()).mockResolvedValueOnce({ tasks: [] })
+    const state = workspace(); await flushPromises()
+    const task = { id: 'historical-running', kind: 'chat', request_id: 'pending-stop', status: 'running', message: '' }
+    api.mockResolvedValueOnce(snapshot()).mockResolvedValueOnce({ tasks: [task] })
+    api.mockResolvedValueOnce({ task: { ...task, status: 'superseded' } })
+    expect(await state.cancel()).toBe(true)
+    expect(state.feedback.value).toContain('已终止')
+    expect(api.mock.calls.filter(call => call[1]?.method === 'POST').map(call => call[0])).toEqual(['/api/trips/trip-test/tasks/historical-running/cancel'])
+  })
+  it('does not replay when the exact-history lookup is unavailable', async () => {
+    sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'chat', request_id: 'uncertain', payload: {} }))
+    api.mockResolvedValueOnce(snapshot()).mockRejectedValueOnce(new ApiError(503, 'unavailable', '历史暂不可用'))
+    const state = workspace(); await flushPromises()
+    expect(state.pending.value?.request_id).toBe('uncertain')
+    expect(state.error.value).toBe('历史暂不可用')
+    expect(api.mock.calls.every(call => call[1]?.method !== 'POST')).toBe(true)
+  })
+  it.each([false, true])('pauses on exact-history 401 and preserves pending cancel=%s', async cancelRequested => {
+    sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'chat', request_id: 'expired-query', payload: {}, cancel_requested: cancelRequested }))
+    const expired = vi.fn()
+    api.mockResolvedValueOnce(snapshot()).mockRejectedValueOnce(new ApiError(401, 'unauthorized', '请先登录'))
+    const scope = effectScope(); scopes.push(scope)
+    const state = scope.run(() => useWorkspace('trip-test', 'user-test', expired))!
+    await flushPromises()
+    expect(state.authRequired.value).toBe(true)
+    expect(expired).toHaveBeenCalledTimes(1)
+    expect(state.pending.value?.request_id).toBe('expired-query')
+    expect(state.pending.value?.cancel_requested).toBe(cancelRequested)
+    expect(sessionStorage.getItem('travelassistant:pending:user-test:trip-test')).toContain('expired-query')
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(api).toHaveBeenCalledTimes(2)
+    expect(await state.cancel()).toBe(false)
+  })
+  it.each([false, true])('rejects stale exact-history %s results across a newer mutation and polling round', async found => {
+    sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'chat', request_id: 'old-query', payload: {} }))
+    const lookup = deferred<{ tasks: { id: string; kind: string; request_id: string; status: string; message: string }[] }>()
+    api.mockResolvedValueOnce(snapshot()).mockReturnValueOnce(lookup.promise)
+    const state = workspace(); await flushPromises()
+    api.mockResolvedValueOnce({})
+    const mutation = state.saveRequirements('新一轮', 1)
+    await flushPromises()
+    lookup.resolve({ tasks: found ? [{ id: 'old-result', kind: 'chat', request_id: 'old-query', status: 'running', message: '' }] : [] })
+    await mutation
+    expect(state.pending.value?.request_id).toBe('old-query')
+    expect(state.snapshot.value?.tasks).toEqual([])
+    expect(api.mock.calls.filter(call => call[0].endsWith('/messages'))).toHaveLength(0)
+    const current = snapshot(); current.plan.title = '新一轮快照'
+    api.mockResolvedValueOnce(current).mockResolvedValueOnce({ tasks: [{ id: 'current-result', kind: 'chat', request_id: 'old-query', status: 'succeeded', message: '' }] })
+    await state.refresh()
+    expect(state.snapshot.value?.plan.title).toBe('新一轮快照')
+    expect(state.pending.value).toBeNull()
+    expect(state.snapshot.value?.tasks.map(task => task.id)).toEqual(['current-result'])
+  })
+  it('does not let a previous polling lookup undo a newer cancellation or replay its POST', async () => {
+    sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'chat', request_id: 'cancel-race', payload: {} }))
+    const oldLookup = deferred<{ tasks: [] }>()
+    api.mockResolvedValueOnce(snapshot()).mockReturnValueOnce(oldLookup.promise)
+    const state = workspace(); await flushPromises()
+    const task = { id: 'cancel-race-task', kind: 'chat', request_id: 'cancel-race', status: 'running', message: '' }
+    api.mockResolvedValueOnce(snapshot()).mockResolvedValueOnce({ tasks: [task] })
+    api.mockResolvedValueOnce({ task: { ...task, status: 'superseded' } })
+    expect(await state.cancel()).toBe(true)
+    oldLookup.resolve({ tasks: [] }); await flushPromises()
+    expect(state.pending.value).toBeNull()
+    expect(state.snapshot.value?.tasks[0]?.status).toBe('superseded')
+    expect(state.feedback.value).toContain('已终止')
+    expect(api.mock.calls.filter(call => call[1]?.method === 'POST').map(call => call[0])).toEqual(['/api/trips/trip-test/tasks/cancel-race-task/cancel'])
+  })
+  it('preserves a new cancel intent and stops all POSTs when its exact lookup returns 401', async () => {
+    sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'chat', request_id: 'cancel-expired', payload: {}, cancel_requested: true }))
+    api.mockResolvedValueOnce(snapshot()).mockResolvedValueOnce({ tasks: [] })
+    const state = workspace(); await flushPromises()
+    api.mockResolvedValueOnce(snapshot()).mockRejectedValueOnce(new ApiError(401, 'unauthorized', '请先登录'))
+    expect(await state.cancel()).toBe(false)
+    expect(state.authRequired.value).toBe(true)
+    expect(state.pending.value?.cancel_requested).toBe(true)
+    const count = api.mock.calls.length
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(api).toHaveBeenCalledTimes(count)
+    expect(api.mock.calls.every(call => call[1]?.method !== 'POST')).toBe(true)
+  })
+  it('aborts exact-history lookup on unmount and ignores late acknowledgement', async () => {
+    sessionStorage.setItem('travelassistant:pending:user-test:trip-test', JSON.stringify({ kind: 'chat', request_id: 'late-query', payload: {} }))
+    const lookup = deferred<{ tasks: { id: string; kind: string; request_id: string; status: string; message: string }[] }>()
+    api.mockResolvedValueOnce(snapshot()).mockReturnValueOnce(lookup.promise)
+    const state = workspace(); await flushPromises()
+    const signal = api.mock.calls[1]![1]!.signal as AbortSignal
+    scopes[0]!.stop()
+    expect(signal.aborted).toBe(true)
+    lookup.resolve({ tasks: [{ id: 'late', kind: 'chat', request_id: 'late-query', status: 'succeeded', message: '' }] })
+    await flushPromises()
+    expect(state.pending.value?.request_id).toBe('late-query')
+    expect(state.snapshot.value?.tasks).toEqual([])
+    expect(api.mock.calls).toHaveLength(2)
   })
   it('pauses hidden-tab polling and resumes on visibility change', async () => {
     api.mockResolvedValue(snapshot())

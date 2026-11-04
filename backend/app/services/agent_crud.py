@@ -4,22 +4,20 @@ A user quote binds the request, not its intent. Destructive and textual operatio
 also require positive, current instructions; uncertain commands fail closed.
 """
 from copy import deepcopy
-from dataclasses import asdict, replace
 from hashlib import sha256
 import json
 import re
 from types import SimpleNamespace
-from uuid import uuid4
 
 from app.domain.itinerary.identity import plan_basis
 from app.workflow.execution import serialize
-from app.models import IdeaCard, TripPlan
-from app.services.maps.evidence import evidence_kind, evidence_result, place_messages
+from app.models import TripPlan
+from app.services.maps.evidence import evidence_kind, evidence_result
 from app.services.itinerary.planning import planning_brief
-from app.services.requirements import chat_changes, update_requirements
+from app.services.requirements import update_requirements, MAX_REQUIREMENTS_TEXT
 
 _QUOTES = str.maketrans({'“': '"', '”': '"', '‘': "'", '’': "'", '＂': '"', '＇': "'"})
-_OPERATIONS = {'requirements_patch', 'lodging', 'ideas', 'itinerary'}
+_OPERATIONS = {'requirements_text', 'itinerary'}
 
 
 def canonical_digest(value):
@@ -109,10 +107,6 @@ def exact_edit(text, operation, body, display_target=None):
     return text.replace(target, target.replace(original, replacement, 1), 1)
 
 
-def _idea_hash(card):
-    return canonical_digest(asdict(card) if not isinstance(card, dict) else card)
-
-
 def prepare_changes(args, request_context, execution_context, evidence=()):
     """Validate a detached snapshot and return its canonical change package.
 
@@ -123,12 +117,11 @@ def prepare_changes(args, request_context, execution_context, evidence=()):
     _shape(args, {'user_quote', *_OPERATIONS, 'next_question'}, {'user_quote'})
     if args['user_quote'] != request_context.body:
         raise ValueError('user_quote必须逐字引用完整本轮用户消息')
-    if not any(args.get(key) for key in _OPERATIONS):
+    if not any(key in args for key in _OPERATIONS):
         raise ValueError('submit_changes至少需要一项实际操作')
     if 'next_question' in args:
         _text(args['next_question'], 'next_question', 2000)
     trip, plan = _get(execution_context, 'trip'), _get(execution_context, 'plan')
-    cards = list(_get(execution_context, 'idea_cards', ()) or ())
     if (trip.id != request_context.trip_id or trip.owner.id != request_context.owner_id
             or trip.requirements.revision != request_context.requirements_revision
             or plan_basis(plan) != request_context.plan_basis):
@@ -138,119 +131,19 @@ def prepare_changes(args, request_context, execution_context, evidence=()):
     if display_target is not None:
         from app.workflow.tasks import validate_display_target_metadata
         validate_display_target_metadata(plan, serialize(display_target))
-    changes = {}
-    if args.get('requirements_patch'):
-        patch = args['requirements_patch']
-        if not isinstance(patch, dict) or not patch:
-            raise ValueError('requirements_patch必须是稀疏的实际字段')
-        if re.search(r'如果|假如|假设|要是|(?:不要|别|暂不|不必|无需)(?:修改|更新|保存|改动|更改)', body):
+    if 'requirements_text' in args:
+        if re.search(r'如果|假如|假设|要是|(?:不要|别|暂不|不必|无需)(?:修改|更新|保存|改动|更改|记录)', body):
             raise ValueError('假设或否定请求不能保存正式需求')
-        changes = chat_changes({'changes': patch, 'evidence': body}, body, trip)
-        # 全句引用只证明来源；每个变化字段仍须有本轮对应内容或明确字段指令。
-        field_hints = {
-            'travelers': r'人数|人均以外人数|(?:共|一共|我们)?\s*\d+\s*(?:个人|人|位)',
-            'day_count': r'天数|\d+\s*天|[一二两三四五六七八九十]+天',
-            'start_date': r'日期|出发|开始|\d{4}[-年/]\d|\d+月\d+日',
-            'end_date': r'日期|结束|返回|天数|\d+\s*天|[一二两三四五六七八九十]+天|\d{4}[-年/]\d|\d+月\d+日',
-            'budget_amount': r'预算|元|费用|花费', 'budget_scope': r'预算|人均|每人|总额|总共',
-            'budget_coverage': r'预算|费用|包括|包含|不含',
-            'transport_mode': r'交通|自驾|开车|公交|地铁|公共交通',
-            'outing_start_time': r'出门|出发|开始|几点|\d{1,2}[:：]\d{2}',
-            'outing_end_time': r'返回|回去|结束|几点|\d{1,2}[:：]\d{2}',
-            'pace': r'节奏|轻松|紧凑|慢|赶|休闲', 'style': r'风格|节奏|轻松|紧凑|慢|休闲',
-        }
-        for key, value in changes.items():
-            previous = getattr(trip if key in {'destination', 'date_range', 'style', 'note'} else trip.requirements, key)
-            if value == previous:
-                continue
-            if key in {'must_visit', 'avoid', 'dietary'}:
-                mentioned = [item for action in ('add', 'remove') for item in patch[key].get(action, [])]
-                if any(item not in body for item in mentioned):
-                    raise ValueError('需求列表变更必须对应本轮明确提供的内容')
-            elif key in field_hints:
-                if not re.search(field_hints[key], body):
-                    raise ValueError('本轮没有明确涉及需求字段：' + key)
-            elif not isinstance(value, str) or not value or value not in body:
-                raise ValueError('需求变更必须对应本轮明确提供的内容：' + key)
-        trip = update_requirements(trip, changes)
-    lodging = None
-    if args.get('lodging'):
-        from app.services.places import collect_places
-        _shape(args['lodging'], {'poi_id'}, {'poi_id'})
-        catalog = collect_places(place_messages(evidence))
-        lodging = catalog.get(args['lodging']['poi_id'])
-        if not lodging or not lodging.get('city'):
-            raise ValueError('住宿必须引用本轮地图查询返回的真实地点')
-        if (not any(value and value in body for value in (lodging.get('name'), lodging.get('address')))
-                or re.search(r'如果|假如|假设|不要|不是|别', body)):
-            raise ValueError('请在本轮明确说出要使用的住宿名称或地址；重名时先询问具体分店')
-        if (sum(place.get('name') == lodging.get('name') for place in catalog.values()) > 1
-                and (not lodging.get('address') or lodging['address'] not in body
-                     or sum(place.get('address') == lodging['address'] for place in catalog.values()) > 1)):
-            raise ValueError('住宿存在同名候选，请在聊天中说明具体地址后再确认')
-        if not re.search(r'(?:我|我们|这次|目前|现在)(?:已经|已)?住|住在|入住|住宿\s*[：:]|住宿(?:是|在|改为|选)|(?:作为|用作|设为|选为).{0,3}住宿', body):
-            raise ValueError('请选择该地点作为住宿，不能把普通地点查询当作住宿授权')
-        trip = deepcopy(trip)
-        trip.requirements.city = lodging['city']
-        trip.requirements.lodging_address = lodging.get('address') or lodging['name']
-        trip.lodging = deepcopy(lodging)
-    existing = {_get(card, 'id'): card for card in cards}
-    expected = {}
-    operations = args.get('ideas', [])
-    if not isinstance(operations, list) or len(operations) > 20:
-        raise ValueError('ideas必须为不超过20项的操作列表')
-    targets = set()
-    for operation in operations:
-        if not isinstance(operation, dict):
-            raise ValueError('想法操作格式不正确')
-        action = operation.get('action')
-        if action == 'create':
-            _shape(operation, {'action', 'kind', 'title', 'body'}, {'action', 'kind', 'title', 'body'})
-            values = operation
-            if re.search(r'如果|假如|假设|(?:不要|别|无需|不必)(?:添加|保存|记下|记录|创建)', body):
-                raise ValueError('假设或否定请求不能创建想法')
-            if not any(isinstance(operation.get(key), str) and operation[key].strip()
-                       and operation[key].strip() in body for key in ('title', 'body')):
-                raise ValueError('新增想法必须能对应本轮用户实际提供的内容')
-        elif action in {'update', 'delete'}:
-            _shape(operation, {'action', 'idea_id', 'changes'} if action == 'update' else {'action', 'idea_id'},
-                   {'action', 'idea_id', 'changes'} if action == 'update' else {'action', 'idea_id'})
-            idea_id = operation['idea_id']
-            if not isinstance(idea_id, str) or idea_id not in existing or idea_id in targets:
-                raise ValueError('想法必须引用当前快照中的唯一精确ID')
-            targets.add(idea_id)
-            expected[idea_id] = _idea_hash(existing[idea_id])
-            _positive(body, ['修改', '更新', '改成', '改为'] if action == 'update'
-                      else ['删除', '删掉', '移除', '去掉'], '想法变更')
-            card = existing[idea_id]
-            labels = [_get(card, 'title', ''), _get(card, 'body', ''), idea_id]
-            # 动作和目标必须处于同一肯定分句，不能把“删除午餐，但保留龙井”拼成删除龙井。
-            clauses = re.split(r'[，,。；;！!？?\n]|但是|但|不过', body)
-            verbs = r'修改|更新|改成|改为' if action == 'update' else r'删除|删掉|移除|去掉'
-            matched = any(re.search(verbs, clause)
-                          and not re.search(r'保留|留下|不要|不删|别|无需|不必', clause)
-                          and any(label and label in clause for label in labels)
-                          for clause in clauses)
-            if not matched:
-                sole_target = len(existing) == 1 and any(
-                    re.search(verbs, clause)
-                    and not re.search(r'保留|留下|不要|不删|别|无需|不必', clause)
-                    and re.search(r'(?:这条|这个|该条|唯一的|这张).{0,4}(?:想法|卡片)', clause)
-                    for clause in clauses)
-                if not sole_target:
-                    raise ValueError('想法变更必须在同一肯定指令中明确指定该卡片')
-            values = operation.get('changes', {})
-            if action == 'update':
-                _shape(values, {'kind', 'title', 'body'})
-                if not values:
-                    raise ValueError('想法更新不能为空')
-        else:
-            raise ValueError('未知想法操作')
-        for key in ('kind', 'title', 'body'):
-            if key in values:
-                _text(values[key], 'idea.' + key, 2000 if key == 'body' else 300)
-                if key == 'kind' and values[key] not in {'地点', '预算', '节奏', '禁忌', '待归类'}:
-                    raise ValueError('想法分类无效')
+        text = args['requirements_text']
+        if isinstance(text, str) and not text.strip() and trip.requirements.text.strip():
+            unchanged = text == trip.requirements.text
+            if not unchanged and not re.fullmatch(
+                    r'\s*(?:请|帮我|请帮我)?\s*(?:清空|删除|删掉|移除)\s*'
+                    r'(?:(?:当前|现有|这份|已有)\s*)?(?:(?:全部|所有|整份|完整)\s*)?'
+                    r'(?:的)?\s*(?:需求正文|需求文本|旅行需求正文|旅行需求|全部需求|所有需求)'
+                    r'\s*(?:吧|。|！|!)?\s*', body):
+                raise ValueError('清空需求正文需要明确针对全文需求的独立肯定指令')
+        trip = update_requirements(trip, {'text': args['requirements_text']})
     itinerary = args.get('itinerary')
     result_text = None
     if itinerary:
@@ -258,7 +151,7 @@ def prepare_changes(args, request_context, execution_context, evidence=()):
             raise ValueError('itinerary格式不正确')
         action = itinerary.get('action')
         if action == 'replace':
-            _shape(itinerary, {'action', 'text', 'idea_outcomes'}, {'action', 'text', 'idea_outcomes'})
+            _shape(itinerary, {'action', 'text'}, {'action', 'text'})
             _positive(body, ['生成', '安排', '规划', '制定', '做一', '来一', '修改', '调整', '重排', '重新', '改成', '改为'], '行程生成')
             result_text = _text(itinerary['text'], 'itinerary.text', 100000)
             # 缺少公交线路证据时，不允许通过终止提交绕过只读回复的明细保护。
@@ -271,32 +164,11 @@ def prepare_changes(args, request_context, execution_context, evidence=()):
                 for row in evidence)
             if missing_transit and re.search(r'\d+号线|\d+路(?:公交|巴士)?|上车|下车|换乘', result_text):
                 raise ValueError('公交线路明细缺少查询依据，不能提交具体线路或上下车安排')
+            if len(trip.requirements.text) > MAX_REQUIREMENTS_TEXT:
+                raise ValueError('需求正文超过20,000个Unicode字符，请先整理或缩短正文再生成行程')
             _, question = planning_brief(trip, require_all=True)
             if question:
                 raise ValueError(question)
-            outcomes = itinerary['idea_outcomes']
-            if not isinstance(outcomes, list):
-                raise ValueError('idea_outcomes必须逐项覆盖想法')
-            refs = []
-            for outcome in outcomes:
-                _shape(outcome, {'idea_ref', 'status', 'reason'}, {'idea_ref', 'status', 'reason'})
-                refs.append(outcome['idea_ref'])
-                reason = _text(outcome['reason'], 'idea_outcomes.reason', 2000)
-                if outcome['status'] not in {'scheduled', 'conflict', 'needs_input', 'excluded'}:
-                    raise ValueError('想法处理状态无效')
-                if outcome['status'] == 'scheduled' and reason not in result_text:
-                    raise ValueError('已安排的依据必须逐字引用新行程正文')
-            retained = set(existing) - {op['idea_id'] for op in operations if op['action'] == 'delete'}
-            if len(refs) != len(set(refs)) or set(refs) != retained:
-                raise ValueError('idea_outcomes必须完整覆盖提交后保留的所有既有想法ID，不得遗漏或伪造')
-            for op in operations:
-                if op['action'] == 'create' and op['body'] not in result_text:
-                    raise ValueError('同轮新建想法正文必须在新行程中逐字覆盖；否则请分轮提交')
-                if op['action'] == 'update' and op['changes'].get('body'):
-                    outcome = next(row for row in outcomes if row['idea_ref'] == op['idea_id'])
-                    if outcome['status'] == 'scheduled' and op['changes']['body'] not in result_text:
-                        raise ValueError('同轮修改想法正文必须在已安排的新行程中逐字覆盖')
-            expected = {key: _idea_hash(value) for key, value in existing.items()}
         elif action == 'edit_text':
             result_text = exact_edit(plan.text, itinerary, body, _get(execution_context, 'display_target'))
         elif action == 'confirm':
@@ -314,10 +186,9 @@ def prepare_changes(args, request_context, execution_context, evidence=()):
                 raise ValueError('清空行程需要独立、完整、肯定的当前指令')
         else:
             raise ValueError('未知行程操作')
-        if action in {'edit_text', 'confirm', 'clear'} and any(args.get(key) for key in {'requirements_patch', 'lodging', 'ideas'}):
+        if action in {'edit_text', 'confirm', 'clear'} and 'requirements_text' in args:
             raise ValueError('精确编辑、确认或清空必须独立提交')
-    payload = {'args': args, 'normalized_changes': changes, 'expected_idea_hashes': expected,
-               'idea_ids': sorted(existing) if itinerary and itinerary['action'] == 'replace' else None,
+    payload = {'args': args,
                'result_text': result_text, 'evidence': deepcopy(serialize(evidence)),
                'display_target': deepcopy(serialize(_get(execution_context, 'display_target'))),
                'request': serialize(request_context)}
@@ -336,13 +207,6 @@ def apply_changes(stage, context, payload):
     if payload.get('digest') != canonical_digest(unsigned):
         raise ValueError('CRUD候选摘要不一致')
     trip_id = context.trip_id
-    cards = stage.idea_cards[trip_id]
-    current = {card.id: card for card in cards}
-    if payload.get('idea_ids') is not None and sorted(current) != payload['idea_ids']:
-        raise ValueError('想法墙在生成期间已变化，请重新审阅全部想法')
-    for key, digest in payload['expected_idea_hashes'].items():
-        if key not in current or _idea_hash(current[key]) != digest:
-            raise ValueError('目标想法在处理期间已变化，请刷新后重试')
     task = stage.tasks.get(context.execution_task_id, {})
     target = None
     if task.get('payload', {}).get('display_target') is not None:
@@ -355,39 +219,19 @@ def apply_changes(stage, context, payload):
         if isinstance(supplied, dict) and set(supplied) != {'day_index', 'item_index'}:
             target = supplied
     execution = SimpleNamespace(trip=stage.trips[trip_id], plan=stage.plans[trip_id],
-                                idea_cards=cards, display_target=target)
+                                display_target=target)
     verified = prepare_changes(payload['args'], context, execution, payload['evidence'])
     if verified != payload:
         raise ValueError('CRUD候选与当前原话、快照或页面目标不一致')
     args = payload['args']
     lines, kinds = [], []
-    if payload['normalized_changes']:
-        stage.trips[trip_id] = update_requirements(stage.trips[trip_id], payload['normalized_changes'])
-        lines.append('需求已保存。')
-        kinds.append('requirements')
-    if args.get('lodging'):
-        from app.services.places import collect_places
-        catalog = collect_places(place_messages(payload['evidence']))
-        lodging = catalog[args['lodging']['poi_id']]
-        trip = stage.trips[trip_id]
-        stage.trips[trip_id] = update_requirements(trip, {
-            'city': lodging['city'], 'lodging_address': lodging.get('address') or lodging['name']})
-        stage.trips[trip_id].lodging = deepcopy(lodging)
-        lines.append('住宿位置已匹配并保存。')
-        kinds.append('lodging')
-    for operation in args.get('ideas', []):
-        action = operation['action']
-        if action == 'create':
-            cards.append(IdeaCard(id='idea-' + uuid4().hex, kind=operation['kind'],
-                                  title=operation['title'], body=operation['body'], author='对话', status='已整理'))
-        elif action == 'update':
-            index = next(i for i, card in enumerate(cards) if card.id == operation['idea_id'])
-            cards[index] = replace(cards[index], **operation['changes'])
-        else:
-            cards[:] = [card for card in cards if card.id != operation['idea_id']]
-    if args.get('ideas'):
-        lines.append('旅行想法已更新。')
-        kinds.append('ideas')
+    if 'requirements_text' in args:
+        previous = stage.trips[trip_id]
+        updated = update_requirements(previous, {'text': args['requirements_text']})
+        stage.trips[trip_id] = updated
+        lines.append('需求正文已保存。' if updated.requirements.revision != previous.requirements.revision else '需求正文未变化。')
+        if updated.requirements.revision != previous.requirements.revision:
+            kinds.append('requirements')
     itinerary = args.get('itinerary', {})
     action = itinerary.get('action')
     if action in {'replace', 'edit_text'}:
@@ -404,6 +248,6 @@ def apply_changes(stage, context, payload):
         stage.plans[trip_id] = TripPlan(id='empty', title='还没有行程计划', status='未生成', days=[])
         stage.trips[trip_id].status = '未生成'
         stage._discard_display_jobs(trip_id)
-        lines.append('当前行程已清空，旅行需求、想法和聊天记录已保留。')
+        lines.append('当前行程已清空，需求正文和聊天记录已保留。')
         kinds.append('clear')
     return lines, kinds

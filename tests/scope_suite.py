@@ -18,7 +18,9 @@ from app.core import config, resources
 from tests.scope_eval import run_case
 
 DATASET = PROJECT_ROOT / 'tests/datasets/scope_comprehensive.json'
-BUSINESS = {'query_weather', 'search_places', 'search_food', 'query_route', 'submit_changes'}
+BUSINESS = {'query_weather', 'maps_text_search', 'maps_search_detail',
+            'maps_direction_walking', 'maps_direction_driving',
+            'maps_direction_transit_integrated', 'submit_changes'}
 
 
 def load_cases():
@@ -45,9 +47,11 @@ def mechanical_checks(case, result):
         # cancel or adopt. An unrelated/ambiguous answer must not write guesses.
         checks['no_unrequested_changes'] = not result['selected']
     if case['id'] == 'Q04':
-        patches = [args.get('requirements_patch', {}) for args in result.get('submitted', [])]
-        checks['short_answer_only_updates_travelers'] = bool(patches) and all(
-            patch == {'travelers': 2} for patch in patches)
+        submissions = result.get('submitted', [])
+        checks['short_answer_only_submits_ideas'] = bool(submissions) and all(
+            set(args) <= {'user_quote', 'ideas'} and bool(args.get('ideas'))
+            for args in submissions)
+        # Whether those ideas faithfully mean "2 people" still needs semantic review.
     # These are contracts, never semantic pass/fail. Human review is mandatory.
     return checks
 

@@ -17,25 +17,11 @@ class User:
 class TripRequirements:
     start_date: str = ""
     end_date: str = ""
-    # Retained only for reading historical snapshots.
-    arrival_time: str = ""
-    departure_time: str = ""
     city: str = ""
-    arrival_location: str = ""
-    departure_location: str = ""
     day_count: int | None = None
-    travelers: int | None = None
-    budget_amount: str = ""
-    budget_scope: str = "unspecified"
-    budget_coverage: str = ""
     transport_mode: str = "unspecified"
-    must_visit: list[str] = field(default_factory=list)
-    avoid: list[str] = field(default_factory=list)
-    dietary: list[str] = field(default_factory=list)
-    pace: str = ""
     lodging_address: str = ""
-    outing_start_time: str = ""
-    outing_end_time: str = ""
+    text: str = ""
     revision: int = 0
 
 
@@ -43,10 +29,6 @@ class TripRequirements:
 class Trip:
     id: str
     destination: str
-    date_range: str
-    budget: str
-    style: str
-    note: str
     owner: User
     status: str
     last_activity: str
@@ -54,6 +36,13 @@ class Trip:
     workflow_state: dict = field(default_factory=dict)
     mode: str = "city"
     lodging: dict = field(default_factory=dict)
+    legacy_metadata: dict = field(default_factory=dict, repr=False)
+
+    @property
+    def date_range(self):
+        from app.domain.summaries import trip_summaries
+        return trip_summaries(self.requirements, self.legacy_metadata, self.mode)['date_range']
+
 
 
 @dataclass(frozen=True)
@@ -184,18 +173,9 @@ class TripPlan:
     display_style: str = ""
     requirements_snapshot: dict = field(default_factory=dict)
     lodging_snapshot: dict = field(default_factory=dict)
+    requirements_basis_complete: bool = True
+    requirements_legacy_stale: bool = False
 
     @property
     def has_content(self) -> bool:
         return bool(self.text.strip() or self.days)
-
-
-@dataclass(frozen=True)
-class IdeaCard:
-    id: str
-    kind: str
-    title: str
-    body: str
-    author: str
-    status: str
-    rotation: str = "0deg"

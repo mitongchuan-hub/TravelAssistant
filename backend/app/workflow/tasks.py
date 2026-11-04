@@ -1,13 +1,8 @@
 """Persistent execution-task lifecycle for the single-process travel store."""
 from copy import deepcopy
 from datetime import datetime, timezone
-import os
-from uuid import uuid4
 
-from app.domain.message import normalize_message_text
-from app.domain.itinerary.identity import PlanBasis, plan_basis
 from app.services.itinerary.plan_display import text_hash
-from app.storage.legacy.workflow import advance_request, normalize_workflow
 from app.application.progress import advance_progress, finish_progress
 
 ACTIVE = {'queued', 'running'}
@@ -96,24 +91,6 @@ def validate_display_target_metadata(plan, metadata):
     return current
 
 
-def _configured_strategy(store):
-    # task_execution is the only execution framework; the legacy loop was removed.
-    return 'task_execution'
-
-
-def _restore_tasks(current, before):
-    """Restore task values without invalidating references held by worker threads."""
-    for task_id in list(current):
-        if task_id not in before:
-            del current[task_id]
-    for task_id, saved in before.items():
-        if task_id in current:
-            current[task_id].clear()
-            current[task_id].update(deepcopy(saved))
-        else:
-            current[task_id] = deepcopy(saved)
-
-
 class TravelTasks:
     def submit_task(self, trip_id, kind, payload, request_id):
         from app.application.execution import submit_task
@@ -121,14 +98,17 @@ class TravelTasks:
 
     def get_task(self, task_id, *, trip_id=None):
         with self._lock:
-            task = self.tasks.get(task_id)
+            task = self.task_repository.get(task_id)
             if not task or (trip_id is not None and task.get('trip_id') != trip_id):
                 return None
             return deepcopy(task)
 
-    def list_tasks(self, trip_id):
+    def list_tasks(self, trip_id, request_id=None):
         with self._lock:
-            return deepcopy([task for task in self.tasks.values() if task['trip_id'] == trip_id][-20:])
+            if request_id is not None:
+                task = self.task_repository.find_request(trip_id, request_id)
+                return [task] if task else []
+            return self.task_repository.recent(trip_id)
 
     def cancel_task(self, trip_id, task_id):
         from app.application.execution import cancel_task
@@ -164,7 +144,7 @@ class TravelTasks:
                 'running', '正在处理，请稍候；可以离开页面，回来查看结果。', now()
             )
             try:
-                self._persist()
+                self._persist(task_upserts=[task])
             except Exception:
                 task['status'], task['message'], task['updated_at'] = previous
                 raise
@@ -187,11 +167,18 @@ class TravelTasks:
             self._notify_display_worker()
 
     def recover_tasks(self):
-        changed = False
-        for task in self.tasks.values():
-            if task['status'] in ACTIVE:
-                task['status'], task['updated_at'] = 'failed', now()
-                task['message'] = '本次处理未完成，请重新发送消息。已有内容已保留。'
-                changed = True
-        if changed:
-            self._persist()
+        with self._lock:
+            for trip_id in self.trips:
+                if not any(task['trip_id'] == trip_id for task in self.tasks.values()) and not any(
+                        row.status == 'thinking' for row in self.messages[trip_id]):
+                    continue
+                stage = self._stage_turn(trip_id)
+                for task in stage.tasks.values():
+                    task.update(status='failed', updated_at=now(),
+                                message='本次处理未完成，请重新发送消息。已有内容已保留。')
+                for row in stage.messages[trip_id]:
+                    if row.status == 'thinking':
+                        row.status = 'failed'
+                        row.body = '本次处理未完成，请重新发送消息。已有内容已保留。'
+                        row.execution_progress = finish_progress(row.execution_progress, 'failed')
+                self._persist_staged_turn(stage, trip_id)

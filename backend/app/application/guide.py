@@ -6,9 +6,9 @@ from datetime import date, datetime
 from threading import RLock
 from contextlib import contextmanager
 from uuid import uuid4
-from app.domain.models import AgentAction, AgentCard, IdeaCard, Message, Trip, TripPlan, User
-from app.domain.requirements import initial_requirements, update_requirements
-from app.storage.state import next_id, IDEA_WALL_LIMIT, IDEA_ROTATIONS
+from app.domain.models import AgentAction, AgentCard, Message, Trip, TripPlan, User
+from app.domain.requirements import update_requirements
+from app.storage.state import next_id
 'Independent, single-worker display jobs bound to the current saved prose.'
 from contextlib import contextmanager
 from copy import deepcopy

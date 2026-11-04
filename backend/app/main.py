@@ -17,7 +17,7 @@ from app.core.resources import client_scope
 load_environment()
 validate_configuration('web')
 
-from app.api import auth, chat, dependencies as deps, guide, ideas, trips
+from app.api import auth, chat, dependencies as deps, guide, trips
 from app.auth.csrf import valid_csrf
 from app.application.execution import TaskConflict
 
@@ -130,5 +130,4 @@ def favicon():
 app.include_router(auth.router)
 app.include_router(trips.router)
 app.include_router(chat.router)
-app.include_router(ideas.router)
 app.include_router(guide.router)

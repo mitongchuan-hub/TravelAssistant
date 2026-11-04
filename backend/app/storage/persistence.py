@@ -12,7 +12,6 @@ from typing import Any
 from app.domain.models import (
     AgentAction,
     AgentCard,
-    IdeaCard,
     Message,
     MealRecommendation,
     RouteDetails,
@@ -28,10 +27,10 @@ from app.domain.models import (
 )
 
 from app.services.itinerary.plan_display import migrate_stored_display
-from app.domain.requirements import initial_requirements
 
 SNAPSHOT_KEY = "demo_store_v1"
-CURRENT_SCHEMA_VERSION = 6
+CURRENT_SCHEMA_VERSION = 10
+TASK_HISTORY_SCHEMA_VERSION = 7
 
 
 
@@ -117,8 +116,8 @@ def ensure_relational_schema(db_path: str | Path) -> None:
             row[1] for row in connection.execute("PRAGMA table_info(trips)").fetchall()
         }
         # Preserve legacy business tables during this reversible phase. Add the
-        # minimum ownership column in place instead of dropping trips or related
-        # tables; destructive migration is never performed at startup.
+        # minimum ownership column in place; destructive conversion belongs to
+        # the backed-up business snapshot transaction, never this initializer.
         if trip_columns and "owner_id" not in trip_columns:
             connection.execute("ALTER TABLE trips ADD COLUMN owner_id TEXT NOT NULL DEFAULT 'u1'")
         connection.executescript(
@@ -147,9 +146,6 @@ def ensure_relational_schema(db_path: str | Path) -> None:
                 id TEXT PRIMARY KEY,
                 destination TEXT NOT NULL,
                 date_range TEXT NOT NULL,
-                budget TEXT NOT NULL,
-                style TEXT NOT NULL,
-                note TEXT NOT NULL DEFAULT '',
                 owner_id TEXT NOT NULL,
                 status TEXT NOT NULL,
                 last_activity TEXT NOT NULL,
@@ -165,16 +161,6 @@ def ensure_relational_schema(db_path: str | Path) -> None:
                 agent_card_json TEXT,
                 created_at TEXT NOT NULL
             );
-            CREATE TABLE IF NOT EXISTS ideas (
-                id TEXT PRIMARY KEY,
-                trip_id TEXT NOT NULL,
-                kind TEXT NOT NULL,
-                title TEXT NOT NULL,
-                body TEXT NOT NULL,
-                author TEXT NOT NULL,
-                status TEXT NOT NULL,
-                rotation TEXT NOT NULL DEFAULT '0deg'
-            );
             CREATE TABLE IF NOT EXISTS plans (
                 trip_id TEXT PRIMARY KEY,
                 plan_json TEXT NOT NULL,
@@ -187,37 +173,39 @@ def ensure_relational_schema(db_path: str | Path) -> None:
             );
             """
         )
+        from app.storage.task_repository import ensure_task_schema
+        ensure_task_schema(connection)
         if "requirements_json" not in {row[1] for row in connection.execute("PRAGMA table_info(trips)")}:
             connection.execute("ALTER TABLE trips ADD COLUMN requirements_json TEXT NOT NULL DEFAULT '{}'")
 
 
 def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, Any]) -> None:
+    created_at = dict(connection.execute('SELECT id, created_at FROM trips'))
     # Keep this function DML-only: final turn persistence calls it inside the same
-    # transaction as app_snapshots, and SQLite DDL belongs to schema initialization.
-    for table in ("plans", "ideas", "messages", "trips", "users"):
+    # transaction as app_snapshots. Controlled mirror DDL runs before this call.
+    for table in ("plans", "messages", "trips", "users"):
         connection.execute(f"DELETE FROM {table}")
     for user in snapshot.get("users", {}).values():
         connection.execute(
             "INSERT INTO users (id, name, initials) VALUES (?, ?, ?)",
             (user["id"], user["name"], user["initials"]),
         )
-    for trip_id, trip in snapshot.get("trips", {}).items():
+    for trip_id, raw_trip in snapshot.get("trips", {}).items():
+        trip = {**raw_trip, **{key: getattr(_trip(raw_trip), key) for key in ("date_range",)}}
         connection.execute(
             """
-            INSERT INTO trips (id, destination, date_range, budget, style, note, owner_id, status, last_activity, requirements_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO trips (id, destination, date_range, owner_id, status, last_activity, requirements_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))
             """,
             (
                 trip_id,
                 trip["destination"],
                 trip["date_range"],
-                trip["budget"],
-                trip["style"],
-                trip.get("note", ""),
                 trip["owner"]["id"],
                 trip["status"],
                 trip["last_activity"],
                 json.dumps(trip.get("requirements", {}), ensure_ascii=False),
+                created_at.get(trip_id),
             ),
         )
     for trip_id, messages in snapshot.get("messages", {}).items():
@@ -238,15 +226,6 @@ def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, A
                     message["created_at"],
                 ),
             )
-    for trip_id, cards in snapshot.get("idea_cards", {}).items():
-        for card in cards:
-            connection.execute(
-                """
-                INSERT INTO ideas (id, trip_id, kind, title, body, author, status, rotation)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (card["id"], trip_id, card["kind"], card["title"], card["body"], card["author"], card["status"], card.get("rotation", "0deg")),
-            )
     for trip_id, plan in snapshot.get("plans", {}).items():
         connection.execute(
             "INSERT INTO plans (trip_id, plan_json) VALUES (?, ?)",
@@ -259,22 +238,44 @@ def sync_relational_tables(connection: sqlite3.Connection, snapshot: dict[str, A
             "(SELECT 1 FROM trips WHERE trips.id = agent_runs.trip_id)"
         )
 
+def migrate_trip_table(connection):
+    """Rebuild the old NOT NULL mirror inside the business snapshot transaction."""
+    columns = {row[1] for row in connection.execute('PRAGMA table_info(trips)')}
+    if not columns & {'budget', 'style', 'note'}:
+        return
+    connection.execute("""CREATE TABLE trips_schema9 (
+        id TEXT PRIMARY KEY, destination TEXT NOT NULL, date_range TEXT NOT NULL,
+        owner_id TEXT NOT NULL, status TEXT NOT NULL, last_activity TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP, requirements_json TEXT NOT NULL DEFAULT '{}'
+    )""")
+    kept = 'id, destination, date_range, owner_id, status, last_activity, created_at, requirements_json'
+    connection.execute(f'INSERT INTO trips_schema9 ({kept}) SELECT {kept} FROM trips')
+    connection.execute('DROP TABLE trips')
+    connection.execute('ALTER TABLE trips_schema9 RENAME TO trips')
+
+
 def save_snapshot(
     db_path: str | Path,
     snapshot: dict[str, Any],
     *,
     initialize: bool = True,
+    task_upserts=(),
+    delete_trip_ids=(),
+    migration=None,
 ) -> None:
     """Persist one complete snapshot.
 
-    Schema creation belongs to startup/migration.  ``initialize=False`` is used by
-    the final turn commit so no DDL can implicitly commit part of that business
-    transaction.
+    Schema creation belongs to startup. The schema-nine mirror rebuild, if
+    needed, uses transactional execute() DDL after BEGIN IMMEDIATE; no executescript
+    or intermediate commit can split it from the business snapshot and markers.
     """
     path = Path(db_path)
     if initialize:
         ensure_relational_schema(path)
     with sqlite3.connect(path) as connection:
+        connection.execute('BEGIN IMMEDIATE')
+        migrate_trip_table(connection)
+        connection.execute('DROP TABLE IF EXISTS ideas')
         connection.execute(
             """
             INSERT INTO app_snapshots (key, payload, updated_at)
@@ -284,6 +285,11 @@ def save_snapshot(
             (SNAPSHOT_KEY, json.dumps(snapshot, ensure_ascii=False)),
         )
         sync_relational_tables(connection, snapshot)
+        from app.storage.task_repository import write_tasks
+        write_tasks(connection, task_upserts, delete_trip_ids)
+        if migration:
+            for name in ([migration] if isinstance(migration, str) else migration):
+                connection.execute('INSERT INTO storage_migrations(name) VALUES (?)', (name,))
 
 
 def load_snapshot(db_path: str | Path) -> dict[str, Any] | None:
@@ -304,19 +310,19 @@ def load_snapshot(db_path: str | Path) -> dict[str, Any] | None:
 def serialize_state(store: Any, users: dict[str, User]) -> dict[str, Any]:
     return {
         "agent_undo": deepcopy(getattr(store, "agent_undo", {})),
-        "tasks": deepcopy(store.tasks),
         "display_jobs": deepcopy(store.display_jobs),
         "schema_version": CURRENT_SCHEMA_VERSION,
         "users": {user_id: asdict(user) for user_id, user in users.items()},
         "trips": {trip_id: asdict(trip) for trip_id, trip in store.trips.items()},
         "messages": {trip_id: [asdict(message) for message in messages] for trip_id, messages in store.messages.items()},
         "plans": {trip_id: asdict(plan) for trip_id, plan in store.plans.items()},
-        "idea_cards": {trip_id: [asdict(card) for card in cards] for trip_id, cards in store.idea_cards.items()},
     }
 
 
 def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) -> int:
     schema_version = int(snapshot.get("schema_version", 1))
+    from app.storage.model_migration import migrate_snapshot
+    snapshot = migrate_snapshot(snapshot)
     legacy = schema_version < 2
     users.clear()
     users.update({user_id: _user(raw_user) for user_id, raw_user in snapshot.get("users", {}).items()})
@@ -340,27 +346,52 @@ def restore_state(store: Any, snapshot: dict[str, Any], users: dict[str, User]) 
         for trip_id, raw_plan in snapshot.get("plans", {}).items()
         if trip_id in store.trips
     }
-    store.idea_cards = {
-        trip_id: [_idea(raw_card, legacy) for raw_card in raw_cards]
-        for trip_id, raw_cards in snapshot.get("idea_cards", {}).items()
-        if trip_id in store.trips
-    }
     store.agent_undo = {key: deepcopy(value) for key, value in snapshot.get("agent_undo", {}).items() if key in store.trips}
-    store.tasks = _restore_tasks(snapshot.get("tasks", {}), store.trips)
+    # Legacy history is imported separately; normal restore never hydrates history.
+    store.tasks = {}
     store.display_jobs = {jid: deepcopy(job) for jid, job in snapshot.get('display_jobs', {}).items()
                           if job.get('trip_id') in store.trips}
 
-    from app.domain.itinerary.identity import plan_basis
-    from app.storage.legacy.workflow import normalize_workflow
-    for trip_id, trip in store.trips.items():
-        trip.workflow_state = normalize_workflow(
-            trip.workflow_state,
-            trip=trip,
-            trip_id=trip_id,
-            messages=store.messages.get(trip_id, []),
-            plan_basis=plan_basis(store.plans.get(trip_id)) if trip_id in store.plans else None,
-        )
     return _next_numeric_id(snapshot)
+
+
+def load_persisted_state(store, users):
+    """Shared startup coordinator for both State and compatibility DemoStore."""
+    snapshot = load_snapshot(store.db_path)
+    next_id = None
+    if snapshot:
+        if int(snapshot.get('schema_version', 1)) < CURRENT_SCHEMA_VERSION:
+            backup_database(store.db_path)
+        next_id = restore_state(store, snapshot, users)
+    initialize_task_history(store, snapshot, users)
+    return next_id
+
+
+def initialize_task_history(store, snapshot, users):
+    """Import legacy history once; failure leaves the old snapshot authoritative."""
+    from app.storage.task_repository import SQLiteTaskRepository
+    ensure_relational_schema(store.db_path)
+    store.task_repository = SQLiteTaskRepository(store.db_path)
+    if snapshot is None:
+        with sqlite3.connect(store.db_path) as connection:
+            if connection.execute('SELECT 1 FROM execution_tasks LIMIT 1').fetchone():
+                raise ValueError('任务历史存在但业务快照缺失，拒绝恢复孤儿任务')
+    if snapshot and int(snapshot.get('schema_version', 1)) < TASK_HISTORY_SCHEMA_VERSION:
+        imported = _restore_tasks(snapshot.get('tasks', {}), store.trips)
+        # A mixed/partially migrated database is not silently overwritten.
+        with sqlite3.connect(store.db_path) as connection:
+            if connection.execute('SELECT 1 FROM storage_migrations WHERE name = ?', ('task_history_v7',)).fetchone():
+                raise ValueError('任务历史迁移标记与旧快照矛盾')
+        for task in imported.values():
+            existing = store.task_repository.get(task['id'])
+            by_request = store.task_repository.find_request(task['trip_id'], task['request_id'])
+            if (existing is not None and existing != task) or (by_request is not None and by_request != task):
+                raise ValueError('旧任务历史与数据库记录冲突')
+        save_snapshot(store.db_path, serialize_state(store, users), initialize=False,
+                      task_upserts=imported.values(), migration=['task_history_v7', 'trip_model_v9', 'requirements_text_v10'])
+    elif snapshot and int(snapshot.get('schema_version', 1)) < CURRENT_SCHEMA_VERSION:
+        save_snapshot(store.db_path, serialize_state(store, users), initialize=False, migration=(['trip_model_v9', 'requirements_text_v10'] if int(snapshot.get('schema_version', 1)) < 9 else 'requirements_text_v10'))
+    store.tasks = {task['id']: task for task in store.task_repository.active()}
 
 
 def _restore_tasks(raw_tasks: Any, trips: dict[str, Trip]) -> dict[str, dict[str, Any]]:
@@ -372,7 +403,8 @@ def _restore_tasks(raw_tasks: Any, trips: dict[str, Trip]) -> dict[str, dict[str
         if not isinstance(task_id, str) or not isinstance(raw, dict):
             continue
         trip_id = raw.get('trip_id')
-        if trip_id not in trips or raw.get('id') != task_id:
+        if (trip_id not in trips or raw.get('id') != task_id
+                or not isinstance(raw.get('request_id'), str) or not raw['request_id']):
             continue
         task = deepcopy(raw)
         # The legacy strategy was removed; historical records migrate to the
@@ -391,26 +423,25 @@ def _user(raw: dict[str, Any]) -> User:
 
 
 def _trip(raw: dict[str, Any], legacy: bool = False) -> Trip:
+    from app.storage.model_migration import migrate_trip
+    raw = migrate_trip(raw)
     owner = raw.get("owner") or raw.get("initiator")
     if not isinstance(owner, dict):
         raise ValueError("Trip snapshot is missing its owner")
     return Trip(
         id=str(raw["id"]),
         destination=str(raw["destination"]),
-        date_range=str(raw["date_range"]),
-        budget=str(raw["budget"]),
-        style=str(raw["style"]),
-        note=str(raw.get("note", "")),
         owner=_user(owner),
         status=str(raw["status"]),
         last_activity=str(raw["last_activity"]),
         requirements=(
             TripRequirements(**raw["requirements"]) if isinstance(raw.get("requirements"), dict)
-            else initial_requirements(str(raw["budget"]), str(raw["style"]))
+            else TripRequirements()
         ),
         workflow_state=deepcopy(raw.get("workflow_state") or {}),
         mode=str(raw.get('mode') or 'city'),
         lodging=deepcopy(raw.get('lodging') or {}),
+        legacy_metadata=deepcopy(raw.get('legacy_metadata') or {}),
     )
 
 
@@ -527,25 +558,10 @@ def _plan(raw: dict[str, Any], legacy: bool = False) -> TripPlan:
         display_source_hash=str(raw.get("display_source_hash") or ""),
         display_status=str(raw.get("display_status") or "not_requested"),
         display_style=str(raw.get("display_style") or ""),
-        requirements_snapshot=deepcopy(raw.get("requirements_snapshot") or {}),
+        requirements_snapshot=deepcopy(raw.get("requirements_snapshot", {})),
         lodging_snapshot=deepcopy(raw["lodging_snapshot"]) if isinstance(raw.get("lodging_snapshot"), dict) else {},
-    )
-
-
-def _idea(raw: dict[str, Any], legacy: bool = False) -> IdeaCard:
-    author = str(raw.get("author", "Agent"))
-    if legacy:
-        author = "Agent" if author.lower() in {"agent", "ai", "旅行规划 agent"} else "你"
-    title = str(raw["title"])
-    body = str(raw["body"])
-    return IdeaCard(
-        id=str(raw["id"]),
-        kind=str(raw["kind"]),
-        title=title,
-        body=body,
-        author=author,
-        status=str(raw["status"]),
-        rotation=str(raw.get("rotation", "0deg")),
+        requirements_basis_complete=raw.get("requirements_basis_complete", True),
+        requirements_legacy_stale=raw.get("requirements_legacy_stale", False),
     )
 
 

@@ -90,12 +90,12 @@ def expected_plan():
         'requirements_revision': None, 'display': None, 'display_source_hash': '',
         'display_status': 'not_requested', 'display_style': '',
         'requirements_snapshot': {}, 'lodging_snapshot': {},
+        'requirements_basis_complete': True, 'requirements_legacy_stale': False,
     }
 
 
 def test_seed_factories_preserve_entire_demo_content():
     assert [asdict(row) for row in demo_data.seed_messages(USERS)] == expected_messages()
-    assert [asdict(row) for row in demo_data.seed_idea_cards(ROTATIONS)] == expected_ideas()
     assert asdict(demo_data.seed_plan()) == expected_plan()
 
 
@@ -106,10 +106,6 @@ def test_factories_make_fresh_nested_objects_on_every_call():
     messages[1].agent_card.bullets.append('changed')
     messages[1].agent_card.actions.clear()
     messages.pop()
-    ideas = demo_data.seed_idea_cards(ROTATIONS)
-    other_ideas = demo_data.seed_idea_cards(ROTATIONS)
-    assert all(left is not right for left, right in zip(ideas, other_ideas))
-    ideas.clear()
     plan = demo_data.seed_plan()
     other_plan = demo_data.seed_plan()
     assert plan is not other_plan
@@ -125,7 +121,6 @@ def test_factories_make_fresh_nested_objects_on_every_call():
     plan.requirements_snapshot['city'] = 'changed'
     plan.lodging_snapshot['name'] = 'changed'
     assert [asdict(row) for row in demo_data.seed_messages(USERS)] == expected_messages()
-    assert [asdict(row) for row in demo_data.seed_idea_cards(ROTATIONS)] == expected_ideas()
     assert asdict(demo_data.seed_plan()) == expected_plan()
 
 
@@ -140,16 +135,16 @@ def test_two_stores_do_not_share_mutable_demo_state():
     first.messages['trip-hangzhou'][1].agent_card.actions.clear()
     first.messages['trip-hangzhou'][0].execution_progress['steps'] = []
     first.messages['trip-hangzhou'].pop()
-    first.idea_cards['trip-hangzhou'].clear()
+    first.trips['trip-hangzhou'].requirements.text = ''
     first.plans['trip-hangzhou'].days[0].items[0].satisfies.clear()
     first.plans['trip-hangzhou'].days[0].items.clear()
     first.plans['trip-hangzhou'].preparation.clothing.append('changed')
     first.plans['trip-hangzhou'].requirements_snapshot['city'] = 'changed'
-    first.trips['trip-hangzhou'].requirements.must_visit.append('changed')
+    first.trips['trip-hangzhou'].requirements.lodging_address = 'changed'
     assert [asdict(row) for row in second.messages['trip-hangzhou']] == expected_messages()
-    assert [asdict(row) for row in second.idea_cards['trip-hangzhou']] == expected_ideas()
+    assert second.trips['trip-hangzhou'].requirements.text == '想去西湖，节奏轻松。'
     assert asdict(second.plans['trip-hangzhou']) == expected_plan()
-    assert second.trips['trip-hangzhou'].requirements.must_visit == []
+    assert second.trips['trip-hangzhou'].requirements.lodging_address == ''
 
 
 def test_seed_inputs_are_resolved_at_call_time(monkeypatch):
@@ -161,14 +156,11 @@ def test_seed_inputs_are_resolved_at_call_time(monkeypatch):
     assert messages[0].sender is replacement['u1']
     assert messages[1].sender is replacement['agent']
     rotations = ['a', 'b', 'c', 'd', 'e']
-    assert [row.rotation for row in demo_data.seed_idea_cards(rotations)] == rotations
     monkeypatch.setattr(store_module, 'USERS', replacement)
-    monkeypatch.setattr(store_module, 'IDEA_ROTATIONS', rotations)
     store = make_store(persistence_enabled=False)
     assert store.trips['trip-hangzhou'].owner is replacement['u1']
     assert [row.sender for row in store.messages['trip-hangzhou']] == [
         replacement['u1'], replacement['agent'], replacement['u1'], replacement['agent']]
-    assert [row.rotation for row in store.idea_cards['trip-hangzhou']] == rotations
 
 
 def test_restored_persisted_state_takes_precedence_over_demo_seeds(tmp_path, monkeypatch):
@@ -176,12 +168,12 @@ def test_restored_persisted_state_takes_precedence_over_demo_seeds(tmp_path, mon
     monkeypatch.setattr(store_module, 'USERS', dict(USERS))
     path = str(tmp_path / 'demo-state.sqlite3')
     original = make_store(db_path=path, persistence_enabled=True)
-    from app.storage.legacy.workflow import empty_workflow
-    original.trips['trip-hangzhou'].workflow_state = empty_workflow()
+    from app.workflow.counters import normalize_workflow as empty_workflow
+    original.trips['trip-hangzhou'].workflow_state = empty_workflow({})
     original.trips['trip-hangzhou'].destination = '保留的目的地'
     original.messages['trip-hangzhou'][0].body = '保留的消息'
     original.messages['trip-hangzhou'].pop()
-    original.idea_cards['trip-hangzhou'].pop()
+    original.trips['trip-hangzhou'].requirements.text = '保留需求'
     original.plans['trip-hangzhou'].title = '保留的行程'
     original.plans['trip-hangzhou'].days.clear()
     original.plans['trip-hangzhou'].text = '保留的正文'
@@ -189,11 +181,11 @@ def test_restored_persisted_state_takes_precedence_over_demo_seeds(tmp_path, mon
     expected = {
         'trip': asdict(original.trips['trip-hangzhou']),
         'messages': [asdict(row) for row in original.messages['trip-hangzhou']],
-        'ideas': [asdict(row) for row in original.idea_cards['trip-hangzhou']],
+        'ideas': original.trips['trip-hangzhou'].requirements.text,
         'plan': asdict(original.plans['trip-hangzhou']),
     }
     restored = make_store(db_path=path, persistence_enabled=True)
     assert asdict(restored.trips['trip-hangzhou']) == expected['trip']
     assert [asdict(row) for row in restored.messages['trip-hangzhou']] == expected['messages']
-    assert [asdict(row) for row in restored.idea_cards['trip-hangzhou']] == expected['ideas']
+    assert restored.trips['trip-hangzhou'].requirements.text == expected['ideas']
     assert asdict(restored.plans['trip-hangzhou']) == expected['plan']

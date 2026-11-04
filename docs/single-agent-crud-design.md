@@ -1,5 +1,7 @@
 # TravelAssistant 单 Agent 增删改查方案
 
+> 源码路径更新：旧 Agent 入口与重复实现已删除。当前入口是 `backend/app/agents/entrypoints.py`，业务循环为 `travel_runtime.py`，角色为 `roles.py`，上下文投影为 `inputs/context.py`；下文历史文件名不再代表可导入模块。
+
 - 整理日期：2026-10-28
 - 状态：已直接替换现有框架并通过 266 项离线自动化回归（2026-10-28）；尚未进行真实模型/地图生成质量验收。
 - 验证范围：含伪模型到真实执行循环、原子提交、独立临时 SQLite 重载及隔离 Web/API 测试；不使用正式业务库，不证明现实路线可执行。
@@ -51,7 +53,7 @@
 4. 不新增 TurnSession 或通用插件体系。
 5. 复用现有存储、查询工具和必要校验，不把简化理解为取消安全边界。
 
-之前的 `agent-framework-proposal.html` 是方案演进过程中的多能力提案，不再作为最新推荐架构。`v3-agent-architecture-pi-reference.md` 保留为研究背景；如其表述与本文件的最新产品取舍不同，以本文件为本次讨论的结论，不自动修改历史研究稿。
+`v3-agent-architecture-pi-reference.md` 保留为研究背景；如其表述与本文件的最新产品取舍不同，以本文件为本次讨论的结论，不自动修改历史研究稿。
 
 ## 3. 借鉴 Pi，但不照搬 Pi
 
@@ -569,9 +571,7 @@ Schema 只能验证结构，不保证地点存在、预算足够、餐厅营业�
 
 ## 18. 关联资料
 
-- [当前 run() 逐块解读](task-runtime-run-explained.md)：学习当前代码，不能视为新框架已实施。
-- [Pi 参考研究稿](v3-agent-architecture-pi-reference.md)：架构研究背景。
-- [此前的 HTML 框架提案](agent-framework-proposal.html)：保留方案演进记录，其中多能力/TurnSession 设计已不再推荐。
+- [Pi 参考研究稿](archive/v3-agent-architecture-pi-reference.md)：架构研究背景。
 - [Pi Agent Core 官方文档](https://github.com/badlogic/pi-mono/blob/main/packages/agent/README.md)。
 - [Pi 官方项目](https://github.com/earendil-works/pi)。
 

@@ -2,7 +2,7 @@
 
 > 本文根据当前仓库代码、提示词、测试数据和项目文档整理。面试回答应以当前真实实现为准；没有实现的能力要明确说“当前版本尚未实现，计划这样改”，不要把设计设想说成线上事实。
 >
-> 重点代码：[`app/agents/task_runtime.py`](../../app/agents/task_runtime.py)、[`app/agents/agent_runtime.py`](../../app/agents/agent_runtime.py)、[`app/workflow/turn_workspace.py`](../../app/workflow/turn_workspace.py)、[`app/workflow/turn_commit.py`](../../app/workflow/turn_commit.py)、[`app/workflow/tasks.py`](../../app/workflow/tasks.py)。
+> 当前重点代码：[`backend/app/agents/travel_runtime.py`](../../backend/app/agents/travel_runtime.py)、[`backend/app/agents/entrypoints.py`](../../backend/app/agents/entrypoints.py)、[`backend/app/workflow/turn_commit.py`](../../backend/app/workflow/turn_commit.py)、[`backend/app/workflow/tasks.py`](../../backend/app/workflow/tasks.py)。旧 task runtime 已从源码删除，历史讨论以 Git 为准。
 
 ## 一、先记住项目真实口径
 

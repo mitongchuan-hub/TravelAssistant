@@ -7,9 +7,9 @@ import re
 from threading import RLock
 from contextlib import contextmanager
 from uuid import uuid4
-from app.domain.models import AgentAction, AgentCard, IdeaCard, Message, Trip, TripPlan, User
-from app.domain.requirements import initial_requirements, update_requirements
-from app.storage.state import next_id, IDEA_WALL_LIMIT, IDEA_ROTATIONS
+from app.domain.models import AgentAction, AgentCard, Message, Trip, TripPlan, User
+from app.domain.requirements import update_requirements
+from app.storage.state import next_id
 
 def _date_range_bounds(value: str) -> tuple[date, date] | None:
     text = (value or '').strip()
@@ -54,10 +54,9 @@ def _date_coverage_note(trip: Trip, plan: TripPlan) -> str:
     return f'还有 {len(missing)} 天未安排'
 
 def trip_metrics(self, trip_id: str) -> dict[str, int | str]:
-    cards = self.idea_cards[trip_id]
     plan = self.plans[trip_id]
     display_days = (plan.display or {}).get('days', [])
     plan_items = sum((len(day['items']) for day in display_days)) if display_days else sum((len(day.items) for day in plan.days))
-    basis = plan.requirements_snapshot
+    basis = plan.requirements_snapshot if isinstance(plan.requirements_snapshot, dict) else {}
     plan_date_range = f"{basis['start_date']} — {basis['end_date']}" if basis.get('start_date') and basis.get('end_date') else self.trips[trip_id].date_range
-    return {'message_count': len(self.messages[trip_id]), 'idea_count': len(cards), 'constraint_count': sum((card.kind != '待归类' for card in cards)), 'reminder_count': sum((card.kind == '禁忌' or card.status == '冲突提醒' for card in cards)), 'plan_day_count': len(display_days) or len((plan.display or {}).get('dates', [])) or len(plan.days), 'plan_date_range': plan_date_range, 'plan_item_count': plan_items, 'date_coverage_note': _date_coverage_note(self.trips[trip_id], plan)}
+    return {'message_count': len(self.messages[trip_id]), 'plan_day_count': len(display_days) or len((plan.display or {}).get('dates', [])) or len(plan.days), 'plan_date_range': plan_date_range, 'plan_item_count': plan_items, 'date_coverage_note': _date_coverage_note(self.trips[trip_id], plan)}

@@ -24,10 +24,10 @@ def test_execution_assembly_is_detached_and_preserves_metadata():
     payload = {'item_id': 'item-old'}
     target = {'title': 'saved title', 'day_index': 0, 'item_index': 0}
     execution = build_execution_context(trip=trip, plan=plan, messages=messages,
-        idea_cards=ideas, metrics=metrics, current_date='2030-01-02',
+         metrics=metrics, current_date='2030-01-02',
         entry='main', payload=payload, display_target=target)
     assert [f.name for f in fields(TaskExecutionContext)] == [
-        'trip', 'messages', 'idea_cards', 'plan', 'metrics', 'current_date',
+        'trip', 'messages', 'plan', 'metrics', 'current_date',
         'entry', 'scope', 'target_item_id', 'display_target']
     assert [m.id for m in execution.messages] == ['sent']
     assert (execution.current_date, execution.entry, execution.scope, execution.target_item_id) == (
@@ -36,7 +36,6 @@ def test_execution_assembly_is_detached_and_preserves_metadata():
     execution.trip.requirements['revision'] = 9
     execution.plan.display['days'].append('changed')
     execution.messages[0].body = 'changed'
-    execution.idea_cards[0]['body'].append('changed')
     execution.metrics['nested']['count'] = 9
     execution.display_target['title'] = 'changed'
     assert trip.requirements == {'revision': 3}
@@ -54,7 +53,7 @@ def test_execution_assembly_is_detached_and_preserves_metadata():
 ])
 def test_execution_assembly_scope_matches_legacy(payload, target, scope, item):
     from app.agents.inputs.execution import build_execution_context
-    result = build_execution_context(trip=None, plan=None, messages=[], idea_cards=[],
+    result = build_execution_context(trip=None, plan=None, messages=[],
         metrics={}, current_date='2030-01-02', entry='main', payload=payload,
         display_target=target)
     assert (result.scope, result.target_item_id) == (scope, item)
@@ -68,7 +67,7 @@ def test_execution_assembly_scope_matches_legacy(payload, target, scope, item):
 def test_context_keeps_validation_and_positional_order(kwargs, error):
     from app.agents.inputs.execution import TaskExecutionContext
     with pytest.raises(ValueError, match=error):
-        TaskExecutionContext(None, [], [], None, {}, '2030-01-02', **kwargs)
+        TaskExecutionContext(None, [],  None, {}, '2030-01-02', **kwargs)
 
 
 @pytest.fixture
@@ -126,7 +125,7 @@ def test_execute_turn_assembles_under_lock_and_freezes_target(store, monkeypatch
     monkeypatch.setattr(entrypoints, 'generate_task_result', generate)
     monkeypatch.setattr(store, 'record_task_progress', lambda *args: captured.setdefault('progress', args))
     receipt = store.execute_turn(task['id'])
-    assert receipt.committed and store.tasks[task['id']]['status'] == 'succeeded'
+    assert receipt.committed and store.get_task(task['id'])['status'] == 'succeeded'
     assert captured.get('resolved', False)
     assert 'progress' in captured
 

@@ -6,7 +6,7 @@ from fastapi import HTTPException, Request
 from app.auth import AuthStore, SESSION_COOKIE_NAME
 from app.domain.models import User
 from app.services.city_outings import LodgingChoices
-from app.storage.store import IDEA_WALL_LIMIT, USERS, store
+from app.storage.store import USERS, store
 
 
 # Compatibility facade for existing routers. Lifespan can replace these objects

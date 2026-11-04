@@ -9,6 +9,7 @@ from app.api import dependencies as deps
 from app.api import schemas, serializers
 from app.domain.models import AgentAction, AgentCard, Message, Trip, TripDay, TripItem, TripPlan, User
 from app.storage.store import DemoStore
+from app.domain.summaries import legacy_summaries
 
 
 USER = User('public-user', '旅行者', '旅')
@@ -20,28 +21,22 @@ def message(**kwargs):
 
 
 def test_user_trip_and_empty_lodging_exact_public_shapes():
-    trip = Trip('trip-1', '杭州', '未定', '1500', '慢游', '备注', USER,
-                'historical-status', '刚刚', workflow_state={'private': 'secret'})
+    trip = Trip('trip-1', '杭州', USER,
+                'historical-status', '刚刚', legacy_metadata=legacy_summaries('未定'), workflow_state={'private': 'secret'})
     assert serializers.user_to_dict(USER) == PUBLIC_USER
     assert serializers.trip_to_dict(trip) == {
-        'id': 'trip-1', 'destination': '杭州', 'date_range': '未定', 'budget': '1500',
-        'style': '慢游', 'note': '备注', 'status': 'historical-status',
+        'id': 'trip-1', 'destination': '杭州', 'date_range': '未定', 'status': 'historical-status',
         'last_activity': '刚刚', 'mode': 'city', 'owner': PUBLIC_USER,
         'requirements': {
-            'start_date': '', 'end_date': '', 'arrival_time': '', 'departure_time': '',
-            'city': '', 'arrival_location': '', 'departure_location': '',
-            'day_count': None, 'travelers': None, 'budget_amount': '',
-            'budget_scope': 'unspecified', 'budget_coverage': '',
-            'transport_mode': 'unspecified', 'must_visit': [], 'avoid': [],
-            'dietary': [], 'pace': '', 'lodging_address': '', 'outing_start_time': '',
-            'outing_end_time': '', 'revision': 0,
+            'start_date': '', 'end_date': '', 'city': '',
+            'day_count': None, 'transport_mode': 'unspecified', 'lodging_address': '', 'text': '', 'revision': 0,
         },
         'lodging': {},
     }
     public = serializers.trip_to_dict(trip)
-    public['requirements']['must_visit'].append('changed')
+    public['requirements']['lodging_address'] = 'changed'
     public['owner']['name'] = 'changed'
-    assert trip.requirements.must_visit == [] and trip.owner.name == '旅行者'
+    assert trip.requirements.lodging_address == '' and trip.owner.name == '旅行者'
 
 
 def test_place_whitelist_preserves_partial_data_and_copies_values():
@@ -174,10 +169,10 @@ def test_workspace_top_level_shapes_and_detached_metrics_display_state(monkeypat
     monkeypatch.setattr(deps, 'store', store)
     monkeypatch.setattr(deps, 'get_owned_trip_or_404', lambda trip_id, user: store.trips[trip_id])
     public = serializers.workspace_snapshot('trip-hangzhou', USER)
-    assert set(public) == {'trip', 'plan', 'messages', 'tasks', 'idea_cards', 'wall_cards', 'metrics', 'display_state', 'undo'}
+    assert set(public) == {'trip', 'plan', 'messages', 'tasks', 'metrics', 'display_state', 'undo'}
     assert public['tasks'] == []
-    assert public['idea_cards'] == [asdict(row) for row in store.idea_cards['trip-hangzhou']]
-    assert public['wall_cards'] == public['idea_cards']
+    assert public['trip']['requirements']['text'] == store.trips['trip-hangzhou'].requirements.text
+    assert 'idea_cards' not in public and 'wall_cards' not in public
     assert set(public['metrics']) == schemas.MetricsDTO.__required_keys__
     assert set(public['display_state']) == schemas.DisplayStateDTO.__required_keys__
     assert isinstance(public['display_state']['requirements_revision'], int)
@@ -187,17 +182,15 @@ def test_workspace_top_level_shapes_and_detached_metrics_display_state(monkeypat
         assert isinstance(public['display_state'][key], str)
     public['metrics']['message_count'] = -1
     public['display_state']['display_status'] = 'changed'
-    public['idea_cards'][0]['title'] = 'changed'
     assert store.trip_metrics('trip-hangzhou')['message_count'] >= 0
     assert store.get_display_state('trip-hangzhou')['display_status'] != 'changed'
-    assert store.idea_cards['trip-hangzhou'][0].title != 'changed'
 
 
 def test_dto_static_metadata_models_optional_projection_and_nullable_legacy_fields():
     for name in ('UserDTO', 'SessionDTO', 'RequirementsDTO', 'PlaceDTO', 'AgentActionDTO',
                  'AgentCardDTO', 'ProgressStepDTO', 'ProgressDTO', 'MealDTO', 'RouteDTO',
                  'PlanItemDTO', 'PlanDayDTO', 'PreparationDTO', 'PlanDTO', 'TaskDTO',
-                 'IdeaDTO', 'MetricsDTO', 'DisplayStateDTO', 'TripDTO', 'MessageDTO', 'WorkspaceDTO'):
+                 'MetricsDTO', 'DisplayStateDTO', 'TripDTO', 'MessageDTO', 'WorkspaceDTO'):
         assert is_typeddict(getattr(schemas, name)), name
     for dto in (schemas.PlaceDTO, schemas.ProgressDTO, schemas.ProgressStepDTO):
         assert dto.__required_keys__ == frozenset()

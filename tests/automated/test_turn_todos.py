@@ -15,12 +15,12 @@ from app.domain.models import Message, Trip, TripPlan, User
 
 def make_runtime(request, **kwargs):
     owner = User('user', 'User', 'U')
-    trip = Trip('trip', '北京市', '2026-10-24', '', '', '', owner, '', '')
+    trip = Trip('trip', '北京市', owner, '', '')
     plan = TripPlan('plan', '', '未生成')
     message = Message('message', owner, 'user', '记下晚上夜骑这个想法', 'now')
     context = RequestContext('trip', owner.id, 'execution', None, 'request', message.id,
         message.body, 'main', 'task_execution', 0, plan_basis(plan), 0, 0, 0)
-    execution = TaskExecutionContext(trip, [message], [], plan, {}, '2026-10-23')
+    execution = TaskExecutionContext(trip, [message],  plan, {}, '2026-10-23')
     return TaskExecutionRuntime(None, 'test', context, execution, request=request, **kwargs)
 
 
@@ -35,8 +35,7 @@ def response(content=None, calls=(), finish_reason='stop'):
 
 
 def changes():
-    return {'user_quote': '记下晚上夜骑这个想法', 'ideas': [
-        {'action': 'create', 'kind': '待归类', 'title': '夜骑', 'body': '晚上夜骑'}]}
+    return {'user_quote': '记下晚上夜骑这个想法', 'requirements_text': '晚上夜骑'}
 
 
 def test_terminal_submit_is_one_model_call_and_not_a_store_mutation():
@@ -100,7 +99,7 @@ def test_parallel_submission_batch_is_never_partially_executed():
     proposal = runtime.run()
     assert not proposal.failed
     assert not proposal.changes
-    assert runtime.execution_context.idea_cards == []
+    assert runtime.execution_context.trip.requirements.text == ''
 
 
 @pytest.mark.parametrize('failure', ['timeout', 'truncated', 'cancelled', 'tool_budget', 'model_budget'])
@@ -134,4 +133,4 @@ def test_step_limit_does_not_convert_read_results_into_a_write():
     proposal = runtime.run()
     assert proposal.failed
     assert not proposal.changes
-    assert runtime.execution_context.idea_cards == []
+    assert runtime.execution_context.trip.requirements.text == ''

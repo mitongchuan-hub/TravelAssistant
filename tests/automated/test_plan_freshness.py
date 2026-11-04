@@ -33,8 +33,8 @@ def place(**changes):
 
 
 def itinerary():
-    requirements = TripRequirements(city='杭州', day_count=1, travelers=1, revision=2)
-    trip = Trip('trip', '杭州', '', '', '', '', User('owner', '测试', '测'), '', '',
+    requirements = TripRequirements(city='杭州', day_count=1, revision=2)
+    trip = Trip('trip', '杭州', User('owner', '测试', '测'), '', '',
                 requirements=requirements, lodging=place())
     plan = TripPlan('plan', '方案', '草案', text='测试住处\n湖滨公园\n返回测试住处。',
                     requirements_revision=2, requirements_snapshot=asdict(requirements),
@@ -82,7 +82,7 @@ def test_exact_freshness_matrix_without_mutation(case, status, message, missing)
     if case == 'travel':
         trip.mode, trip.lodging, plan.lodging_snapshot = 'travel', {}, {}
     elif case == 'snapshot_missing_key':
-        plan.requirements_snapshot.pop('pace')
+        plan.requirements_snapshot.pop('transport_mode')
     elif case == 'snapshot_extra_key':
         plan.requirements_snapshot['extra'] = ''
     elif case == 'snapshot_not_dict':
@@ -97,7 +97,7 @@ def test_exact_freshness_matrix_without_mutation(case, status, message, missing)
         plan.requirements_snapshot['revision'] = {'snapshot_revision_bool': True,
             'snapshot_revision_float': 2.0, 'snapshot_revision_mismatch': 1}[case]
     elif case in {'snapshot_changed', 'settings_and_missing'}:
-        trip.requirements.pace = '慢'
+        trip.requirements.transport_mode = 'driving'
         if case == 'settings_and_missing':
             plan.lodging_snapshot = {}
     elif case == 'snapshot_equal_bool':
@@ -105,7 +105,7 @@ def test_exact_freshness_matrix_without_mutation(case, status, message, missing)
     elif case == 'snapshot_equal_float':
         plan.requirements_snapshot['day_count'] = 1.0
     elif case == 'snapshot_equal_tuple':
-        plan.requirements_snapshot['must_visit'] = ()
+        plan.requirements_snapshot['lodging_address'] = ()
     elif case in {'saved_missing', 'incomplete_and_missing'}:
         plan.lodging_snapshot = {}
         if case == 'incomplete_and_missing':

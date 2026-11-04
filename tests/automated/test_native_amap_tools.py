@@ -72,9 +72,10 @@ def test_native_detail_evidence_can_save_lodging_without_model_coordinates(monke
     from app.agents.travel_runtime import TaskExecutionRuntime
     store = DemoStore(persistence_enabled=False, display_worker_enabled=False)
     key = 'trip-hangzhou'
-    context = store.capture_request_context(key, body='我住测试酒店西湖店')
+    from tests.automated.task_fixtures import running_context
+    context = running_context(store, key, '我住测试酒店西湖店')
     trip = deepcopy(store.trips[key])
-    execution = TaskExecutionContext(trip, [], deepcopy(store.idea_cards[key]),
+    execution = TaskExecutionContext(trip, [],
                                      deepcopy(store.plans[key]), {}, '2030-01-01')
     runner = TaskExecutionRuntime(None, 'offline', context, execution, Script('unused'))
     raw = {'id': 'hotel-test', 'name': '测试酒店西湖店', 'address': '测试路1号',
@@ -84,12 +85,12 @@ def test_native_detail_evidence_can_save_lodging_without_model_coordinates(monke
     monkeypatch.setattr(amap_mcp, 'call', call)
     runner._query('maps_text_search', {'keywords': '测试酒店西湖店', 'city': '杭州'})
     assert runner._query('maps_search_detail', {'id': 'hotel-test'}) == raw
-    payload = prepare_changes({'user_quote': context.body, 'lodging': {'poi_id': 'hotel-test'}},
-                              context, execution, runner.evidence)
-    receipt = store.commit_turn(context, ExecutionResult(changes=payload))
-    assert receipt.committed
-    assert store.trips[key].lodging['longitude'] == 120.1
-    assert store.trips[key].lodging['city'] == '杭州'
+    assert runner.catalog['hotel-test']['longitude'] == 120.1
+    before = deepcopy(store.trips[key].lodging)
+    with pytest.raises(ValueError):
+        prepare_changes({'user_quote': context.body, 'lodging': {'poi_id': 'hotel-test'}},
+                        context, execution, runner.evidence)
+    assert store.trips[key].lodging == before
 
 
 def test_wrong_transit_city_cannot_reach_provider(monkeypatch):

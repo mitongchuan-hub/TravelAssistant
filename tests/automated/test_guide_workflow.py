@@ -28,7 +28,7 @@ def store(monkeypatch):
 def runtime(store, request, *, body='把攻略改成简洁手账风'):
     context = store.capture_request_context(TRIP, body=body)
     execution = TaskExecutionContext(deepcopy(store.trips[TRIP]), deepcopy(store.messages[TRIP]),
-        [], deepcopy(store.plans[TRIP]), store.trip_metrics(TRIP), '2026-10-27')
+         deepcopy(store.plans[TRIP]), store.trip_metrics(TRIP), '2026-10-27')
     return TaskExecutionRuntime(None, 'test', context, execution, request=request)
 
 

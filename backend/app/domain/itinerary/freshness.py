@@ -85,16 +85,18 @@ def plan_freshness(trip: Trip, plan: TripPlan | None) -> dict:
     snapshot = plan.requirements_snapshot
     revision = plan.requirements_revision
     current_revision = trip.requirements.revision
-    complete = (isinstance(snapshot, dict) and snapshot.keys() == current.keys()
+    complete = (getattr(plan, 'requirements_basis_complete', True) and isinstance(snapshot, dict) and snapshot.keys() == current.keys()
                 and isinstance(revision, int) and not isinstance(revision, bool) and revision >= 0
                 and isinstance(current_revision, int) and not isinstance(current_revision, bool)
                 and type(snapshot.get('revision')) is int and snapshot['revision'] == revision)
     saved = saved_lodging(plan) if trip.mode == 'city' else None
     missing_lodging = trip.mode == 'city' and saved is None
     lodging_note = ' 原方案住宿依据不完整，不使用当前住宿补齐原路线。' if missing_lodging else ''
-    if not complete:
+    if getattr(plan, 'requirements_legacy_stale', False):
+        status, message = 'stale', '旧方案已存在需求冲突，以下保留历史依据，请重新生成方案。'
+    elif not complete:
         status, message = 'unknown', '原方案的需求版本或需求快照不完整，无法确认是否仍适用。'
-    elif (revision != current_revision or snapshot != current
+    elif (getattr(plan, 'requirements_legacy_stale', False) or revision != current_revision or snapshot != current
           or any(type(snapshot[key]) is not type(value) for key, value in current.items())):
         status, message = 'stale', '游玩设置或旅行需求已变化，以下为原方案的历史依据，请重新生成方案。'
     elif trip.mode == 'city':

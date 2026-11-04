@@ -26,22 +26,6 @@
   --violet: var(--ocean);
   --violet-soft: var(--surface-accent);
 
-  --idea-place-bg: var(--ocean);
-  --idea-place-border: var(--line);
-  --idea-place-label: var(--on-action);
-  --idea-budget-bg: var(--fog);
-  --idea-budget-border: var(--line);
-  --idea-budget-label: var(--navy);
-  --idea-pace-bg: var(--mist);
-  --idea-pace-border: var(--line);
-  --idea-pace-label: var(--navy);
-  --idea-taboo-bg: var(--surface-accent);
-  --idea-taboo-border: var(--line);
-  --idea-taboo-label: var(--navy);
-  --idea-pending-bg: var(--surface);
-  --idea-pending-border: var(--line);
-  --idea-pending-label: var(--muted);
-
   --shadow-card: 0 8px 24px rgb(17 45 78 / 7%);
   --shadow-soft: 0 3px 10px rgb(17 45 78 / 5%);
 }
@@ -80,7 +64,6 @@ input,
 textarea,
 .login-card input,
 .chat-screen .composer input,
-.wall-quick-add input,
 .revision-form textarea {
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -98,7 +81,6 @@ input:focus,
 textarea:focus,
 .login-card input:focus,
 .chat-screen .composer input:focus,
-.wall-quick-add input:focus,
 .revision-form textarea:focus {
   border-color: var(--ocean);
   box-shadow: 0 0 0 3px rgb(63 114 175 / 20%);
@@ -113,7 +95,6 @@ summary:focus-visible {
 
 .bottom-nav a:focus-visible,
 .generate-plan:focus-visible,
-.wall-quick-add button:focus-visible,
 .composer button:focus-visible,
 .card-actions a:focus-visible,
 .timeline-item button:focus-visible,
@@ -131,8 +112,7 @@ summary:focus-visible {
 .timeline-item button,
 .generate-plan,
 .card-actions a,
-.chat-screen .composer button,
-.wall-quick-add button {
+.chat-screen .composer button {
   border: 1px solid transparent;
   border-radius: 10px;
   background: var(--ocean);
@@ -408,8 +388,7 @@ blockquote,
   color: inherit;
 }
 
-.chat-screen .chat-dock,
-.wall-quick-add {
+.chat-screen .chat-dock {
   border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: var(--shadow-soft);
@@ -431,98 +410,13 @@ blockquote,
 }
 
 /* Idea wall */
-.idea-wall-canvas {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: none;
-}
-
-.idea-wall-legend span {
-  border-color: var(--line);
-  box-shadow: none;
-}
-
-.idea-wall-legend .legend-place {
-  color: var(--idea-place-label);
-}
-
-.idea-wall-legend .legend-budget {
-  color: var(--idea-budget-label);
-}
-
-.idea-wall-legend .legend-pace {
-  color: var(--idea-pace-label);
-}
-
-.idea-wall-legend .legend-taboo {
-  color: var(--idea-taboo-label);
-}
-
-.travel-route path {
-  stroke: var(--ocean);
-  opacity: .3;
-}
-
-.floating-idea {
-  border-width: 1px;
-  border-radius: 11px;
-  color: var(--idea-label);
-  box-shadow: 0 5px 10px rgb(17 45 78 / 5%);
-}
-
-.floating-idea:active {
-  box-shadow: var(--shadow-soft);
-}
-
-.floating-idea span {
-  color: inherit;
-}
-
-.floating-idea span::before {
-  border-color: currentColor;
-}
 
 .sheet-scrim {
   background: rgb(17 45 78 / 35%);
 }
 
-.idea-detail-panel {
-  border: 1px solid var(--line);
-  border-bottom: 0;
-  background: var(--surface);
-  box-shadow: 0 -8px 30px rgb(17 45 78 / 10%);
-}
-
 .sheet-handle {
   background: var(--mist);
-}
-
-.idea-detail-heading span,
-.idea-detail-statusbar strong,
-.idea-detail-statusbar span {
-  border-color: transparent;
-  background: var(--mist);
-  color: var(--ink);
-}
-
-.idea-detail-heading button {
-  border-color: transparent;
-  background: var(--ocean);
-  color: var(--on-action);
-  box-shadow: none;
-}
-
-.idea-detail-panel p {
-  color: var(--muted);
-}
-
-.idea-detail-panel dd {
-  color: var(--ink);
-}
-
-.idea-detail-panel dl > div {
-  border-color: var(--line);
 }
 
 /* Itinerary */

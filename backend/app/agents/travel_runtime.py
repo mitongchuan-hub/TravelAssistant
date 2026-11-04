@@ -26,7 +26,7 @@ from app.services.maps.evidence import ROUTE_TOOLS, PLACE_TOOLS, evidence_kind, 
 from app.services.maps.places import normalize_pois
 from app.services.maps.routes import normalize_route
 from app.agents.tools import registry as tools
-from app.storage.legacy.workflow import normalize_workflow
+from app.workflow.counters import normalize_workflow
 
 
 _ROUTE_DETAIL_HINTS = ('公交', '地铁', '公共交通', '线路', '换乘', '乘车', '车站', '站点', '怎么去')

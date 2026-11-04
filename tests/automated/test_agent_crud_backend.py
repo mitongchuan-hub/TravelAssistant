@@ -31,7 +31,7 @@ def test_delete_trip_cleans_model_runs_and_rejects_late_model_log(tmp_path):
         assert connection.execute('SELECT COUNT(*) FROM trips WHERE id=?', (trip,)).fetchone()[0] == 0
     restored = DemoStore(db_path=str(database), persistence_enabled=True, display_worker_enabled=False)
     assert trip not in restored.trips
-    assert trip not in restored.messages and trip not in restored.plans and trip not in restored.idea_cards
+    assert trip not in restored.messages and trip not in restored.plans and trip not in restored.trips
 
 
 def test_agent_run_existence_check_holds_immediate_write_transaction(monkeypatch, tmp_path):
@@ -78,7 +78,7 @@ def store():
 def execution(store):
     key = 'trip-hangzhou'
     return SimpleNamespace(trip=deepcopy(store.trips[key]), plan=deepcopy(store.plans[key]),
-                           idea_cards=deepcopy(store.idea_cards[key]), display_target=None)
+                           display_target=None)
 
 
 def proposal(store, body, args, *, task=True, kind='chat'):
@@ -86,32 +86,31 @@ def proposal(store, body, args, *, task=True, kind='chat'):
     if task:
         # Exercise the sealed transaction through the only new task kind.
         payload = {'feedback': body} if kind == 'revision' else {'body': body}
-        row, _ = store.submit_task(key, kind, payload, 'request-' + str(len(store.tasks)))
+        row, _ = store.submit_task(key, kind, payload, __import__('uuid').uuid4().hex)
         store.tasks[row['id']]['status'] = 'running'
         context = store.capture_request_context(key, row['id'])
     else:
-        context = store.capture_request_context(key, body=body,
-                                                entry='main' if kind == 'chat' else 'revision')
+        from tests.automated.task_fixtures import running_context
+        context = running_context(store, key, body)
     payload = prepare_changes({'user_quote': body, **args}, context, execution(store), [])
     return context, ExecutionResult(changes=payload)
 
 
 @pytest.mark.parametrize('task', [False, True])
 def test_normal_chat_commits_authorized_changes_atomically(store, task):
-    context, candidate = proposal(store, '请记下我想去西湖，必去地点添加西湖', {
-        'requirements_patch': {'must_visit': {'add': ['西湖']}},
-        'ideas': [{'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '我想去西湖'}],
+    context, candidate = proposal(store, '请记下我想去西湖，游玩天数改为2天', {
+        'requirements_text': '我想去西湖',
     }, task=task, kind='chat')
     assert context.entry == 'main'
     assert candidate.changes is not None
-    before = len(store.idea_cards[context.trip_id])
+    before = len(store.trips[context.trip_id].requirements.text)
     receipt = store.commit_turn(context, candidate)
     assert receipt.committed
-    assert store.trips[context.trip_id].requirements.must_visit == ['西湖']
-    assert len(store.idea_cards[context.trip_id]) == before + 1
+    assert store.trips[context.trip_id].requirements.day_count is None
+    assert store.trips[context.trip_id].requirements.text == '我想去西湖'
 
 
-@pytest.mark.parametrize('body', ['你好', '必去地点添加西湖，记下晚上夜骑，并重新规划行程'])
+@pytest.mark.parametrize('body', ['你好', '游玩天数改为2天，记下晚上夜骑，并重新规划行程'])
 def test_normal_chat_text_commit_preserves_business_state_and_never_triggers_display(store, monkeypatch, body):
     key = 'trip-hangzhou'
     row, _ = store.submit_task(key, 'chat', {'body': body}, 'readonly-chat')
@@ -119,7 +118,7 @@ def test_normal_chat_text_commit_preserves_business_state_and_never_triggers_dis
     context = store.capture_request_context(key, row['id'])
     assert context.entry == 'main'
     before = deepcopy((store.trips[key].requirements, store.plans[key],
-                       store.idea_cards[key], store.display_jobs))
+                       store.trips[key].requirements.text, store.display_jobs))
     message_ids = [message.id for message in store.messages[key]]
     # Fail even if a staged Store attempts display work, with display enabled.
     monkeypatch.setattr(DemoStore, 'display_enabled', lambda self: True)
@@ -137,34 +136,33 @@ def test_normal_chat_text_commit_preserves_business_state_and_never_triggers_dis
     assert receipt.accepted_artifact_ids == ()
     assert receipt.task_status == 'succeeded'
     assert (store.trips[key].requirements, store.plans[key],
-            store.idea_cards[key], store.display_jobs) == before
+            store.trips[key].requirements.text, store.display_jobs) == before
     assert [message.id for message in store.messages[key]] == message_ids
     reply = next(message for message in store.messages[key] if message.id == receipt.message_id)
     assert reply.id == row['thinking_id']
     assert reply.body == answer
     assert reply.status == 'sent'
-    assert store.tasks[row['id']]['status'] == 'succeeded'
-    assert store.tasks[row['id']]['committed_effect_kinds'] == []
+    assert store.get_task(row['id'])['status'] == 'succeeded'
+    assert store.get_task(row['id'])['committed_effect_kinds'] == []
     assert store.commit_turn(context, candidate) == receipt
 
 
 def test_sparse_requirement_and_idea_are_one_commit(store):
-    context, candidate = proposal(store, '请记下我想去西湖，必去地点添加西湖', {
-        'requirements_patch': {'must_visit': {'add': ['西湖']}},
-        'ideas': [{'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '我想去西湖'}],
+    context, candidate = proposal(store, '请记下我想去西湖，游玩天数改为2天', {
+        'requirements_text': '我想去西湖',
     })
-    before = len(store.idea_cards[context.trip_id])
+    before = len(store.trips[context.trip_id].requirements.text)
     receipt = store.commit_turn(context, candidate)
     assert receipt.committed
-    assert store.trips[context.trip_id].requirements.must_visit == ['西湖']
-    assert len(store.idea_cards[context.trip_id]) == before + 1
-    assert store.tasks[context.execution_task_id]['committed_effect_kinds'] == ['requirements', 'ideas']
+    assert store.trips[context.trip_id].requirements.day_count is None
+    assert store.trips[context.trip_id].requirements.text == '我想去西湖'
+    assert store.get_task(context.execution_task_id)['committed_effect_kinds'] == ['requirements']
     assert store.commit_turn(context, candidate) == receipt
 
 
 def test_same_request_rejects_different_digest(store):
     context, candidate = proposal(store, '请记下我想去西湖', {
-        'ideas': [{'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '我想去西湖'}]})
+        'requirements_text': '我想去西湖'})
     store.commit_turn(context, candidate)
     changed = replace(candidate, answer='另一个结果')
     with pytest.raises(ValueError, match='摘要'):
@@ -172,30 +170,23 @@ def test_same_request_rejects_different_digest(store):
 
 
 def test_concurrent_idea_update_rejects_whole_unit(store):
-    context, candidate = proposal(store, '更新龙井茶园想法，并将必去地点添加西湖', {
-        'requirements_patch': {'must_visit': {'add': ['西湖']}},
-        'ideas': [{'action': 'update', 'idea_id': 'idea-place-2', 'changes': {'title': '慢游龙井'}}],
-    })
-    cards = store.idea_cards[context.trip_id]
-    cards[1] = replace(cards[1], body='用户已在页面修改')
-    before = deepcopy(store.trips[context.trip_id])
-    with pytest.raises(ValueError, match='想法'):
-        store.commit_turn(context, candidate)
-    assert store.trips[context.trip_id] == before
-    assert cards[1].title == '龙井茶园'
+    context, candidate = proposal(store, '记录慢游龙井', {'requirements_text': '慢游龙井'})
+    trip_id = context.trip_id
+    store.save_requirements_text(trip_id, '用户已在页面修改', store.trips[trip_id].requirements.revision)
+    before = deepcopy(store.trips[trip_id])
+    receipt = store.commit_turn(context, candidate)
+    assert not receipt.committed
+    assert store.trips[trip_id] == before
 
 
 def test_staging_failure_does_not_publish_business_subset(store, monkeypatch):
-    context, candidate = proposal(store, '更新龙井茶园想法，并将必去地点添加西湖', {
-        'requirements_patch': {'must_visit': {'add': ['西湖']}},
-        'ideas': [{'action': 'update', 'idea_id': 'idea-place-2', 'changes': {'title': '慢游龙井'}}],
-    })
-    before = deepcopy((store.trips, store.plans, store.idea_cards, store.messages, store.tasks))
+    context, candidate = proposal(store, '记录慢游龙井', {'requirements_text': '慢游龙井'})
+    before = deepcopy((store.trips, store.plans, store.messages, store.tasks))
     monkeypatch.setattr('app.application.execution.save_snapshot', lambda *a, **kw: (_ for _ in ()).throw(OSError('disk full')))
     store.persistence_enabled = True
     with pytest.raises(TurnPersistenceError):
         store.commit_turn(context, candidate)
-    assert (store.trips, store.plans, store.idea_cards, store.messages, store.tasks) == before
+    assert (store.trips, store.plans, store.messages, store.tasks) == before
 
 
 @pytest.mark.parametrize('body', ['不要清空行程', '如果清空行程会怎样', '上次说清空行程', '清空聊天', '清空行程并删除旅行', '是的'])
@@ -208,7 +199,7 @@ def test_clear_needs_full_current_positive_command(store, body):
 def test_clear_removes_only_plan_and_display_jobs(store):
     key = 'trip-hangzhou'
     before_trip = deepcopy(store.trips[key])
-    cards = deepcopy(store.idea_cards[key])
+    cards = deepcopy(store.trips[key].requirements.text)
     old_messages = [row.id for row in store.messages[key]]
     context, candidate = proposal(store, '请清空当前行程', {'itinerary': {'action': 'clear'}})
     store.display_jobs['job-test'] = {'trip_id': key, 'status': 'queued'}
@@ -216,7 +207,7 @@ def test_clear_removes_only_plan_and_display_jobs(store):
     assert receipt.committed
     assert not store.plans[key].has_content
     assert store.trips[key].requirements == before_trip.requirements
-    assert store.idea_cards[key] == cards
+    assert store.trips[key].requirements.text == cards
     assert all(item in [row.id for row in store.messages[key]] for item in old_messages)
     assert not any(row['trip_id'] == key for row in store.display_jobs.values())
 
@@ -245,8 +236,7 @@ def test_edit_quote_glyph_normalization_and_ambiguous_reference():
 
 def test_failed_workspace_never_retains_crud_subset(store):
     context = store.capture_request_context('trip-hangzhou', body='请记下西湖')
-    payload = prepare_changes({'user_quote': context.body, 'ideas': [
-        {'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '西湖'}]}, context, execution(store))
+    payload = prepare_changes({'user_quote': context.body, 'requirements_text': '西湖'}, context, execution(store))
     assert payload['args']['user_quote'] == context.body
     assert ExecutionResult.failure('budget exhausted').changes is None
 
@@ -274,9 +264,9 @@ def test_append_nullable_old_text_and_context():
 
 def test_invalid_idea_kind_rejected_at_backend(store):
     context = store.capture_request_context('trip-hangzhou', body='记录西湖')
-    with pytest.raises(ValueError, match='分类'):
-        prepare_changes({'user_quote': context.body, 'ideas': [
-            {'action': 'create', 'kind': '任意类型', 'title': '西湖', 'body': '西湖'}]}, context, execution(store))
+    for field in ('ideas', 'requirements_patch', 'lodging'):
+        with pytest.raises(ValueError):
+            prepare_changes({'user_quote': context.body, field: {}}, context, execution(store))
 
 
 def ready_for_plan(store):
@@ -285,48 +275,45 @@ def ready_for_plan(store):
     trip.requirements.lodging_address = '湖滨路1号'
     trip.requirements.start_date = trip.requirements.end_date = '2030-05-01'
     trip.requirements.day_count = 1
+    trip.requirements.transport_mode = 'transit'
     trip.lodging = {'name': '湖滨酒店'}
 
 
 def test_combined_replace_covers_retained_ids_and_new_idea_body(store):
+    from dataclasses import asdict
     ready_for_plan(store)
-    ids = [card.id for card in store.idea_cards['trip-hangzhou'] if card.id != 'idea-place-2']
     text = '新行程：上午西湖，晚上夜骑。'
-    context, candidate = proposal(store, '请删除龙井茶园想法，记下晚上夜骑，并重新规划行程', {
-        'ideas': [{'action': 'delete', 'idea_id': 'idea-place-2'},
-                  {'action': 'create', 'kind': '地点', 'title': '夜骑', 'body': '晚上夜骑'}],
-        'itinerary': {'action': 'replace', 'text': text, 'idea_outcomes': [
-            {'idea_ref': key, 'status': 'scheduled', 'reason': '上午西湖'} for key in ids]},
-        'next_question': '还需要调整什么？',
-    })
+    context, candidate = proposal(store, '记下晚上夜骑，并重新规划行程', {
+        'requirements_text': '晚上夜骑',
+        'itinerary': {'action': 'replace', 'text': text},
+        'next_question': '还需要调整什么？'})
     receipt = store.commit_turn(context, candidate)
     assert receipt.committed
-    assert store.plans[context.trip_id].text == text
-    assert not any(card.id == 'idea-place-2' for card in store.idea_cards[context.trip_id])
-    assert any(card.body == '晚上夜骑' for card in store.idea_cards[context.trip_id])
-    assert store.tasks[context.execution_task_id]['needs_input']
+    trip, plan = store.trips[context.trip_id], store.plans[context.trip_id]
+    assert plan.text == text
+    assert trip.requirements.text == '晚上夜骑'
+    assert plan.requirements_snapshot == asdict(trip.requirements)
+    assert plan.requirements_revision == trip.requirements.revision
+    assert store.get_task(context.execution_task_id)['needs_input']
 
 
 def test_full_plan_coverage_cannot_omit_existing_idea(store):
     ready_for_plan(store)
     context = store.capture_request_context('trip-hangzhou', body='请生成行程')
-    with pytest.raises(ValueError, match='覆盖'):
+    with pytest.raises(ValueError):
         prepare_changes({'user_quote': context.body, 'itinerary': {
             'action': 'replace', 'text': '上午西湖', 'idea_outcomes': []}}, context, execution(store))
 
 
 def test_plan_builder_failure_cannot_save_requirement_subset(store, monkeypatch):
     ready_for_plan(store)
-    context, candidate = proposal(store, '添加必去西湖，并生成行程', {
-        'requirements_patch': {'must_visit': {'add': ['西湖']}},
-        'itinerary': {'action': 'replace', 'text': '上午西湖', 'idea_outcomes': [
-            {'idea_ref': card.id, 'status': 'scheduled', 'reason': '上午西湖'}
-            for card in store.idea_cards['trip-hangzhou']]}})
-    before = deepcopy((store.trips, store.plans, store.idea_cards, store.messages, store.tasks))
+    context, candidate = proposal(store, '记下西湖，并生成行程', {
+        'requirements_text': '西湖', 'itinerary': {'action': 'replace', 'text': '上午西湖'}})
+    before = deepcopy((store.trips, store.plans, store.messages, store.tasks))
     monkeypatch.setattr(DemoStore, '_apply_text_plan', lambda *a, **kw: (_ for _ in ()).throw(ValueError('invalid plan')))
     with pytest.raises(ValueError, match='invalid plan'):
         store.commit_turn(context, candidate)
-    assert (store.trips, store.plans, store.idea_cards, store.messages, store.tasks) == before
+    assert (store.trips, store.plans, store.messages, store.tasks) == before
 
 
 def test_standalone_confirmation_compatibility(store):
@@ -336,31 +323,29 @@ def test_standalone_confirmation_compatibility(store):
 
 
 def test_deleted_trip_result_returns_failure_without_resurrection(store):
-    context, result = proposal(store, '记录西湖', {'ideas': [
-        {'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '西湖'}]}, task=False)
+    context, result = proposal(store, '记录西湖', {'requirements_text': '西湖'}, task=False)
+    store.cancel_task(context.trip_id, context.execution_task_id)
     assert store.delete_trip(context.trip_id)
     receipt = store.commit_turn(context, result)
     assert not receipt.committed and '删除' in receipt.reason
-    assert context.trip_id not in store.trips and context.trip_id not in store.idea_cards
+    assert context.trip_id not in store.trips and context.trip_id not in store.trips
 
 
 def test_direct_result_detaches_changes_and_rechecks_failure_before_save(store):
-    context, result = proposal(store, '记录西湖', {'ideas': [
-        {'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '西湖'}]})
+    context, result = proposal(store, '记录西湖', {'requirements_text': '西湖'})
     source = deepcopy(result.changes)
     detached = ExecutionResult(changes=source)
-    source['args']['ideas'][0]['body'] = '后来修改的内容'
+    source['args']['requirements_text'] = '后来修改的内容'
     assert detached.changes == result.changes
     result.failed = True
-    before = deepcopy((store.trips, store.idea_cards, store.plans, store.messages))
+    before = deepcopy((store.trips, store.trips, store.plans, store.messages))
     with pytest.raises(ValueError, match='失败结果'):
         store.commit_turn(context, result)
-    assert (store.trips, store.idea_cards, store.plans, store.messages) == before
+    assert (store.trips, store.trips, store.plans, store.messages) == before
 
 
 def test_failed_result_cannot_include_changes(store):
-    _, result = proposal(store, '记录西湖', {'ideas': [
-        {'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '西湖'}]})
+    _, result = proposal(store, '记录西湖', {'requirements_text': '西湖'})
     with pytest.raises(ValueError, match='失败结果'):
         ExecutionResult(changes=result.changes, failed=True)
 
@@ -372,16 +357,15 @@ def test_failed_result_cannot_include_changes(store):
     ('workflow_revision', 999), ('sequence', 999), ('epoch', 999),
 ])
 def test_direct_changes_cannot_be_committed_under_another_request(store, field, value):
-    context, result = proposal(store, '记录西湖', {'ideas': [
-        {'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '西湖'}]})
-    before = deepcopy((store.trips, store.idea_cards, store.plans, store.messages))
+    context, result = proposal(store, '记录西湖', {'requirements_text': '西湖'})
+    before = deepcopy((store.trips, store.trips, store.plans, store.messages))
     foreign = replace(context, **{field: value})
     try:
         receipt = store.commit_turn(foreign, result)
         assert receipt is None or not receipt.committed
     except ValueError:
         pass
-    assert (store.trips, store.idea_cards, store.plans, store.messages) == before
+    assert (store.trips, store.trips, store.plans, store.messages) == before
 
 
 def test_historic_workflow_and_receipt_are_readable_but_cannot_be_authored(store):
@@ -392,14 +376,22 @@ def test_historic_workflow_and_receipt_are_readable_but_cannot_be_authored(store
     history = normalize_workflow({'schema_version': 2, 'revision': 4, 'sequence': 0,
         'epoch': 0, 'tasks': [{'id': 'historic-task', 'goal': '旧会话目标',
             'status': 'completed', 'source_message_ids': [source]}]})
-    store.trips[key].workflow_state = deepcopy(history)
-    context = store.capture_request_context(key, body='你好')
-    candidate = ExecutionResult(answer='你好')
-    receipt = store.commit_turn(context, candidate)
-    saved = store.trips[key].workflow_state
-    assert saved['tasks'] == history['tasks']
-    assert receipt.conversation_task_states['historic-task'] == 'completed'
-    assert serialize(receipt)['conversation_task_states'] == {'historic-task': 'completed'}
+    from app.storage.persistence import restore_state, serialize_state
+    from app.storage import store as store_module
+    raw = serialize_state(store, store_module.USERS)
+    raw['schema_version'] = 7
+    raw['trips'][key]['workflow_state'] = deepcopy(history)
+    restore_state(store, raw, store_module.USERS)
+    from tests.automated.task_fixtures import running_context
+    context = running_context(store, key, '你好')
+    receipt = store.commit_turn(context, ExecutionResult(answer='你好'))
+    assert receipt.committed
+    saved = store.trips[key]
+    assert set(saved.workflow_state) == {'revision', 'sequence', 'epoch'}
+    assert 'workflow_state' not in saved.legacy_metadata
+    assert context.conversation_task_id is None
+    assert receipt.conversation_task_states == {}
+    assert serialize(receipt)['conversation_task_states'] == {}
 
 
 def test_direct_change_mutation_and_current_plan_conflict_are_rejected(store):
@@ -418,12 +410,14 @@ def test_direct_change_mutation_and_current_plan_conflict_are_rejected(store):
 
 def test_historic_receipt_replay_keeps_rejected_artifact_details(store):
     from app.application.contracts import CommitReceipt, serialize
-    context, candidate = proposal(store, '记录西湖', {'ideas': [
-        {'action': 'create', 'kind': '地点', 'title': '西湖', 'body': '西湖'}]})
+    context, candidate = proposal(store, '记录西湖', {'requirements_text': '西湖'})
     receipt = store.commit_turn(context, candidate)
     historical = replace(receipt, rejected_artifacts=({'artifact_id': 'legacy-artifact', 'reason': '旧候选未采用'},))
     # Saved receipts may predate the removal of executable partial-effect commits.
-    store.tasks[context.execution_task_id]['receipt'] = serialize(historical)
+    from tests.automated.task_fixtures import save_history
+    row = store.get_task(context.execution_task_id)
+    row['receipt'] = serialize(historical)
+    save_history(store, row)
     replayed = store.commit_turn(context, candidate)
     assert isinstance(replayed, CommitReceipt)
     assert replayed.rejected_artifacts == historical.rejected_artifacts

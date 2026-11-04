@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import workflowCss from './assets/workflow.css?url'
-import chatCss from './assets/chat.css?url'
 import guideCss from './assets/guide.css?url'
 
 const route = useRoute()
@@ -14,7 +13,6 @@ const settings = computed(() => ['trip-new', 'requirements'].includes(String(rou
 <template>
   <Teleport to="head">
     <link v-if="settings" rel="stylesheet" :href="workflowCss" />
-    <link v-if="chat" rel="stylesheet" :href="chatCss" />
     <link v-if="workspace" rel="stylesheet" :href="guideCss" />
   </Teleport>
   <main class="phone-shell" :class="{ 'phone-shell--chat': chat }">

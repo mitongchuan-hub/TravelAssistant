@@ -81,22 +81,19 @@ class ScriptedModel:
     def __init__(self, context, execution):
         body = context.body
         changes = {'user_quote': body}
-        if '我住' in body:
-            changes.update(requirements_patch={'start_date': '2030-05-01', 'end_date': '2030-05-01',
-                'day_count': 1, 'transport_mode': 'transit'}, lodging={'poi_id': 'browser-hotel-0'})
-            steps = [('maps_text_search', {'city': '杭州', 'keywords': '湖滨酒店（西湖店）'}),
-                     ('maps_search_detail', {'id': 'browser-hotel-0'})]
-        elif '确认' in body:
+        if '确认' in body:
             changes['itinerary'] = {'action': 'confirm'}
-            steps = []
         elif '生成' in body:
-            steps = []
-            changes['itinerary'] = {'action': 'replace', 'text': PLAN_TEXT,
-                'idea_outcomes': [{'idea_ref': card.id, 'status': 'excluded', 'reason': '本轮一日路线暂不安排夜骑，保留想法供后续讨论'} for card in execution.idea_cards]}
+            text = PLAN_TEXT
+            if '夜骑' in execution.trip.requirements.text:
+                text += '\n\n19:00 晚上夜骑：骑行条件和路线尚需核实，不满足条件则改为步行。'
+            if '预算以实际为准' in execution.trip.requirements.text:
+                text += '\n\n预算以实际为准。'
+            changes['itinerary'] = {'action': 'replace', 'text': text}
         else:
-            steps = []
-            changes['ideas'] = [{'action': 'create', 'kind': '地点', 'title': '晚上夜骑', 'body': '晚上夜骑'}]
-        self.steps = iter([*steps, ('read_context', {'section': 'ideas'}), ('submit_changes', changes)])
+            previous = execution.trip.requirements.text
+            changes['requirements_text'] = previous + ('\n' if previous else '') + '晚上夜骑'
+        self.steps = iter([('read_context', {'section': 'requirements'}), ('submit_changes', changes)])
 
     def __call__(self, client, model, messages, **kwargs):
         kwargs['budget'].model()

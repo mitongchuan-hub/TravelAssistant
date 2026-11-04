@@ -16,15 +16,9 @@ def critical_route_review(trip, catalog, evidence, remaining):
         return []
     profile = trip.requirements
 
-    def anchor(name):
-        matches = [place for place in catalog.values()
-                   if place.get('name', '').strip().casefold() == name.strip().casefold()]
-        return matches[0] if name.strip() and len(matches) == 1 else None
-
-    core = [place for name in profile.must_visit if (place := anchor(name))]
     lodging = catalog.get(trip.lodging.get('poi_id'))
-    core = core or [p for p in catalog.values() if p['poi_id'] != trip.lodging.get('poi_id')
-                   and p.get('city', '').removesuffix('市') == profile.city.removesuffix('市')]
+    core = [p for p in catalog.values() if p['poi_id'] != trip.lodging.get('poi_id')
+            and p.get('city', '').removesuffix('市') == profile.city.removesuffix('市')]
     legs = (('住宿去程', [lodging], core), ('返回住宿', core, [lodging]))
     if not core:
         return []

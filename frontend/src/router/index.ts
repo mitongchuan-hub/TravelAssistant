@@ -8,7 +8,7 @@ export const router = createRouter({
     { path: '/login', redirect: { name: 'auth' } },
     { path: '/register', redirect: { name: 'auth', query: { mode: 'register' } } },
     { path: '/trips', name: 'trips', component: () => import('@/pages/TripsPage.vue'), meta: { requiresAuth: true, title: '我的旅行' } },
-    { path: '/trips/new', name: 'trip-new', component: () => import('@/pages/NewConversationPage.vue'), meta: { requiresAuth: true, title: '开始聊天' } },
+    { path: '/trips/new', name: 'trip-new', component: () => import('@/pages/CityOutingPage.vue'), meta: { requiresAuth: true, title: '新建旅行' } },
     { path: '/workspace/:id/requirements', name: 'requirements', redirect: to => ({ name: 'workspace', params: { id: to.params.id } }) },
     { path: '/workspace/:id', name: 'workspace', component: () => import('@/pages/WorkspacePage.vue'), meta: { requiresAuth: true, title: '旅行' } },
     { path: '/error', name: 'error', component: () => import('@/pages/ErrorPage.vue'), meta: { title: '暂时无法打开' } },

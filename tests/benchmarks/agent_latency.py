@@ -53,7 +53,7 @@ def travel_payload() -> dict:
         conversation_task_id=None, request_id='bench-request', message_id='bench-message',
         body=USER_MSG, entry='main', strategy='task_execution', requirements_revision=0,
         plan_basis=PlanBasis('', '', '', '', None, False), workflow_revision=0, sequence=0, epoch=0)
-    execution = TaskExecutionContext(trip=trip, messages=[], idea_cards=[], plan=None,
+    execution = TaskExecutionContext(trip=trip, messages=[], plan=None,
                                      metrics={}, current_date='2026-10-19')
     runtime = TaskExecutionRuntime(None, 'offline-benchmark', context, execution, None)
     return runtime._initial_context()

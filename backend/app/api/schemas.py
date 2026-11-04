@@ -20,24 +20,11 @@ class SessionDTO(TypedDict):
 class RequirementsDTO(TypedDict):
     start_date: str
     end_date: str
-    arrival_time: str
-    departure_time: str
     city: str
-    arrival_location: str
-    departure_location: str
     day_count: int | None
-    travelers: int | None
-    budget_amount: str
-    budget_scope: str
-    budget_coverage: str
     transport_mode: str
-    must_visit: list[str]
-    avoid: list[str]
-    dietary: list[str]
-    pace: str
     lodging_address: str
-    outing_start_time: str
-    outing_end_time: str
+    text: str
     revision: int
 
 
@@ -81,6 +68,7 @@ class ProgressStepDTO(TypedDict, total=False):
 
 class ProgressDTO(TypedDict, total=False):
     state: str
+    reason: str
     started_at: int
     updated_at: int
     duration_ms: int
@@ -181,21 +169,8 @@ class TaskDTO(TypedDict, total=False):
     message: Required[str]
 
 
-class IdeaDTO(TypedDict):
-    id: str
-    kind: str
-    title: str
-    body: str
-    author: str
-    status: str
-    rotation: str
-
-
 class MetricsDTO(TypedDict):
     message_count: int
-    idea_count: int
-    constraint_count: int
-    reminder_count: int
     plan_day_count: int
     plan_date_range: str
     plan_item_count: int
@@ -221,9 +196,6 @@ class TripDTO(TypedDict):
     id: str
     destination: str
     date_range: str
-    budget: str
-    style: str
-    note: str
     status: str
     last_activity: str
     mode: str
@@ -258,8 +230,6 @@ class WorkspaceDTO(TypedDict):
     plan: PlanDTO
     messages: list[MessageDTO]
     tasks: list[TaskDTO]
-    idea_cards: list[IdeaDTO]
-    wall_cards: list[IdeaDTO]
     metrics: MetricsDTO
     display_state: DisplayStateDTO
 
@@ -279,19 +249,8 @@ class EmptyInput(InputDTO):
 
 class CityInput(InputDTO):
     lodging_address: StrictStr = ''
-    city_hint: StrictStr = ''
     start_date: StrictStr = ''
     day_count: StrictStr = ''
-    outing_start_time: StrictStr = ''
-    outing_end_time: StrictStr = ''
-    travelers: StrictStr = ''
-    budget_amount: StrictStr = ''
-    budget_scope: StrictStr = ''
-    pace: StrictStr = ''
-    must_visit: StrictStr = ''
-    avoid: StrictStr = ''
-    dietary: StrictStr = ''
-    note: StrictStr = ''
     revision: StrictStr = ''
     transport_mode: StrictStr = ''
     choice_token: StrictStr = Field(default='', max_length=100)
@@ -314,8 +273,9 @@ class TaskInput(InputDTO):
     payload: dict = Field(default_factory=dict)
 
 
-class IdeaInput(InputDTO):
-    body: StrictStr = Field(min_length=1, max_length=2000)
+class RequirementsTextInput(InputDTO):
+    text: StrictStr
+    expected_revision: StrictInt = Field(ge=0)
 
 
 class DisplayInput(InputDTO):

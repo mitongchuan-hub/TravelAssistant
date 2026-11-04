@@ -15,9 +15,9 @@
 | 旧行为 | 新合同 |
 | --- | --- |
 | Jinja 登录/注册页面与表单跳转 | Vue AuthPage + `/api/auth/session/login/register/logout`（session 为 GET，其余 POST） |
-| 旅行列表/创建/删除 HTML 表单 | Vue TripsPage/CityOutingPage + `/api/trips` JSON |
+| 旅行列表/创建/删除 HTML 表单 | Vue TripsPage；`/trips/new` 使用 CityOutingPage 四字段表单（住宿、交通、开始日期、天数），无更多设置，确认住宿后经 `/api/trips` 创建并进入聊天 |
 | 住宿多候选表单 | 创建/更新响应 `choices_required`；只提交服务端 choice_token + poi_id 完成原草稿 |
-| 游玩设置 HTML | GET/PUT `/api/trips/{id}/requirements`，原需求 revision 检查 |
+| 游玩设置 HTML | GET/PUT `/api/trips/{id}/requirements` 保留兼容及 revision 检查；旧前端编辑链接仍重定向聊天，恢复创建不代表恢复编辑入口 |
 | 整个 workspace / HTML 消息片段 | `/api/trips/{id}/workspace` 一致快照；Vue 按稳定 ID 渲染 |
 | messages after-ID 增量 | 保留读取兼容；Vue 使用完整快照，能更新同 ID 的思考消息和进度 |
 | 生成/修改 | 聊天 `/messages`；新任务仅 chat，`/tasks` 只保留 chat 兼容提交；历史 plan/revision 可读；无失败任务 retry 接口，重新发送是新 chat 身份 |

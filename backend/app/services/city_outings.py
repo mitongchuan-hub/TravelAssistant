@@ -6,21 +6,19 @@ from time import monotonic
 from uuid import uuid4
 
 from app.domain.models import Trip, User
-from app.domain.requirements import update_requirements
+from app.domain.requirements import initialize_requirements
 
-CITY_FORM_FIELDS = {'lodging_address', 'city_hint', 'start_date', 'day_count', 'outing_start_time',
-                   'outing_end_time', 'travelers', 'budget_amount', 'budget_scope', 'pace',
-                   'must_visit', 'avoid', 'dietary', 'note', 'revision', 'transport_mode'}
+CITY_FORM_FIELDS = {'lodging_address', 'start_date', 'day_count', 'revision', 'transport_mode'}
 
 
 def city_requirements(values, city=''):
+    if values.keys() - CITY_FORM_FIELDS:
+        raise ValueError('游玩信息字段不正确')
     if not all(isinstance(v, str) for v in values.values()):
         raise ValueError('请填写文字格式的游玩信息')
     address = values.get('lodging_address', '').strip()
     if not address or len(address) > 300:
         raise ValueError('请填写住宿地址或酒店名称，不超过300字')
-    if len(values.get('city_hint', '')) > 100:
-        raise ValueError('城市名称过长')
     transport_mode = values.get('transport_mode', '').strip()
     if transport_mode not in {'driving', 'transit'}:
         raise ValueError('请选择自驾或公交地铁')
@@ -37,20 +35,10 @@ def city_requirements(values, city=''):
             end = (date.fromisoformat(start) + timedelta(days=count-1)).isoformat()
         except (ValueError, OverflowError):
             raise ValueError('请填写有效的游玩日期') from None
-    amount = values.get('budget_amount', '').strip()
-    changes = {
-        'city': city, 'lodging_address': address, 'start_date': start, 'end_date': end,
-        'day_count': count, 'outing_start_time': values.get('outing_start_time', ''),
-        'outing_end_time': values.get('outing_end_time', ''), 'travelers': values.get('travelers', ''),
-        'budget_amount': amount, 'transport_mode': transport_mode,
-        'budget_scope': (values.get('budget_scope') or 'per_person') if amount else 'unspecified',
-        'budget_coverage': '餐饮、市内交通和门票；不含住宿及跨城交通',
-        'pace': values.get('pace', ''), 'note': values.get('note', ''),
-        **{key: values.get(key, '').splitlines() for key in ('must_visit', 'avoid', 'dietary')},
-    }
-    # Validate optional inputs before spending a map request; no store mutation.
-    probe = Trip('validation', '同城游玩', '', '', '', '', User('', '', ''), '', '', mode='city')
-    update_requirements(probe, changes)
+    changes = {'city': city, 'lodging_address': address, 'start_date': start, 'end_date': end,
+               'day_count': count, 'transport_mode': transport_mode}
+    probe = Trip('validation', '同城游玩', User('', '', ''), '', '', mode='city')
+    initialize_requirements(probe, changes)
     return changes
 
 

@@ -185,7 +185,7 @@ def itinerary(result):
     requirements = TripRequirements(city='杭州市', lodging_address='测试地址',
         start_date='2030-05-01', end_date='2030-05-01', day_count=1, transport_mode='transit')
     lodging, park = place('lodging', '测试住处'), place('park', '湖滨公园')
-    trip = Trip('trip', '杭州', '', '', '', '', owner, '', '', requirements=requirements, lodging=lodging)
+    trip = Trip('trip', '杭州', owner, '', '', requirements=requirements, lodging=lodging)
     text = '测试住处\n湖滨公园\n返回测试住处。'
     display = {'schema_version': '1.1', 'title': '测试行程', 'overview': None,
         'budget_note': None, 'weather': [], 'preparation': {'clothing': [], 'accommodation': []},

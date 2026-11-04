@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+from tests.automated.task_fixtures import save_history
 from app.application import execution
 from app.storage.store import DemoStore
 
@@ -38,13 +39,14 @@ def old_task(store, kind):
     task, _ = store.submit_task(TRIP, 'chat', {'body': body}, uuid4().hex)
     row = store.tasks[task['id']]
     row.update(kind=kind, payload={} if kind == 'plan' else {'feedback': body}, status='failed')
-    return row
+    return save_history(store, row)
 
 
 @pytest.mark.parametrize('kind', ['plan', 'revision', 'chat'])
 def test_failed_history_is_readable_and_resend_is_a_new_chat(store, kind):
     original = old_task(store, kind)
     original['retry_of'] = 'historical-parent'
+    save_history(store, original)
     saved = deepcopy(original)
     body = next(m.body for m in store.messages[TRIP] if m.id == original['message_id'])
     task, created = store.submit_task(TRIP, 'chat', {'body': body}, 'new-chat')
@@ -82,6 +84,7 @@ def test_new_chat_does_not_recover_historical_authority(store, damage):
         row['plan_basis']['plan_id'] = 'stale'
     else:
         row['receipt'] = {'accepted_artifact_ids': ['already-applied']}
+    save_history(store, row)
     saved = deepcopy(row)
     task, created = store.submit_task(TRIP, 'chat', {'body': '请修改行程'}, 'fresh-authority')
     source = next(m for m in store.messages[TRIP] if m.id == task['message_id'])
@@ -95,10 +98,11 @@ def test_new_chat_does_not_recover_historical_authority(store, damage):
 
 def test_failed_request_acknowledgement_is_not_reexecuted(store):
     task, _ = store.submit_task(TRIP, 'chat', {'body': '你好'}, 'delivered')
-    store.tasks[task['id']]['status'] = 'failed'
+    task['status'] = 'failed'
+    save_history(store, task)
     replay, created = store.submit_task(TRIP, 'chat', {'body': '你好'}, 'delivered')
     assert not created and replay['status'] == 'failed'
-    assert len(store.tasks) == 1
+    assert store.tasks == {}
 
 
 def test_task_api_rejects_old_types_and_keeps_history_readable(store, monkeypatch):
@@ -107,6 +111,8 @@ def test_task_api_rejects_old_types_and_keeps_history_readable(store, monkeypatc
     from tests.automated.test_web_contract import csrf_headers
     rows = [old_task(store, kind) for kind in ('plan', 'revision', 'chat')]
     rows[-1]['retry_of'] = rows[0]['id']
+    for row in rows:
+        save_history(store, row)
     saved = deepcopy(rows)
     monkeypatch.setattr(deps, 'store', store)
     monkeypatch.setattr(deps, 'current_user', lambda request: store.trips[TRIP].owner)

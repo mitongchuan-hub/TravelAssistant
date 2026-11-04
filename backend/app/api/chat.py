@@ -37,11 +37,11 @@ def submit(request, trip_id, kind, payload, request_id, background_tasks, includ
 
 
 @router.get('/tasks')
-def tasks(request: Request, trip_id: str):
+def tasks(request: Request, trip_id: str, request_id: str | None = None):
     user = deps.require_user(request)
     with deps.store._lock:
         deps.get_owned_trip_or_404(trip_id, user)
-        return {'tasks': [task_to_dict(row) for row in deps.store.list_tasks(trip_id)]}
+        return {'tasks': [task_to_dict(row) for row in deps.store.list_tasks(trip_id, request_id=request_id)]}
 
 
 @router.post('/tasks')

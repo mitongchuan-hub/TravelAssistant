@@ -2,10 +2,13 @@ import { computed, onScopeDispose, ref } from 'vue'
 import { apiRequest, ApiError } from '@/api/client'
 import type { ChatMessage, Task, WorkspaceSnapshot } from '@/types'
 
-export type { ProgressStep, Progress, ChatMessage, Idea, LegacyRoute, LegacyItem, Plan, DisplayState, Task, WorkspaceSnapshot } from '@/types'
+export type { ProgressStep, Progress, ChatMessage, LegacyRoute, LegacyItem, Plan, DisplayState, Task, WorkspaceSnapshot } from '@/types'
 interface Pending { kind: 'chat'; request_id: string; payload: Record<string, unknown>; body?: string; created_at: string; failed?: boolean; cancel_requested?: boolean }
 export const requestId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
 const activeTask = (task: Task) => typeof task.status === 'string' && ['queued', 'running'].includes(task.status)
+class WorkspaceContractError extends Error {
+  constructor() { super('前后端版本不一致，请重启后端后重新读取。') }
+}
 export function useWorkspace(tripId: string, userId: string, onUnauthorized?: () => void) {
   const snapshot = ref<WorkspaceSnapshot | null>(null)
   const loading = ref(true), error = ref(''), feedback = ref(''), submitting = ref(false)
@@ -51,13 +54,38 @@ export function useWorkspace(tripId: string, userId: string, onUnauthorized?: ()
     return result
   })
   function schedule() { clearTimeout(timer); if (!stopped && !paused && !document.hidden) timer = setTimeout(() => void refresh(), busy.value || snapshot.value?.display_state.display_status === 'pending' ? 1300 : 3500) }
-  function messageFor(e: unknown) { return e instanceof ApiError ? e.message : '连接暂时中断，已有内容和输入已保留。请稍后重试。' }
-  function reconcile() {
-    const item = pending.value; if (!item) return
+  function messageFor(e: unknown) { return e instanceof ApiError || e instanceof WorkspaceContractError ? e.message : '连接暂时中断，已有内容和输入已保留。请稍后重试。' }
+  function acceptWorkspace(data: unknown): WorkspaceSnapshot {
+    // Check the new requirements contract before publishing to any render consumer.
+    // Never turn legacy cards or malformed text into an editable empty body.
+    const requirements = (data as WorkspaceSnapshot | null | undefined)?.trip?.requirements
+    if (typeof requirements?.text !== 'string' || !Number.isSafeInteger(requirements.revision) || requirements.revision < 0) {
+      const mismatch = new WorkspaceContractError()
+      paused = true; error.value = mismatch.message
+      throw mismatch
+    }
+    snapshot.value = data as WorkspaceSnapshot
+    error.value = ''
+    return snapshot.value
+  }
+  async function findPendingTask(item: Pending): Promise<Task | undefined> {
     const task = snapshot.value?.tasks.find(t => t.request_id === item.request_id)
+    if (task) return task
+    // Workspace only contains recent tasks; absence there is not proof that a
+    // request was never accepted. Query durable history before any replay.
+    const result = await request<{ tasks: Task[] }>(`/tasks?request_id=${encodeURIComponent(item.request_id)}`, { cache: 'no-store' })
+    return result.tasks.find(t => t.request_id === item.request_id)
+  }
+  async function reconcile(currentEpoch: number) {
+    const item = pending.value; if (!item) return
+    const task = await findPendingTask(item)
+    if (stopped || epoch !== currentEpoch || pending.value?.request_id !== item.request_id) return
     // A retained task is the durable acknowledgement, even if another tab has
     // already cleared its messages. Never replay an acknowledged chat request.
-    if (task && !item.cancel_requested) { remember(null); feedback.value = '' }
+    if (task && !item.cancel_requested) {
+      if (snapshot.value && !snapshot.value.tasks.some(t => t.id === task.id)) snapshot.value.tasks.push(task)
+      remember(null); feedback.value = ''
+    }
   }
   async function postPending() {
     if (postFlight) return postFlight
@@ -96,20 +124,22 @@ export function useWorkspace(tripId: string, userId: string, onUnauthorized?: ()
     try {
       // Do not abort an uncertain submission: a browser abort is not a server cancellation.
       if (postFlight) await postFlight
-      if (stopped) return false
+      if (stopped || authRequired.value) return false
+      const currentEpoch = epoch
       let task = pending.value ? snapshot.value?.tasks.find(t => t.request_id === pending.value!.request_id) : snapshot.value?.tasks.find(activeTask)
       if (!task) {
-        const data = await request<WorkspaceSnapshot>('/workspace', { cache: 'no-store' })
-        if (stopped) return false
-        snapshot.value = data
-        task = pending.value ? data.tasks.find(t => t.request_id === pending.value!.request_id) : data.tasks.find(activeTask)
+        const data = await request<unknown>('/workspace', { cache: 'no-store' })
+        if (stopped || epoch !== currentEpoch) return false
+        const accepted = acceptWorkspace(data)
+        task = pending.value ? await findPendingTask(pending.value) : accepted.tasks.find(activeTask)
       }
+      if (stopped || epoch !== currentEpoch) return false
       if (!task?.id) throw new Error('尚无法确认请求是否送达，请重新连接后再次终止。')
       const result = await request<{ task: Task }>(`/tasks/${encodeURIComponent(task.id)}/cancel`, { method: 'POST', body: '{}' })
-      if (stopped) return false
+      if (stopped || epoch !== currentEpoch) return false
       if (result.task?.id !== task.id || activeTask(result.task)) throw new Error('服务未确认终止，请重试。')
       epoch++
-      if (snapshot.value) snapshot.value.tasks = snapshot.value.tasks.map(t => t.id === result.task.id ? result.task : t)
+      if (snapshot.value) snapshot.value.tasks = [...snapshot.value.tasks.filter(t => t.id !== result.task.id), result.task]
       remember(null)
       feedback.value = result.task.status === 'superseded' ? '已终止，消息、需求和行程已保留。' : '本次处理已结束，已有内容已保留。'
       return true
@@ -125,9 +155,10 @@ export function useWorkspace(tripId: string, userId: string, onUnauthorized?: ()
     refreshing = (async () => {
       const currentEpoch = epoch
       try {
-        const data = await request<WorkspaceSnapshot>('/workspace', { cache: 'no-store' })
+        const data = await request<unknown>('/workspace', { cache: 'no-store' })
         if (stopped || epoch !== currentEpoch) return
-        snapshot.value = data; error.value = ''; reconcile()
+        acceptWorkspace(data); await reconcile(currentEpoch)
+        if (stopped || epoch !== currentEpoch) return
         if (pending.value && !pending.value.failed && !submitting.value) await postPending()
       } catch (e) { if (!stopped && epoch === currentEpoch) { error.value = messageFor(e); if (e instanceof ApiError && [401, 403, 404].includes(e.status)) paused = true } }
       finally { loading.value = false }
@@ -176,6 +207,6 @@ export function useWorkspace(tripId: string, userId: string, onUnauthorized?: ()
   return { undoLast, undoing, undoUncertain, snapshot, messages, pending, loading, error, feedback, busy, submitting, latestTask, authRequired, cancelling, canCancel, cancel, refresh, dismissPending,
     send: (body: string) => submit('chat', { body }, body),
     confirm: () => action('/plan/confirm', binding()), regenerate: () => action('/display', { plan_id: snapshot.value!.display_state.plan_id, source_hash: snapshot.value!.display_state.source_hash }),
-    addIdea: (body: string) => action('/ideas', { body }), deleteIdea: (id: string) => action(`/ideas/${encodeURIComponent(id)}`, undefined, 'DELETE'), clearMessages: () => action('/messages', undefined, 'DELETE') }
+    saveRequirements: (text: string, expected_revision: number) => action('/requirements-text', { text, expected_revision }, 'PUT'), clearMessages: () => action('/messages', undefined, 'DELETE') }
 }
 export type WorkspaceStore = ReturnType<typeof useWorkspace>

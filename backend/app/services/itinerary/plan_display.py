@@ -15,6 +15,8 @@ def text_hash(text):
 
 
 def dates_from_snapshot(snapshot):
+    if not isinstance(snapshot, dict):
+        return None
     first, last = snapshot.get('start_date'), snapshot.get('end_date')
     if not first or not last:
         return None

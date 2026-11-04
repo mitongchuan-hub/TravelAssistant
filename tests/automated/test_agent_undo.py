@@ -18,7 +18,7 @@ def change(s, value):
     with s._lock:
         stage = s._stage_turn(trip_id)
         before = capture(stage, trip_id)
-        stage.trips[trip_id].note = value
+        stage.trips[trip_id].requirements.text = value
         record_change(stage, trip_id, before, 'reply-' + value)
         s._persist_staged_turn(stage, trip_id)
 
@@ -35,11 +35,11 @@ def test_three_steps_drop_fourth_and_idempotent(tmp_path):
     assert metadata(s, 'trip-hangzhou')['available_count'] == 3
     m = metadata(s, 'trip-hangzhou')
     first = step(s, 'first')
-    assert s.trips['trip-hangzhou'].note == 'three'
+    assert s.trips['trip-hangzhou'].requirements.text == 'three'
     assert undo(s, 'trip-hangzhou', m['latest_entry_id'], 'first', m['version']) == first
     step(s, 'second')
     step(s, 'third')
-    assert s.trips['trip-hangzhou'].note == 'one'
+    assert s.trips['trip-hangzhou'].requirements.text == 'one'
     assert metadata(s, 'trip-hangzhou')['available_count'] == 0
     assert len(s.messages['trip-hangzhou']) >= 3
 
@@ -47,7 +47,7 @@ def test_three_steps_drop_fourth_and_idempotent(tmp_path):
 def test_manual_barrier_even_same_content(tmp_path):
     s = store(tmp_path)
     change(s, 'one')
-    s.update_trip_requirements('trip-hangzhou', {}, s.trips['trip-hangzhou'].requirements.revision)
+    s.save_requirements_text('trip-hangzhou', '手动新正文', s.trips['trip-hangzhou'].requirements.revision)
     assert not metadata(s, 'trip-hangzhou')['can_undo']
 
 
@@ -76,12 +76,13 @@ def test_production_commit_records_only_business_and_confirm_is_barrier(tmp_path
     from app.application.contracts import ExecutionResult
     s = store(tmp_path)
     tid = 'trip-hangzhou'
-    context = s.capture_request_context(tid, body='添加想法：晚上散步')
-    execution = SimpleNamespace(trip=deepcopy(s.trips[tid]), plan=deepcopy(s.plans[tid]), idea_cards=deepcopy(s.idea_cards[tid]), display_target=None)
-    changes = prepare_changes({'user_quote': context.body, 'ideas': [{'action': 'create', 'kind': '节奏', 'title': '晚上散步', 'body': '晚上散步'}]}, context, execution)
+    from tests.automated.task_fixtures import running_context
+    context = running_context(s, tid, '添加想法：晚上散步')
+    execution = SimpleNamespace(trip=deepcopy(s.trips[tid]), plan=deepcopy(s.plans[tid]), display_target=None)
+    changes = prepare_changes({'user_quote': context.body, 'requirements_text': '晚上散步'}, context, execution)
     s.commit_turn(context, ExecutionResult(changes=changes))
     assert metadata(s, tid)['available_count'] == 1
-    context = s.capture_request_context(tid, body='你好')
+    context = running_context(s, tid, '你好')
     s.commit_turn(context, ExecutionResult(answer='你好'))
     assert metadata(s, tid)['available_count'] == 1
     s.confirm_plan(tid)
@@ -152,7 +153,7 @@ def test_undo_api_owner_csrf_idempotency_and_safe_metadata(tmp_path, monkeypatch
         assert first.status_code == 200
         again = client.post('/api/trips/' + tid + '/undo', json=payload, headers=headers)
         assert again.json() == first.json()
-        assert s.trips[tid].note == 'one'
+        assert s.trips[tid].requirements.text == 'one'
         payload['request_id'] = 'other-tab'
         assert client.post('/api/trips/' + tid + '/undo', json=payload, headers=headers).status_code == 409
         client.cookies.set(SESSION_COOKIE_NAME, auth.create_session('other-user'))
@@ -166,8 +167,9 @@ def test_manual_ideas_invalidate_late_agent_even_if_value_restored(tmp_path):
     tid = 'trip-hangzhou'
     change(s, 'one')
     context = s.capture_request_context(tid, body='旧消息')
-    card = s.add_idea(tid, '临时想法')
-    s.delete_idea(tid, card.id)
+    original = s.trips[tid].requirements.text
+    s.save_requirements_text(tid, '临时想法', s.trips[tid].requirements.revision)
+    s.save_requirements_text(tid, original, s.trips[tid].requirements.revision)
     assert not s.commit_turn(context, ExecutionResult(answer='迟到回复')).committed
     assert not metadata(s, tid)['can_undo']
 
@@ -175,12 +177,12 @@ def test_manual_ideas_invalidate_late_agent_even_if_value_restored(tmp_path):
 def test_manual_barrier_rolls_back_with_sqlite_failure(tmp_path, monkeypatch):
     s = store(tmp_path, True)
     change(s, 'one')
-    before = deepcopy(s.idea_cards['trip-hangzhou'])
+    before = deepcopy(s.trips['trip-hangzhou'].requirements.text)
     import app.application.execution as execution
     monkeypatch.setattr(execution, 'save_snapshot', lambda *a, **kw: (_ for _ in ()).throw(OSError('disk')))
     with pytest.raises(Exception):
-        s.add_idea('trip-hangzhou', '失败写入')
-    assert s.idea_cards['trip-hangzhou'] == before
+        s.save_requirements_text('trip-hangzhou', '失败写入', s.trips['trip-hangzhou'].requirements.revision)
+    assert s.trips['trip-hangzhou'].requirements.text == before
     assert metadata(s, 'trip-hangzhou')['available_count'] == 1
 
 
@@ -218,7 +220,7 @@ def test_new_agent_branch_and_noop_do_not_recover_consumed_history(tmp_path):
     change(s, 'branch')
     assert metadata(s, 'trip-hangzhou')['available_count'] == 3
     step(s, 'back-branch')
-    assert s.trips['trip-hangzhou'].note == 'two'
+    assert s.trips['trip-hangzhou'].requirements.text == 'two'
 
 
 def test_invalid_html_is_not_retained_or_restored(tmp_path):

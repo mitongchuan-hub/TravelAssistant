@@ -22,7 +22,8 @@ def chat_progress_view(progress):
     current = next((step for step in reversed(steps) if step['status'] == 'running'), None)
     heading = ('正在' + current['label'] if current else '正在整理回复') if active else {
         'succeeded': '处理完成', 'failed': '本次处理未完成',
-        'superseded': '已由新消息替代', 'needs_input': '等待你的补充',
+        'superseded': {'cancelled': '已终止', 'superseded': '已由新消息替代'}.get(
+            progress.get('reason'), '处理已停止'), 'needs_input': '等待你的补充',
     }.get(state, '执行过程')
     if state == 'queued':
         heading = '等待处理'

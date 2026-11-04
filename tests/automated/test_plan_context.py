@@ -10,7 +10,7 @@ from app.domain.itinerary.identity import plan_basis
 from app.agents.inputs.context import project_main_context, project_main_read_context, project_plan, project_requirements
 from app.agents.inputs.execution import TaskExecutionContext
 from app.agents.travel_runtime import TaskExecutionRuntime
-from app.domain.models import IdeaCard, Message, Trip, TripPlan, User
+from app.domain.models import Message, Trip, TripPlan, User
 from app.services.itinerary.plan_display import text_hash
 from app.storage.legacy.workflow import empty_workflow
 
@@ -43,13 +43,12 @@ def plan():
     ('', 2, None),
 ])
 def test_requirements_include_derived_dates_and_trusted_lodging(end, day_count, expected):
-    trip = Trip('trip', '杭州', '', '', '', '', User('user', '旅客', '旅'), '', '')
+    trip = Trip('trip', '杭州', User('user', '旅客', '旅'), '', '')
     trip.requirements.start_date = '2026-11-01'
     trip.requirements.end_date = end
     trip.requirements.day_count = day_count
     trip.requirements.city = '杭州'
     trip.requirements.lodging_address = '测试住宿地址'
-    trip.requirements.outing_start_time = '09:00'
     trip.lodging = {'poi_id': 'hotel', 'name': '测试酒店', 'longitude': 120.1,
                     'latitude': 30.2, 'source': '高德地图 POI'}
     before = deepcopy(trip)
@@ -57,8 +56,8 @@ def test_requirements_include_derived_dates_and_trusted_lodging(end, day_count, 
     assert view['known']['dates'] == expected
     assert view['known']['lodging']['poi_id'] == 'hotel'
     assert view['known']['lodging']['longitude'] == 120.1
-    assert view['known']['outing_start_time'] == '09:00'
-    assert view['known']['outing_end_time'] == ''
+    assert 'outing_start_time' not in view['known']
+    assert 'outing_end_time' not in view['known']
     assert trip == before
     read = project_main_read_context('requirements', {'items': []}, trip=trip)
     assert read['known'] == view['known']
@@ -80,7 +79,7 @@ def test_text_itinerary_exposes_saved_activities_without_legacy_days(plan):
 
 def test_initial_context_includes_current_prose_despite_outdated_chat(plan):
     owner = User('user', '旅客', '旅')
-    trip = Trip('trip', '北京市', '2026-10-24', '', '', '', owner, '已确认', '')
+    trip = Trip('trip', '北京市', owner, '已确认', '')
     history = [Message('old-reply', User('agent', '助手', 'AI'), 'agent',
         '晚上骑行还没有安排行程，需要加入吗？', 'earlier')]
     execution = SimpleNamespace(trip=trip, messages=history, idea_cards=[], current_date='2026-10-23')
@@ -139,12 +138,12 @@ def test_empty_plan_read_does_not_invent_content():
 
 def reply_runtime(plan, request, *, include_ideas=True):
     owner = User('user', '旅客', '旅')
-    trip = Trip('trip', '北京市', '2026-10-24', '', '', '', owner, '已确认', '')
+    trip = Trip('trip', '北京市', owner, '已确认', '')
     message = Message('current', owner, 'user', '你好', 'now')
     context = RequestContext('trip', owner.id, 'execution', None, 'request', message.id,
         message.body, 'main', 'task_execution', 0, plan_basis(plan), 0, 0, 0)
-    ideas = [IdeaCard('idea', '待归类', '晚上骑共享单车', '晚上骑共享单车', '你', '待整理')]
-    execution = TaskExecutionContext(trip, [message], ideas if include_ideas else [], plan, {}, '2026-10-23')
+    trip.requirements.text = '晚上骑共享单车' if include_ideas else ''
+    execution = TaskExecutionContext(trip, [message], plan, {}, '2026-10-23')
     return TaskExecutionRuntime(None, 'test-model', context, execution, request=request)
 
 
@@ -163,7 +162,7 @@ def test_single_agent_reads_current_plan_before_readonly_reply(plan, include_ide
         assert payload['current_plan']['text'] == plan.text
         assert '若临时管制则改为步行' in payload['current_plan']['text']
         if include_ideas:
-            assert payload['requirements']['items']['items'][0]['body'] == '晚上骑共享单车'
+            assert payload['requirements']['known']['text'] == '晚上骑共享单车'
         return response('晚上已安排骑行；若临时管制则改为步行。')
 
     runtime = reply_runtime(plan, request, include_ideas=include_ideas)

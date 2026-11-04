@@ -73,7 +73,7 @@ def runtime_for(store, body, model, *, kind='chat', payload=None, budget=None):
     context = store.capture_request_context(TRIP, task['id'])
     execution = TaskExecutionContext(
         trip=deepcopy(store.trips[TRIP]), plan=deepcopy(store.plans[TRIP]),
-        messages=deepcopy(store.messages[TRIP]), idea_cards=deepcopy(store.idea_cards[TRIP]),
+        messages=deepcopy(store.messages[TRIP]),
         metrics={}, current_date='2030-01-01', entry=context.entry,
         display_target=resolve_display_target(store.plans[TRIP], payload) if kind == 'revision' else None)
     return TaskExecutionRuntime(None, 'offline-script', context, execution, model, budget=budget)
@@ -93,20 +93,20 @@ def ready_plan(store):
     trip.requirements.lodging_address = '湖滨路1号'
     trip.requirements.start_date = trip.requirements.end_date = '2030-05-01'
     trip.requirements.day_count = 1
+    trip.requirements.transport_mode = 'transit'
     trip.lodging = {'name': '湖滨酒店', 'poi_id': 'hotel-test', 'city': '杭州',
                     'longitude': 120.15, 'latitude': 30.25}
 
 
 def test_scripted_sparse_requirement_and_idea_survive_reload_and_replay(store):
-    body = '记下晚上夜骑这个想法，并添加必去地点西湖'
+    body = '记下晚上夜骑这个想法，并游玩天数改为2天'
     runtime, proposal, receipt = run_commit(store, body, {
-        'requirements_patch': {'must_visit': {'add': ['西湖']}},
-        'ideas': [{'action': 'create', 'kind': '地点', 'title': '夜骑', 'body': '晚上夜骑'}]})
+        'requirements_text': '晚上夜骑'})
     assert receipt.committed and not proposal.failed
     restored = reload(store)
-    assert restored.trips[TRIP].requirements.must_visit == ['西湖']
-    assert sum(card.body == '晚上夜骑' for card in restored.idea_cards[TRIP]) == 1
-    assert restored.tasks[runtime.request_context.execution_task_id]['committed_effect_kinds'] == ['requirements', 'ideas']
+    assert restored.trips[TRIP].requirements.day_count is None
+    assert restored.trips[TRIP].requirements.text == '晚上夜骑'
+    assert restored.get_task(runtime.request_context.execution_task_id)['committed_effect_kinds'] == ['requirements']
     assert restored.commit_turn(runtime.request_context, proposal) == receipt
     assert len(runtime.request.transcripts) == 1
 
@@ -115,16 +115,15 @@ def test_scripted_invalid_submission_can_correct_without_saving_subset(store):
     body = '记下晚上夜骑这个想法'
     model = ScriptedModel(('submit_changes', {'user_quote': 'wrong', 'ideas': [
         {'action': 'create', 'kind': '地点', 'title': '错误', 'body': '不应保存'}]}),
-        ('submit_changes', {'user_quote': body, 'ideas': [
-            {'action': 'create', 'kind': '地点', 'title': '夜骑', 'body': '晚上夜骑'}]}))
+        ('submit_changes', {'user_quote': body, 'requirements_text': '晚上夜骑'}))
     runtime = runtime_for(store, body, model)
     proposal = runtime.run()
     assert not proposal.failed
     assert json.loads(model.transcripts[1][-1]['content'])['status'] == 'invalid_arguments'
     store.commit_turn(runtime.request_context, proposal)
-    cards = reload(store).idea_cards[TRIP]
-    assert any(card.body == '晚上夜骑' for card in cards)
-    assert not any(card.body == '不应保存' for card in cards)
+    text = reload(store).trips[TRIP].requirements.text
+    assert text == '晚上夜骑'
+    assert '不应保存' not in text
 
 
 def test_scripted_exact_edit_reload_preserves_requirement_basis(store):
@@ -142,9 +141,9 @@ def test_scripted_exact_edit_reload_preserves_requirement_basis(store):
 def test_scripted_coverage_omission_rejected_without_requirement_subset(store):
     ready_plan(store)
     before = deepcopy(store.trips[TRIP].requirements)
-    _, proposal, _ = run_commit(store, '添加必去西湖，并生成行程', {
-        'requirements_patch': {'must_visit': {'add': ['西湖']}},
-        'itinerary': {'action': 'replace', 'text': '上午西湖', 'idea_outcomes': []}})
+    _, proposal, _ = run_commit(store, '游玩改为2天，并生成行程', {
+        'requirements_patch': {'day_count': 2},
+        'itinerary': {'action': 'replace', 'text': '上午西湖'}})
     assert not proposal.changes
     assert reload(store).trips[TRIP].requirements == before
 
@@ -153,46 +152,43 @@ def test_scripted_valid_coverage_and_new_idea_survive_reload(store):
     ready_plan(store)
     text = '上午西湖，晚上夜骑。'
     _, proposal, receipt = run_commit(store, '记录晚上夜骑，并重新规划行程', {
-        'ideas': [{'action': 'create', 'kind': '地点', 'title': '夜骑', 'body': '晚上夜骑'}],
-        'itinerary': {'action': 'replace', 'text': text, 'idea_outcomes': [
-            {'idea_ref': card.id, 'status': 'excluded', 'reason': '本轮不安排，保留想法供后续讨论'}
-            for card in store.idea_cards[TRIP]]}})
+        'requirements_text': '晚上夜骑',
+        'itinerary': {'action': 'replace', 'text': text}})
     assert receipt.committed and not proposal.failed
     restored = reload(store)
     assert restored.plans[TRIP].text == text
-    assert any(card.body == '晚上夜骑' for card in restored.idea_cards[TRIP])
+    assert '晚上夜骑' in restored.trips[TRIP].requirements.text
 
 
 def test_scripted_stale_idea_write_is_rejected_atomically(store):
-    body = '更新龙井茶园想法，并添加必去地点西湖'
-    args = {'user_quote': body, 'requirements_patch': {'must_visit': {'add': ['西湖']}},
-            'ideas': [{'action': 'update', 'idea_id': 'idea-place-2', 'changes': {'title': '慢游龙井'}}]}
-    runtime = runtime_for(store, body, ScriptedModel(('submit_changes', args)))
+    body = '记录慢游龙井'
+    runtime = runtime_for(store, body, ScriptedModel(('submit_changes', {'user_quote': body, 'requirements_text': '慢游龙井'})))
     proposal = runtime.run()
-    store.idea_cards[TRIP][1] = replace(store.idea_cards[TRIP][1], body='并发修改')
+    store.save_requirements_text(TRIP, '并发修改', store.trips[TRIP].requirements.revision)
     before = deepcopy(store.trips[TRIP].requirements)
-    with pytest.raises(ValueError, match='想法'):
-        store.commit_turn(runtime.request_context, proposal)
+    receipt = store.commit_turn(runtime.request_context, proposal)
+    assert not receipt.committed
     assert store.trips[TRIP].requirements == before
-    assert not any(card.title == '慢游龙井' for card in reload(store).idea_cards[TRIP])
+    assert reload(store).trips[TRIP].requirements.text == '并发修改'
 
 
 def test_scripted_persistence_failure_never_publishes_or_reloads_subset(store, monkeypatch):
-    body = '记下晚上夜骑这个想法，并添加必去地点西湖'
-    args = {'user_quote': body, 'requirements_patch': {'must_visit': {'add': ['西湖']}},
-            'ideas': [{'action': 'create', 'kind': '地点', 'title': '夜骑', 'body': '晚上夜骑'}]}
+    body = '记下晚上夜骑这个想法，并游玩天数改为2天'
+    args = {'user_quote': body, 'requirements_text': '晚上夜骑'}
     runtime = runtime_for(store, body, ScriptedModel(('submit_changes', args)))
     proposal = runtime.run()
-    before = deepcopy((store.trips, store.plans, store.idea_cards, store.messages, store.tasks))
+    before = deepcopy((store.trips, store.plans, store.trips, store.messages, store.tasks))
     def fail(*args, **kwargs):
         raise OSError('offline simulated disk full')
     monkeypatch.setattr('app.application.execution.save_snapshot', fail)
     with pytest.raises(TurnPersistenceError):
         store.commit_turn(runtime.request_context, proposal)
-    assert (store.trips, store.plans, store.idea_cards, store.messages, store.tasks) == before
+    assert (store.trips, store.plans, store.trips, store.messages, store.tasks) == before
+    from app.storage.persistence import save_snapshot
+    monkeypatch.setattr('app.application.execution.save_snapshot', save_snapshot)
     restored = reload(store)
-    assert not any(card.body == '晚上夜骑' for card in restored.idea_cards[TRIP])
-    assert restored.trips[TRIP].requirements.must_visit == []
+    assert not '晚上夜骑' in restored.trips[TRIP].requirements.text
+    assert restored.trips[TRIP].requirements.day_count is None
 
 
 def test_scripted_query_budget_exhaustion_cannot_save_next_submission(store, monkeypatch):
@@ -208,7 +204,7 @@ def test_scripted_query_budget_exhaustion_cannot_save_next_submission(store, mon
     proposal = runtime.run()
     assert proposal.failed and not proposal.changes and not queried
     store.commit_turn(runtime.request_context, proposal)
-    assert not any(card.title == '夜骑' for card in reload(store).idea_cards[TRIP])
+    assert '夜骑' not in reload(store).trips[TRIP].requirements.text
 
 
 def test_selected_display_stop_same_line_exact_edit_survives_reload(store):
@@ -254,23 +250,23 @@ def test_selected_display_stop_cannot_edit_another_stop_through_broad_context(st
 def test_scripted_greeting_cannot_create_model_invented_idea(store):
     _, _, _ = run_commit(store, '你好', {'ideas': [
         {'action': 'create', 'kind': '地点', 'title': '私人直升机', 'body': '包私人直升机游览'}]})
-    assert not any(card.title == '私人直升机' for card in reload(store).idea_cards[TRIP])
+    assert '私人直升机' not in reload(store).trips[TRIP].requirements.text
 
 
 def test_unrelated_delete_instruction_does_not_authorize_card_deletion(store):
     _, _, _ = run_commit(store, '删除午餐安排，但保留龙井茶园想法', {
         'ideas': [{'action': 'delete', 'idea_id': 'idea-place-2'}]})
-    assert any(card.id == 'idea-place-2' for card in reload(store).idea_cards[TRIP])
+    assert reload(store).trips[TRIP].requirements.text == store.trips[TRIP].requirements.text
 
 
 def test_unrelated_requirement_field_cannot_piggyback_on_authorized_addition(store):
-    travelers = store.trips[TRIP].requirements.travelers
-    _, proposal, _ = run_commit(store, '必去地点添加西湖', {
-        'requirements_patch': {'must_visit': {'add': ['西湖']}, 'travelers': 10}})
+    transport = store.trips[TRIP].requirements.transport_mode
+    _, proposal, _ = run_commit(store, '游玩天数改为2天', {
+        'requirements_patch': {'day_count': 2, 'transport_mode': 'driving'}})
     assert not proposal.changes
     restored = reload(store)
-    assert restored.trips[TRIP].requirements.travelers == travelers
-    assert restored.trips[TRIP].requirements.must_visit == []
+    assert restored.trips[TRIP].requirements.transport_mode == transport
+    assert restored.trips[TRIP].requirements.day_count is None
 
 
 def test_missing_transit_details_cannot_publish_fabricated_terminal_itinerary(store, monkeypatch):
@@ -296,9 +292,7 @@ def test_missing_transit_details_cannot_publish_fabricated_terminal_itinerary(st
     model = ScriptedModel(('maps_text_search', {'city': '杭州', 'keywords': '西湖'}),
         ('maps_search_detail', {'id': lake['poi_id']}),
         ('maps_direction_transit_integrated', {'origin': '120.15,30.25', 'destination': '120.14,30.24', 'city': '杭州', 'cityd': '杭州'}),
-        ('submit_changes', {'user_quote': body, 'itinerary': {'action': 'replace', 'text': text,
-            'idea_outcomes': [{'idea_ref': card.id, 'status': 'excluded', 'reason': '待用户确认'}
-                              for card in store.idea_cards[TRIP]]}}),
+        ('submit_changes', {'user_quote': body, 'itinerary': {'action': 'replace', 'text': text}}),
         '公交线路明细待核实，本轮不保存新行程。')
     runtime = runtime_for(store, body, model)
     proposal = runtime.run()
@@ -316,9 +310,8 @@ def test_web_message_background_task_runs_real_runtime_and_commit(store, monkeyp
     from app.agents import entrypoints
     calls = []
     def generate(context, execution, **kwargs):
-        model = ScriptedModel(('read_context', {'section': 'ideas'}),
-            ('submit_changes', {'user_quote': context.body, 'ideas': [
-                {'action': 'create', 'kind': '地点', 'title': '夜骑', 'body': '晚上夜骑'}]}))
+        model = ScriptedModel(('read_context', {'section': 'requirements'}),
+            ('submit_changes', {'user_quote': context.body, 'requirements_text': '晚上夜骑'}))
         runtime = TaskExecutionRuntime(None, 'offline-script', context, execution, model)
         proposal = runtime.run()
         calls.append(runtime)
@@ -333,15 +326,15 @@ def test_web_message_background_task_runs_real_runtime_and_commit(store, monkeyp
             'body': '记下晚上夜骑这个想法', 'request_id': 'offline-web-request'}, headers=headers)
         assert response.status_code == 202
         task_id = response.json()['task']['id']
-        assert store.tasks[task_id]['status'] == 'succeeded'
+        assert store.get_task(task_id)['status'] == 'succeeded'
         assert len(calls) == 1 and len(calls[0].request.transcripts) == 2
         messages = client.get(f'/api/trips/{TRIP}/messages').json()['messages']
-        assert any('旅行想法已更新' in row['body'] for row in messages)
+        assert any('需求正文已保存' in row['body'] for row in messages)
         # Identical HTTP request replays task identity without a second model run.
         duplicate = client.post(f'/api/trips/{TRIP}/messages', json={
             'body': '记下晚上夜骑这个想法', 'request_id': 'offline-web-request'}, headers=headers)
         assert duplicate.json()['task']['id'] == task_id
         assert len(calls) == 1
     restored = reload(store)
-    assert sum(card.body == '晚上夜骑' for card in restored.idea_cards[TRIP]) == 1
-    assert restored.tasks[task_id]['committed_effect_kinds'] == ['ideas']
+    assert restored.trips[TRIP].requirements.text == '晚上夜骑'
+    assert restored.get_task(task_id)['committed_effect_kinds'] == ['requirements']

@@ -11,7 +11,6 @@ class TaskExecutionContext:
     """Web 层传入的独立可信快照；不授予模型存储权限。"""
     trip: Any
     messages: list[Any] | tuple[Any, ...]
-    idea_cards: list[Any] | tuple[Any, ...]
     plan: Any
     metrics: Mapping[str, Any]
     current_date: str
@@ -30,7 +29,7 @@ class TaskExecutionContext:
 
 
 def build_execution_context(*, trip: Any, plan: Any, messages: list[Any] | tuple[Any, ...],
-                            idea_cards: list[Any] | tuple[Any, ...], metrics: Mapping[str, Any],
+                            metrics: Mapping[str, Any],
                             current_date: str, entry: str, payload: Mapping[str, Any],
                             display_target: Mapping[str, Any] | None = None) -> TaskExecutionContext:
     """Detach a turn's data at the caller's lock-bound consistent read point.
@@ -41,7 +40,7 @@ def build_execution_context(*, trip: Any, plan: Any, messages: list[Any] | tuple
     snapshot = deepcopy({
         'trip': trip, 'plan': plan,
         'messages': [row for row in messages if row.status == 'sent'],
-        'idea_cards': idea_cards, 'metrics': metrics,
+        'metrics': metrics,
         'target_item_id': payload.get('item_id'), 'display_target': display_target,
     })
     return TaskExecutionContext(**snapshot, current_date=current_date, entry=entry,

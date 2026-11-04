@@ -27,10 +27,10 @@ class TurnBudget:
     def __post_init__(self):
         self.deadline = monotonic() + self.seconds
 
-    # 检查本轮是否已被更新的用户消息取消。
+    # 回调只表明本轮已停止，不能据此推断是手动终止还是新消息替代。
     def check_current(self):
         if self.cancelled and self.cancelled():
-            raise AgentBudgetError('本次任务已由新消息替代。')
+            raise AgentBudgetError('本次处理已停止。')
 
     # 返回剩余秒数，并在取消或超时后立即中止。
     def remaining(self):

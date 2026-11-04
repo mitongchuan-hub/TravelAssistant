@@ -39,16 +39,18 @@ def test_ambiguous_short_answer_checks_no_guessed_business_changes():
     assert not mechanical_checks(dict(id='waiter', preserve_question=True), result)['no_unrequested_changes']
 
 
-def test_short_answer_check_requires_only_the_requested_field():
-    result = dict(failed=False, unchanged=True, selected=['crud'], calls=[], submitted=[
-        {'requirements_patch': {'travelers': 2}}])
-    assert mechanical_checks({'id': 'Q04'}, result)['short_answer_only_updates_travelers']
-    result['submitted'][0]['requirements_patch']['budget_amount'] = '800'
-    assert not mechanical_checks({'id': 'Q04'}, result)['short_answer_only_updates_travelers']
+def test_short_answer_check_requires_ideas_without_unrelated_operations():
+    result = dict(failed=False, unchanged=True, selected=['changes'], calls=[], submitted=[
+        {'user_quote': '2人', 'ideas': [{'action': 'create', 'kind': '待归类',
+                                      'title': '同行人数', 'body': '同行2人'}]}])
+    assert mechanical_checks({'id': 'Q04'}, result)['short_answer_only_submits_ideas']
+    result['submitted'][0]['requirements_patch'] = {'city': '北京'}
+    assert not mechanical_checks({'id': 'Q04'}, result)['short_answer_only_submits_ideas']
 
 
 @pytest.mark.parametrize('case', load_cases(), ids=lambda case: case['id'])
 def test_every_dataset_context_has_valid_runtime_contract(monkeypatch, case):
+    """Fake replies validate dataset wiring only, not scope-policy semantics."""
     def request(*args, **kwargs):
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='Hello', tool_calls=[]))])
 

@@ -1,4 +1,4 @@
-"""A submitted full itinerary accounts for every saved wish without mutating it."""
+"""Complete prose replaces card coverage without claiming semantic proof."""
 from copy import deepcopy
 from types import SimpleNamespace
 
@@ -6,73 +6,44 @@ import pytest
 
 from app.application.contracts import RequestContext
 from app.domain.itinerary.identity import plan_basis
-from app.agents.inputs.execution import TaskExecutionContext
-from app.domain.models import IdeaCard, Trip, TripPlan, TripRequirements, User
+from app.domain.models import Trip, TripPlan, TripRequirements, User
 from app.domain.changes import prepare_changes
 
 
 def snapshot():
     owner = User('user', 'User', 'U')
-    trip = Trip('trip', '北京市', '', '', '', '', owner, '', '', mode='city',
+    trip = Trip('trip', '北京市', owner, '', '', mode='city',
         requirements=TripRequirements(city='北京市', lodging_address='测试住宿',
+            transport_mode='transit', text='Night ride\nBuns',
             start_date='2030-05-01', end_date='2030-05-01', day_count=1),
         lodging={'poi_id': 'hotel', 'name': '测试住宿', 'city': '北京市'})
     plan = TripPlan('plan', '', '未生成')
-    ideas = [IdeaCard(key, '待归类', title, title, '你', '待整理')
-             for key, title in [('night', 'Night ride'), ('breakfast', 'Buns')]]
     request = RequestContext('trip', owner.id, 'execution', None, 'request', 'message',
         '请生成一天的同城行程', 'main', 'task_execution', 0, plan_basis(plan), 0, 0, 0)
-    return request, TaskExecutionContext(trip, [], ideas, plan, {}, '2030-04-30')
+    return request, SimpleNamespace(trip=trip, plan=plan)
 
 
-def outcome(ref, status='scheduled', reason='Night ride at 19:30'):
-    return {'idea_ref': ref, 'status': status, 'reason': reason}
-
-
-def prepare(outcomes, text='Night ride at 19:30; Buns', *, empty_wall=False):
+@pytest.mark.parametrize('legacy_field', ['idea_outcomes', 'idea_ids', 'expected_idea_hashes'])
+def test_legacy_coverage_protocol_rejected(legacy_field):
     request, execution = snapshot()
-    if empty_wall:
-        execution = SimpleNamespace(trip=execution.trip, plan=execution.plan, idea_cards=[])
+    with pytest.raises(ValueError):
+        prepare_changes({'user_quote': request.body, 'itinerary': {
+            'action': 'replace', 'text': 'Day plan', legacy_field: []}}, request, execution)
+
+
+def test_new_plan_does_not_require_or_invent_card_outcomes():
+    request, execution = snapshot()
     before = deepcopy(execution)
-    result = prepare_changes({'user_quote': request.body, 'itinerary': {
-        'action': 'replace', 'text': text, 'idea_outcomes': outcomes}}, request, execution)
+    payload = prepare_changes({'user_quote': request.body, 'itinerary': {
+        'action': 'replace', 'text': 'Night ride at 19:30; Buns'}}, request, execution)
     assert execution == before
-    return result
+    assert payload['result_text'] == 'Night ride at 19:30; Buns'
+    assert 'idea_ids' not in payload and 'expected_idea_hashes' not in payload
 
 
-@pytest.mark.parametrize('outcomes', [[], [outcome('night')],
-    [outcome('night'), outcome('unknown')],
-    [outcome('night'), outcome('night'), outcome('breakfast', reason='Buns')]])
-def test_missing_unknown_or_duplicate_ideas_cannot_pass_coverage(outcomes):
-    with pytest.raises(ValueError):
-        prepare(outcomes)
-
-
-def test_scheduled_outcome_must_point_to_actual_itinerary_text():
-    with pytest.raises(ValueError):
-        prepare([outcome('night'), outcome('breakfast', reason='Buns')], text='Buns')
-
-
-def test_conflicts_cancelled_and_waiting_wishes_remain_explicit():
-    for status in ('conflict', 'excluded', 'needs_input'):
-        outcomes = [outcome('night', status, 'Return deadline conflicts with ride'),
-                    outcome('breakfast', 'excluded', 'User cancelled breakfast')]
-        payload = prepare(outcomes, text='Day plan')
-        assert payload['args']['itinerary']['idea_outcomes'] == outcomes
-        assert payload['idea_ids'] == ['breakfast', 'night']
-    with pytest.raises(ValueError):
-        prepare([outcome('night', 'conflict', ' '), outcome('breakfast', reason='Buns')])
-
-
-def test_success_preserves_coverage_and_binds_all_saved_ideas():
-    outcomes = [outcome('night'), outcome('breakfast', 'conflict', 'Breakfast window conflicts')]
-    payload = prepare(outcomes, text='Night ride at 19:30')
-    assert payload['args']['itinerary']['idea_outcomes'] == outcomes
-    assert set(payload['expected_idea_hashes']) == {'night', 'breakfast'}
-    assert payload['result_text'] == 'Night ride at 19:30'
-
-
-def test_empty_wall_requires_no_invented_outcomes():
-    assert prepare([], text='Day plan', empty_wall=True)['idea_ids'] == []
-    with pytest.raises(ValueError):
-        prepare([outcome('invented')], empty_wall=True)
+def test_generation_explicitly_rejects_oversized_migrated_text():
+    request, execution = snapshot()
+    execution.trip.requirements.text = '文' * 20001
+    with pytest.raises(ValueError, match='整理'):
+        prepare_changes({'user_quote': request.body, 'itinerary': {
+            'action': 'replace', 'text': 'Day plan'}}, request, execution)

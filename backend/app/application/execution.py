@@ -7,9 +7,9 @@ from datetime import date, datetime
 from threading import RLock
 from contextlib import contextmanager
 from uuid import uuid4
-from app.domain.models import AgentAction, AgentCard, IdeaCard, Message, Trip, TripPlan, User
-from app.domain.requirements import initial_requirements, update_requirements
-from app.storage.state import next_id, IDEA_WALL_LIMIT, IDEA_ROTATIONS
+from app.domain.models import AgentAction, AgentCard, Message, Trip, TripPlan, User
+from app.domain.requirements import update_requirements
+from app.storage.state import next_id
 from app.storage.persistence import save_snapshot
 from app.storage.errors import TurnPersistenceError
 
@@ -23,11 +23,15 @@ from uuid import uuid4
 from app.domain.message import normalize_message_text
 from app.domain.itinerary.identity import PlanBasis, plan_basis
 from app.services.itinerary.plan_display import text_hash
-from app.storage.legacy.workflow import advance_request, normalize_workflow
+from app.workflow.counters import advance_request, normalize_workflow
 from app.application.progress import advance_progress, finish_progress
 ACTIVE = {'queued', 'running'}
 BASIS_FIELDS = {'expected_plan_id', 'source_hash', 'expected_requirements_revision'}
 EXECUTION_STRATEGIES = {'task_execution'}
+
+def _now_label():
+    return datetime.now().strftime('%H:%M')
+
 
 def now():
     from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
@@ -180,55 +184,48 @@ def submit_task(self, trip_id, kind, payload, request_id):
     if set(payload) != {'body'}:
         raise ValueError('聊天任务只接受正文')
     with self._lock:
-        for task in self.tasks.values():
-            if task['trip_id'] == trip_id and task['request_id'] == request_id:
-                if (task['kind'], task['payload']) != (kind, payload):
-                    raise TaskConflict('同一请求标识不能用于不同内容')
-                return (deepcopy(task), False)
+        task = self.task_repository.find_request(trip_id, request_id)
+        if task:
+            if (task['kind'], task['payload']) != (kind, payload):
+                raise TaskConflict('同一请求标识不能用于不同内容')
+            return (task, False)
         active = next((task for task in self.tasks.values() if task['trip_id'] == trip_id and task['status'] in ACTIVE), None)
         trip = self.trips[trip_id]
         current_basis = plan_basis(self.plans[trip_id])
         workflow = normalize_workflow(trip.workflow_state, trip=trip, trip_id=trip_id, messages=self.messages[trip_id], plan_basis=current_basis)
         strategy = _configured_strategy(self)
         next_workflow = advance_request(workflow)
-        before_tasks = deepcopy(self.tasks)
-        before_messages = deepcopy(self.messages[trip_id])
-        before_trip = deepcopy(trip)
-        previous_defer = getattr(self, '_defer_persist', 0)
-        try:
-            if active:
-                for previous in self.tasks.values():
-                    if previous['trip_id'] == trip_id and previous['status'] in ACTIVE:
-                        previous.update(status='superseded', message='已由新消息替代', updated_at=now(), result_url='')
-                        thinking = previous.get('thinking_id')
-                        for row in self.messages[trip_id]:
-                            if row.id == thinking:
-                                row.execution_progress = finish_progress(row.execution_progress, 'superseded')
-                                row.status, row.body = ('superseded', '这次处理已由你的新消息替代。')
-            trip.workflow_state = deepcopy(next_workflow)
-            self._defer_persist = previous_defer + 1
-            user_message, assistant_message = self.queue_user_message(trip_id, payload['body'], trip.owner.id)
-            user_message_id, assistant_message_id = (user_message.id, assistant_message.id)
-            self._defer_persist = previous_defer
-            task_id = uuid4().hex
-            conversation_task_id = next_workflow['active_question']['task_id'] if next_workflow.get('active_question') else None
-            task = {'id': task_id, 'trip_id': trip_id, 'kind': kind, 'payload': payload, 'request_id': request_id, 'status': 'queued', 'message': '等待处理', 'created_at': now(), 'updated_at': now(), 'message_id': user_message_id, 'thinking_id': assistant_message_id, 'result_url': '', 'plan_id': self.plans[trip_id].id, 'plan_basis': current_basis.to_dict(), 'requirements_revision': trip.requirements.revision, 'workflow_revision': next_workflow['revision'], 'sequence': next_workflow['sequence'], 'epoch': next_workflow['epoch'], 'conversation_task_id': conversation_task_id, 'execution_strategy': strategy}
-            self.tasks[task_id] = task
-            self._persist()
-        except Exception:
-            self._defer_persist = previous_defer
-            _restore_tasks(self.tasks, before_tasks)
-            self.messages[trip_id] = before_messages
-            self.trips[trip_id] = before_trip
-            raise
+        stage = _fn__stage_turn(self, trip_id)
+        trip = stage.trips[trip_id]
+        if active:
+            for previous in stage.tasks.values():
+                if previous['trip_id'] == trip_id and previous['status'] in ACTIVE:
+                    previous.update(status='superseded', message='已由新消息替代', updated_at=now(), result_url='')
+                    thinking = previous.get('thinking_id')
+                    for row in stage.messages[trip_id]:
+                        if row.id == thinking:
+                            row.execution_progress = finish_progress(row.execution_progress, 'superseded', reason='superseded')
+                            row.status, row.body = ('superseded', '这次处理已由你的新消息替代。')
+        trip.workflow_state = deepcopy(next_workflow)
+        if hasattr(stage, 'queue_user_message'):
+            user_message, assistant_message = stage.queue_user_message(trip_id, payload['body'], trip.owner.id)
+        else:
+            user_message, assistant_message = queue_user_message(stage, trip_id, payload['body'], trip.owner.id)
+        user_message_id, assistant_message_id = (user_message.id, assistant_message.id)
+        task_id = uuid4().hex
+        conversation_task_id = None
+        task = {'id': task_id, 'trip_id': trip_id, 'kind': kind, 'payload': payload, 'request_id': request_id, 'status': 'queued', 'message': '等待处理', 'created_at': now(), 'updated_at': now(), 'message_id': user_message_id, 'thinking_id': assistant_message_id, 'result_url': '', 'plan_id': stage.plans[trip_id].id, 'plan_basis': current_basis.to_dict(), 'requirements_revision': trip.requirements.revision, 'workflow_revision': next_workflow['revision'], 'sequence': next_workflow['sequence'], 'epoch': next_workflow['epoch'], 'conversation_task_id': conversation_task_id, 'execution_strategy': strategy}
+        stage.tasks[task_id] = task
+        _fn__persist_staged_turn(self, stage, trip_id)
         return (deepcopy(task), True)
+
 
 def cancel_task(self, trip_id, task_id):
     """Invalidate an execution cooperatively, publishing only after persistence."""
-    from app.storage.legacy.workflow import bump_epoch
+    from app.workflow.counters import bump_epoch
     from app.storage.transactions import _stage_turn, _persist_staged_turn
     with self._lock:
-        task = self.tasks.get(task_id)
+        task = self.task_repository.get(task_id)
         if not task or task.get('trip_id') != trip_id:
             return None
         if task['status'] not in ACTIVE:
@@ -240,9 +237,9 @@ def cancel_task(self, trip_id, task_id):
         for row in stage.messages[trip_id]:
             if row.id == target.get('thinking_id'):
                 row.status, row.body = 'superseded', '本次处理已终止，消息、需求和行程已保留。'
-                row.execution_progress = finish_progress(row.execution_progress, 'superseded')
+                row.execution_progress = finish_progress(row.execution_progress, 'superseded', reason='cancelled')
         _persist_staged_turn(self, stage, trip_id)
-        return deepcopy(self.tasks[task_id])
+        return deepcopy(target)
 
 
 def get_task(self, task_id, *, trip_id=None):
@@ -256,12 +253,12 @@ def get_task(self, task_id, *, trip_id=None):
     from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
     from app.storage.transactions import _stage_turn as _fn__stage_turn
     with self._lock:
-        task = self.tasks.get(task_id)
+        task = self.task_repository.get(task_id)
         if not task or (trip_id is not None and task.get('trip_id') != trip_id):
             return None
         return deepcopy(task)
 
-def list_tasks(self, trip_id):
+def list_tasks(self, trip_id, request_id=None):
     from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
     from app.application.guide import _foreground_operation as _fn__foreground_operation
     from app.application.guide import _notify_display_worker as _fn__notify_display_worker
@@ -272,7 +269,10 @@ def list_tasks(self, trip_id):
     from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
     from app.storage.transactions import _stage_turn as _fn__stage_turn
     with self._lock:
-        return deepcopy([task for task in self.tasks.values() if task['trip_id'] == trip_id][-20:])
+        if request_id is not None:
+            task = self.task_repository.find_request(trip_id, request_id)
+            return [task] if task else []
+        return self.task_repository.recent(trip_id)
 
 def record_task_progress(self, task_id, title, value):
     from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
@@ -318,7 +318,7 @@ def run_task(self, task_id):
         previous = (task['status'], task['message'], task['updated_at'])
         task['status'], task['message'], task['updated_at'] = ('running', '正在处理，请稍候；可以离开页面，回来查看结果。', now())
         try:
-            _fn__persist(self)
+            _fn__persist(self, task_upserts=[task])
         except Exception:
             task['status'], task['message'], task['updated_at'] = previous
             raise
@@ -350,14 +350,21 @@ def recover_tasks(self):
     from app.storage.state import _persist as _fn__persist
     from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
     from app.storage.transactions import _stage_turn as _fn__stage_turn
-    changed = False
-    for task in self.tasks.values():
-        if task['status'] in ACTIVE:
-            task['status'], task['updated_at'] = ('failed', now())
-            task['message'] = '本次处理未完成，请重新发送消息。已有内容已保留。'
-            changed = True
-    if changed:
-        _fn__persist(self)
+    with self._lock:
+        for trip_id in self.trips:
+            if not any(task['trip_id'] == trip_id for task in self.tasks.values()) and not any(
+                    row.status == 'thinking' for row in self.messages[trip_id]):
+                continue
+            stage = _fn__stage_turn(self, trip_id)
+            for task in stage.tasks.values():
+                task.update(status='failed', updated_at=now(),
+                            message='本次处理未完成，请重新发送消息。已有内容已保留。')
+            for row in stage.messages[trip_id]:
+                if row.status == 'thinking':
+                    row.status = 'failed'
+                    row.body = '本次处理未完成，请重新发送消息。已有内容已保留。'
+                    row.execution_progress = finish_progress(row.execution_progress, 'failed')
+            _fn__persist_staged_turn(self, stage, trip_id)
 from app.storage.errors import TurnPersistenceError
 
 def capture_request_context(self, trip_id, task_id=None, *, body=None, entry='main', request_id=None, message_id=None):
@@ -378,7 +385,7 @@ def capture_request_context(self, trip_id, task_id=None, *, body=None, entry='ma
     from app.storage.transactions import _stage_turn as _fn__stage_turn
     from app.domain.itinerary.identity import PlanBasis, plan_basis
     from app.application.contracts import RequestContext
-    from app.storage.legacy.workflow import normalize_workflow
+    from app.workflow.counters import normalize_workflow
     with self._lock:
         trip = self.trips[trip_id]
         task = self.tasks.get(task_id) if task_id else None
@@ -406,11 +413,13 @@ def _turn_conflict(self, context):
     from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
     from app.storage.transactions import _stage_turn as _fn__stage_turn
     from app.domain.itinerary.identity import plan_basis
-    from app.storage.legacy.workflow import normalize_workflow
+    from app.workflow.counters import normalize_workflow
     trip = self.trips.get(context.trip_id)
     if trip is None or trip.owner.id != context.owner_id:
         return '请求不属于当前旅行。'
     task = self.tasks.get(context.execution_task_id)
+    if task is None and context.entry != 'confirm':
+        return '本次请求已被替代或取消。'
     if task and (task['status'] != 'running' or task['trip_id'] != context.trip_id or task['request_id'] != context.request_id or (task.get('execution_strategy', 'task_execution') != context.strategy) or (task.get('message_id') != context.message_id) or (task.get('requirements_revision') != context.requirements_revision) or (task.get('workflow_revision') != context.workflow_revision) or (task.get('sequence') != context.sequence) or (task.get('epoch') != context.epoch) or (task.get('plan_basis') != context.plan_basis.to_dict())):
         return '本次请求已被替代或取消。'
     if task and (not any((message.id == context.message_id and message.sender_type == 'user' and (message.sender.id == context.owner_id) and (message.body == context.body) for message in self.messages[context.trip_id]))):
@@ -436,11 +445,11 @@ def _receipt(self, context, *, committed, accepted=(), rejected=(), message_id=N
     from app.storage.transactions import _stage_turn as _fn__stage_turn
     from app.application.contracts import CommitReceipt
     from app.domain.itinerary.identity import plan_basis
-    from app.storage.legacy.workflow import normalize_workflow
+    from app.workflow.counters import normalize_workflow
     source = stage or self
     trip = source.trips[context.trip_id]
     workflow = normalize_workflow(trip.workflow_state)
-    return CommitReceipt(trip_id=context.trip_id, execution_task_id=context.execution_task_id, request_id=context.request_id, committed=committed, accepted_artifact_ids=tuple(accepted), rejected_artifacts=tuple(rejected), after_requirements_revision=trip.requirements.revision, after_plan_basis=plan_basis(source.plans[context.trip_id]), after_workflow_revision=workflow['revision'], after_sequence=workflow['sequence'], after_epoch=workflow['epoch'], message_id=message_id, message_status=message_status, task_status=task_status, reason=reason, conversation_task_states={row['id']: row['status'] for row in workflow['tasks']})
+    return CommitReceipt(trip_id=context.trip_id, execution_task_id=context.execution_task_id, request_id=context.request_id, committed=committed, accepted_artifact_ids=tuple(accepted), rejected_artifacts=tuple(rejected), after_requirements_revision=trip.requirements.revision, after_plan_basis=plan_basis(source.plans[context.trip_id]), after_workflow_revision=workflow['revision'], after_sequence=workflow['sequence'], after_epoch=workflow['epoch'], message_id=message_id, message_status=message_status, task_status=task_status, reason=reason, conversation_task_states={})
 
 def execute_turn(self, task_id):
     from app.application.guide import _discard_display_jobs as _fn__discard_display_jobs
@@ -455,19 +464,19 @@ def execute_turn(self, task_id):
     from app.agents import entrypoints
     from app.agents.inputs.execution import build_execution_context
     with self._lock:
-        task = self.tasks[task_id]
-        if task['status'] != 'running':
+        task = self.tasks.get(task_id)
+        if not task or task['status'] != 'running':
             return None
         trip_id = task['trip_id']
         context = capture_request_context(self, trip_id, task_id)
         payload = task['payload']
         display_target = resolve_display_target(self.plans[trip_id], payload)
-        execution = build_execution_context(trip=self.trips[trip_id], plan=self.plans[trip_id], messages=self.messages[trip_id], idea_cards=self.idea_cards[trip_id], metrics=_fn_trip_metrics(self, trip_id), current_date=datetime.now().date().isoformat(), entry=context.entry, payload=payload, display_target=display_target)
+        execution = build_execution_context(trip=self.trips[trip_id], plan=self.plans[trip_id], messages=self.messages[trip_id], metrics=_fn_trip_metrics(self, trip_id), current_date=datetime.now().date().isoformat(), entry=context.entry, payload=payload, display_target=display_target)
         conflict = _turn_conflict(self, context)
     if conflict:
         return fail_execution(self, task_id, ValueError(conflict))
     cancelled = lambda: not _execution_current(self, context)
-    proposal = entrypoints.generate_task_result(context, execution, cancelled=cancelled, on_progress=lambda title, value: self.record_task_progress(task_id, title, value))
+    proposal = entrypoints.generate_task_result(context, execution, cancelled=cancelled, on_progress=lambda title, value: record_task_progress(self, task_id, title, value))
     receipt = commit_turn(self, context, proposal)
     if not receipt.committed and self.tasks.get(task_id, {}).get('status') == 'running':
         return fail_execution(self, task_id, ValueError(receipt.reason))
@@ -504,7 +513,7 @@ def confirm_current_turn(self, trip_id):
         if not self.plans[trip_id].has_content:
             return None
         context = capture_request_context(self, trip_id, entry='confirm', body='确认当前已显示的行程')
-        execution = SimpleNamespace(trip=deepcopy(self.trips[trip_id]), plan=deepcopy(self.plans[trip_id]), idea_cards=deepcopy(self.idea_cards[trip_id]), display_target=None)
+        execution = SimpleNamespace(trip=deepcopy(self.trips[trip_id]), plan=deepcopy(self.plans[trip_id]), display_target=None)
         changes = prepare_changes({'user_quote': context.body, 'itinerary': {'action': 'confirm'}}, context, execution)
     return commit_turn(self, context, ExecutionResult(changes=changes))
 
@@ -518,7 +527,7 @@ def fail_execution(self, task_id, exc):
     from app.storage.state import _persist as _fn__persist
     from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
     from app.storage.transactions import _stage_turn as _fn__stage_turn
-    from app.storage.legacy.workflow import normalize_workflow
+    from app.workflow.counters import normalize_workflow
     from app.application.contracts import ExecutionResult
     if isinstance(exc, TurnPersistenceError):
         return None
@@ -556,14 +565,14 @@ def commit_turn(self, context, proposal):
     from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
     from app.storage.transactions import _stage_turn as _fn__stage_turn
     from app.application.contracts import ExecutionResult, CommitReceipt, serialize
-    from app.storage.legacy.workflow import normalize_workflow
+    from app.workflow.counters import normalize_workflow
     if not isinstance(proposal, ExecutionResult):
         raise ValueError('执行结果类型不正确')
     proposal = deepcopy(proposal)
     proposal.__post_init__()
     submission_digest = sha256(json.dumps({'context': serialize(context), 'result': serialize(proposal)}, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
     with self._lock:
-        existing = self.tasks.get(context.execution_task_id, {})
+        existing = self.task_repository.get(context.execution_task_id) or {}
         if context.trip_id not in self.trips:
             return CommitReceipt(trip_id=context.trip_id, execution_task_id=context.execution_task_id, request_id=context.request_id, committed=False, task_status='failed', reason='旅行已删除，本次结果未保存')
         if self.trips[context.trip_id].owner.id != context.owner_id:
@@ -611,7 +620,8 @@ def commit_turn(self, context, proposal):
         needs_input = bool(next_question)
         has_itinerary = 'itinerary' in crud_kinds
         card = AgentCard('missing-info' if needs_input or failed else 'itinerary-draft' if has_itinerary else 'requirement-summary', '需要补充' if needs_input else '旅行助手', body[:120], [], [AgentAction('查看攻略', 'itinerary')] if has_itinerary else [AgentAction('继续聊天', 'chat')])
-        message = Message(message_id, self.users['agent'], 'agent', body, datetime.now().strftime('%H:%M'), status, card)
+        from app.storage.transactions import _users
+        message = Message(message_id, _users(self)['agent'], 'agent', body, datetime.now().strftime('%H:%M'), status, card)
         messages = stage.messages[trip_id]
         index = next((index for index, row in enumerate(messages) if row.id == message_id), None)
         if index is None:
@@ -645,7 +655,7 @@ def clear_chat(self, trip_id: str) -> None:
     from app.storage.state import _persist as _fn__persist
     from app.storage.transactions import _persist_staged_turn as _fn__persist_staged_turn
     from app.storage.transactions import _stage_turn as _fn__stage_turn
-    from app.storage.legacy.workflow import clear_workflow
+    from app.workflow.counters import clear_workflow
     with self._lock:
         stage = _fn__stage_turn(self, trip_id)
         stage.trips[trip_id].workflow_state = clear_workflow(stage.trips[trip_id].workflow_state)
@@ -812,7 +822,7 @@ def _apply_text_plan(self, trip_id: str, text: str, evidence: list[dict] | None=
             display = validate_display(display, dates_from_snapshot(requirements_snapshot))
         except Exception:
             display, display_status = (None, 'fallback')
-    self.plans[trip_id] = TripPlan(id=f'plan-{next_id(self)}', title=display['title'] if display else f'{self.trips[trip_id].requirements.city or self.trips[trip_id].destination}行程', status='草案', text=text, evidence=deepcopy(evidence or []), requirements_revision=requirements_revision, display=deepcopy(display), display_source_hash=display_source_hash, display_status=display_status, display_style=previous.display_style, requirements_snapshot=requirements_snapshot, lodging_snapshot=lodging_snapshot)
+    self.plans[trip_id] = TripPlan(id=f'plan-{next_id(self)}', title=display['title'] if display else f'{self.trips[trip_id].requirements.city or self.trips[trip_id].destination}行程', status='草案', text=text, evidence=deepcopy(evidence or []), requirements_revision=requirements_revision, display=deepcopy(display), display_source_hash=display_source_hash, display_status=display_status, display_style=previous.display_style, requirements_snapshot=requirements_snapshot, lodging_snapshot=lodging_snapshot, requirements_basis_complete=previous.requirements_basis_complete if preserve_plan_basis else True, requirements_legacy_stale=previous.requirements_legacy_stale if preserve_plan_basis else False)
     self.trips[trip_id].status = '草案'
     _fn__discard_display_jobs(self, trip_id)
     if display_status == 'pending':

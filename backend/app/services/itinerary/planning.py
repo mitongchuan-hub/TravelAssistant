@@ -5,7 +5,7 @@ from datetime import date, timedelta
 def city_outing_brief(trip):
     """Require a dated outing and a consistent, explicit day count."""
     if missing := required_information(trip):
-        return None, '需要补充：' + '、'.join(missing) + '。人数和预算可留空。'
+        return None, '需要补充：' + '、'.join(missing) + '。'
     p = trip.requirements
     count = p.day_count
     dates = None
@@ -31,11 +31,9 @@ def city_outing_brief(trip):
         'day_count': count, 'day_labels': [f'第{i+1}天' for i in range(count)],
         'overnight_count': max(0, count - 1),
         'lodging': trip.lodging,
-        'daily_start': {'time': p.outing_start_time or None, 'location': trip.lodging['name']},
-        'daily_return': {'time': p.outing_end_time or None, 'location': trip.lodging['name']},
         'time_basis': '住宿所在城市当地时间', 'requirements_revision': p.revision,
         'note': '每天从同一住宿出发并返回，按已确认日期与天数安排。'
-                '出门和返回时间未知时给建议时段，不当作已确认时刻。人数和预算未知不默认数值。'
+                '按实际路线给出建议时段，不把建议当作已确认时刻。'
                 '住宿作为路线起终点，住宿费用和跨城交通不计入默认游玩费用。',
     }, None
 
