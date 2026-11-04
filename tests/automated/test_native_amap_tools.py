@@ -5,7 +5,7 @@ import pytest
 
 from app.agents.tools import registry
 from app.agents.tools.weather import query_weather, WEATHER_TOOL_SPEC
-from app.services.maps import amap_mcp
+from app.services.maps import amap_mcp, amap_rest
 from app.domain.changes import prepare_changes
 from app.application.contracts import ExecutionResult
 from tests.automated.test_readonly_chat_runtime import runtime, Script
@@ -20,8 +20,8 @@ def no_real_transport(monkeypatch):
 
 def test_exact_native_schema_and_independent_weather_are_registered():
     tools = registry.agent_tool_registry(read_context=lambda args: {}, query=lambda *args: {},
-                                         submit_changes=lambda args: {})
-    assert set(tools) == amap_mcp.ALLOWED_TOOLS | {'query_weather', 'read_context', 'submit_changes'}
+                                         save_trip_changes=lambda args: {})
+    assert set(tools) == amap_mcp.ALLOWED_TOOLS | {'query_weather', 'read_context', 'read_skill', 'save_trip_changes'}
     for native in registry._NATIVE:
         exposed = tools[native['name']].model_spec()['function']
         assert exposed == native
@@ -59,7 +59,7 @@ def test_unknown_pois_and_coordinates_cannot_reach_provider(monkeypatch, name, a
 def test_returned_detail_must_match_the_requested_id(monkeypatch):
     runner = runtime(Script('unused'))
     runner.search_ids.add('hotel')
-    monkeypatch.setattr(amap_mcp, 'call', lambda *args: {'id': 'another', 'name': '错配酒店',
+    monkeypatch.setattr(amap_rest, 'call', lambda *args: {'id': 'another', 'name': '错配酒店',
                                                     'location': '120,30', 'city': '杭州'})
     with pytest.raises(ValueError, match='ID'):
         runner._query('maps_search_detail', {'id': 'hotel'})
@@ -83,8 +83,11 @@ def test_native_detail_evidence_can_save_lodging_without_model_coordinates(monke
     def call(name, args):
         return {'pois': [{'id': raw['id'], 'name': raw['name']}]} if name == 'maps_text_search' else deepcopy(raw)
     monkeypatch.setattr(amap_mcp, 'call', call)
+    monkeypatch.setattr(amap_rest, 'call', lambda args: deepcopy(raw))
     runner._query('maps_text_search', {'keywords': '测试酒店西湖店', 'city': '杭州'})
-    assert runner._query('maps_search_detail', {'id': 'hotel-test'}) == raw
+    detail = runner._query('maps_search_detail', {'id': 'hotel-test'})
+    assert {k: v for k, v in detail.items() if k != 'navigation_endpoints'} == raw
+    assert detail['navigation_endpoints'][0]['kind'] == 'center'
     assert runner.catalog['hotel-test']['longitude'] == 120.1
     before = deepcopy(store.trips[key].lodging)
     with pytest.raises(ValueError):

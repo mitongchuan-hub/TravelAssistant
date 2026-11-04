@@ -18,11 +18,12 @@ from app.agents.budget import AgentBudgetError, TurnBudget
 from app.agents.inputs.context import project_main_context
 from app.agents.inputs.execution import TaskExecutionContext
 from app.agents.tools.read_context import read_context
-from app.agents.tools.submit_changes import submit_changes
+from app.agents.tools.save_trip_changes import save_trip_changes
 from app.agents.model_transport import IncompleteModelOutput
 from app.domain.lodging import collect_places
 from app.domain.itinerary.prerequisites import required_information
-from app.services.maps.evidence import ROUTE_TOOLS, PLACE_TOOLS, evidence_kind, evidence_result, place_messages
+from app.services.maps.evidence import (ROUTE_TOOLS, PLACE_TOOLS, SEARCH_TOOLS,
+    evidence_kind, evidence_result, place_messages, successful_detail_place)
 from app.services.maps.places import normalize_pois
 from app.services.maps.routes import normalize_route
 from app.agents.tools import registry as tools
@@ -89,10 +90,22 @@ class TaskExecutionRuntime:
         saved = getattr(self.plan, 'evidence', []) if self.plan else []
         self._merge_places(collect_places(place_messages(saved)))
         self.search_ids = set(self.catalog)
+        # Keep only detail-derived center coordinates, separate from search catalog.
+        self.detail_centers = {}
+        self.endpoint_refs = {}
+        for row in saved or []:
+            self._register_endpoints(row)
+            place = successful_detail_place(row)
+            if place:
+                self.detail_centers[place['poi_id']] = place
+                self._merge_places({place['poi_id']: place})
+                self.search_ids.add(place['poi_id'])
+            if isinstance(row, dict) and row.get('tool') in SEARCH_TOOLS:
+                self.search_ids.update(self._search_ids(row.get('result')))
         self.registry = tools.agent_tool_registry(
             read_context=partial(read_context, request_context=self.request_context,
                 execution_context=self.execution_context, trip=self.trip, plan=self.plan, evidence=self.evidence),
-            submit_changes=partial(submit_changes, request_context=self.request_context,
+            save_trip_changes=partial(save_trip_changes, request_context=self.request_context,
                 execution_context=self.execution_context, evidence=self.evidence, budget=self.budget),
             query=self._query)
         self._corrections = 0
@@ -129,7 +142,7 @@ class TaskExecutionRuntime:
         try:
             self.budget.remaining()
             if self.execution_context.entry == 'confirm':
-                return self.registry['submit_changes'].execute({'user_quote': self.request_context.body,
+                return self.registry['save_trip_changes'].execute({'user_quote': self.request_context.body,
                                      'itinerary': {'action': 'confirm'}})
             self.messages = [
                 {'role': 'system', 'content': self.config.prompt},
@@ -236,6 +249,32 @@ class TaskExecutionRuntime:
             message['_responses_output'] = deepcopy(replay)
         return message
 
+    @staticmethod
+    def _search_ids(output):
+        if not isinstance(output, dict) or output.get('status') not in (None, '1', 1, 'available') or output.get('error'):
+            return set()
+        pois = output.get('pois')
+        return {poi['id'] for poi in pois if isinstance(poi, dict)
+                and isinstance(poi.get('id'), str) and poi['id'].strip()} if isinstance(pois, list) else set()
+
+    def _around_center(self, value):
+        # Reuse coordinate matching, but never authorize a search-only catalog hit.
+        self._known_coordinate(value)
+        lon, lat = map(float, value.split(','))
+        import math
+        if not (math.isfinite(lon) and math.isfinite(lat) and -180 <= lon <= 180 and -90 <= lat <= 90):
+            raise ValueError('周边中心坐标无效')
+        centers = list(self.detail_centers.values())
+        if self.trip.lodging:
+            centers.append(self.trip.lodging)
+        matches = [p for p in centers if p.get('longitude') == lon and p.get('latitude') == lat]
+        if not matches:
+            raise ValueError('周边中心须来自固定住宿或成功查询同ID详情的真实中心坐标')
+        if not self.chat_entry:
+            city = self.trip.requirements.city.removesuffix('市')
+            if not any(p.get('city', '').removesuffix('市') == city for p in matches):
+                raise ValueError('同城周边查询须使用住宿所在城市的真实中心')
+
     def _known_coordinate(self, value):
         try:
             lon, lat = (float(part) for part in value.split(','))
@@ -245,7 +284,37 @@ class TaskExecutionRuntime:
                    if place.get('longitude') == lon and place.get('latitude') == lat]
         if not matches:
             raise ValueError('路线坐标必须来自已查询的真实地点，请先搜索并查询详情')
+        if len({place['poi_id'] for place in matches}) != 1:
+            raise ValueError('相同坐标对应多个地点，请使用成功详情的center ref明确身份')
         return matches[0]
+
+    def _register_endpoints(self, row):
+        from app.services.maps.evidence import detail_endpoints
+        place = successful_detail_place(row)
+        for endpoint in detail_endpoints(row):
+            self.endpoint_refs[endpoint['ref']] = {**place,
+                'longitude': endpoint['longitude'], 'latitude': endpoint['latitude'],
+                'endpoint_ref': endpoint['ref'], 'endpoint_kind': endpoint['kind'],
+                'evidence_ref': endpoint['evidence_ref']}
+
+    def _route_endpoint(self, args, side):
+        ref, coords = args.get(side + '_ref'), args.get(side)
+        if ref is None:
+            return self._known_coordinate(coords)
+        point = self.endpoint_refs.get(ref)
+        if point is None:
+            raise ValueError('路线端点ref无效或不属于当前可见详情证据')
+        if (side == 'origin' and point['endpoint_kind'] == 'entrance'
+                or side == 'destination' and point['endpoint_kind'] == 'exit'):
+            raise ValueError('路线出入口用途冲突：出发使用出口，到达使用入口')
+        if coords is not None:
+            try:
+                valid = tuple(map(float, coords.split(','))) == (point['longitude'], point['latitude'])
+            except (ValueError, AttributeError):
+                valid = False
+            if not valid:
+                raise ValueError('路线端点ref与坐标冲突')
+        return deepcopy(point)
 
     def _query(self, name, args):
         self.budget.remaining()
@@ -257,9 +326,14 @@ class TaskExecutionRuntime:
                 raise ValueError('同城查询须使用当前住宿所在城市。')
         if name == 'maps_search_detail' and args.get('id') not in self.search_ids:
             raise ValueError('地点详情只接受本轮搜索或已保存地点返回的真实ID')
+        if name == 'maps_around_search':
+            self._around_center(args.get('location'))
         endpoints = None
         if name in ROUTE_TOOLS:
-            endpoints = [self._known_coordinate(args.get(key)) for key in ('origin', 'destination')]
+            endpoints = [self._route_endpoint(args, side) for side in ('origin', 'destination')]
+            args = deepcopy(args)
+            for side, point in zip(('origin', 'destination'), endpoints):
+                args[side] = f"{point['longitude']},{point['latitude']}"
             if not self.chat_entry and any(point.get('city', '').removesuffix('市') != city for point in endpoints):
                 raise ValueError('同城路线须使用住宿所在城市的真实地点')
             if ROUTE_TOOLS[name] == 'transit':
@@ -274,25 +348,37 @@ class TaskExecutionRuntime:
         from app.agents.tools.weather import budget_scope as weather_scope
         scope = weather_scope if name == 'query_weather' else budget_scope
         started = monotonic()
-        if name != 'query_weather':
+        local_departure_rejection = (name == 'maps_direction_transit_integrated'
+                                     and args.get('departure_at') is not None)
+        if name != 'query_weather' and not local_departure_rejection:
             self.budget.external()
         with scope(self.budget):
             output = tools.run_tool(name, args, place_catalog=self.catalog, route_cache=self.cache)
         self.budget.remaining()
         normalized = output
         if name in PLACE_TOOLS:
-            if name == 'maps_text_search':
-                self.search_ids.update(poi['id'] for poi in output.get('pois', [])
-                                       if isinstance(poi, dict) and isinstance(poi.get('id'), str))
+            if name in SEARCH_TOOLS:
+                self.search_ids.update(self._search_ids(output))
             elif output.get('status') != 'unavailable' and output.get('id') != args['id']:
                 raise ValueError('地图详情返回的ID与请求不一致')
-            normalized = normalize_pois(output)
+            if name == 'maps_search_detail':
+                place = successful_detail_place({'tool': name, 'arguments': args, 'result': output})
+                if place:
+                    self.detail_centers[place['poi_id']] = place
+                    row = {'tool': name, 'arguments': args, 'result': output}
+                    self._register_endpoints(row)
+                    from app.services.maps.evidence import detail_endpoints
+                    # Presentation fields stay outside the immutable raw result used for refs.
+                    output = {**output, 'navigation_endpoints': detail_endpoints(row)}
+            normalized = normalize_pois(output, include_unlocated=name == 'maps_around_search')
             self._merge_places(collect_places([{'role': 'tool', 'name': 'search_places',
                 'content': json.dumps(normalized, ensure_ascii=False)}]))
         elif endpoints:
             # Decode only for business evidence. LLM receives the full native result.
-            normalized = normalize_route({'route': output.get('route', output)},
+            normalized = normalize_route(output if 'status' in output or 'route' in output else {'route': output},
                                          *endpoints, mode=ROUTE_TOOLS[name])
+        if endpoints:
+            output = {**output, 'route_estimate': deepcopy(normalized)}
         if output.get('status') != 'unavailable':
             self.external_results[key] = deepcopy(output)
         self.evidence.append({'tool': name, 'arguments': deepcopy(args), 'result': deepcopy(output),

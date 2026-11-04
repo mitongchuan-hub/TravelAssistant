@@ -1,0 +1,25 @@
+{
+  "database_readonly": true,
+  "database_plan_characters": 805,
+  "database_plan_sha256": "8270aed9803e6a393c0e5319308a2effcf8d1d715429bb5a6d2322eeffa19412",
+  "db_equals_api_equals_submit": true,
+  "agent_runs": [
+    [
+      "full-recheck-5cbb0cd0e1d563d2",
+      38818,
+      2941,
+      5,
+      36402,
+      1
+    ],
+    [
+      "0a65220f72e4",
+      1932,
+      3222,
+      0,
+      28150,
+      1
+    ]
+  ],
+  "port_8767_connect_ex": 10061
+}

@@ -1,0 +1,9 @@
+{
+  "at": "2026-11-04T15:12:48.560823+08:00",
+  "temporary_launcher_directory_deleted": true,
+  "all_this_run_sqlite_and_scripts_deleted": true,
+  "process_output_logs_deleted": true,
+  "port_8767_connect_ex": 10061,
+  "only_this_instance_stopped": true,
+  "no_product_or_env_changes_by_test": true
+}

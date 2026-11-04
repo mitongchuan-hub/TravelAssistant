@@ -1,0 +1,890 @@
+[
+  {
+    "time": "2026-11-04T15:05:27.399759+08:00",
+    "name": "registered",
+    "data": {
+      "synthetic": true,
+      "user_id": "u100"
+    }
+  },
+  {
+    "time": "2026-11-04T15:05:28.272165+08:00",
+    "name": "lodging_lookup",
+    "data": {
+      "status": "choices_required",
+      "choice_token": "[REDACTED]",
+      "candidates": [
+        {
+          "poi_id": "B000A82FYT",
+          "name": "北京国际饭店",
+          "address": "建国门内大街9号",
+          "longitude": 116.428434,
+          "latitude": 39.909665,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:27+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        },
+        {
+          "poi_id": "B0FFKFX85Z",
+          "name": "北京燕京饭店",
+          "address": "西长安街复兴门外大街19号",
+          "longitude": 116.342863,
+          "latitude": 39.908074,
+          "city": "北京市",
+          "district": "西城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:28+00:00",
+          "place_type": "住宿服务;住宿服务相关;住宿服务相关"
+        },
+        {
+          "poi_id": "B000A7CQYB",
+          "name": "北京中国大饭店",
+          "address": "建国门外大街1号",
+          "longitude": 116.458924,
+          "latitude": 39.910226,
+          "city": "北京市",
+          "district": "朝阳区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:28+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        }
+      ],
+      "values": {
+        "start_date": "2026-11-05",
+        "transport_mode": "transit",
+        "day_count": "1",
+        "lodging_address": "北京饭店",
+        "revision": ""
+      }
+    }
+  },
+  {
+    "time": "2026-11-04T15:05:29.071649+08:00",
+    "name": "precise_lodging_lookup",
+    "data": {
+      "status": "choices_required",
+      "choice_token": "[REDACTED]",
+      "candidates": [
+        {
+          "poi_id": "B000A10FBB",
+          "name": "北京饭店",
+          "address": "东长安街33号",
+          "longitude": 116.409385,
+          "latitude": 39.908798,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:28+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        },
+        {
+          "poi_id": "B000A82FYT",
+          "name": "北京国际饭店",
+          "address": "建国门内大街9号",
+          "longitude": 116.428434,
+          "latitude": 39.909665,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:28+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        },
+        {
+          "poi_id": "B0FFKFX85Z",
+          "name": "北京燕京饭店",
+          "address": "西长安街复兴门外大街19号",
+          "longitude": 116.342863,
+          "latitude": 39.908074,
+          "city": "北京市",
+          "district": "西城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:28+00:00",
+          "place_type": "住宿服务;住宿服务相关;住宿服务相关"
+        }
+      ],
+      "values": {
+        "start_date": "2026-11-05",
+        "transport_mode": "transit",
+        "day_count": "1",
+        "lodging_address": "北京饭店",
+        "revision": ""
+      }
+    }
+  },
+  {
+    "time": "2026-11-04T15:05:29.088020+08:00",
+    "name": "trip_created",
+    "data": {
+      "status": "saved",
+      "trip": {
+        "id": "trip-101",
+        "destination": "北京市同城游玩",
+        "date_range": "2026年11月5日 - 2026年11月5日",
+        "status": "未生成",
+        "last_activity": "旅行已创建，开始和 Agent 对话",
+        "mode": "city",
+        "owner": {
+          "id": "u100",
+          "name": "full-recheck-801ba15",
+          "initials": "F"
+        },
+        "requirements": {
+          "start_date": "2026-11-05",
+          "end_date": "2026-11-05",
+          "city": "北京市",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "lodging_address": "北京饭店",
+          "text": "",
+          "revision": 1
+        },
+        "lodging": {
+          "poi_id": "B000A10FBB",
+          "name": "北京饭店",
+          "address": "东长安街33号",
+          "longitude": 116.409385,
+          "latitude": 39.908798,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:28+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        }
+      }
+    }
+  },
+  {
+    "time": "2026-11-04T15:05:29.109764+08:00",
+    "name": "requirements_saved",
+    "data": {
+      "queue": {
+        "paused": false,
+        "pause_reason": "",
+        "revision": 0,
+        "chat_generation": 0,
+        "current_task": null,
+        "waiting_tasks": [],
+        "draining": false
+      },
+      "undo": {
+        "available_count": 0,
+        "latest_entry_id": "",
+        "message_id": "",
+        "version": 1,
+        "can_undo": false,
+        "reason": "没有可撤销的 Agent 修改"
+      },
+      "trip": {
+        "id": "trip-101",
+        "destination": "北京市同城游玩",
+        "date_range": "2026年11月5日 - 2026年11月5日",
+        "status": "未生成",
+        "last_activity": "需求正文已更新",
+        "mode": "city",
+        "owner": {
+          "id": "u100",
+          "name": "full-recheck-801ba15",
+          "initials": "F"
+        },
+        "requirements": {
+          "start_date": "2026-11-05",
+          "end_date": "2026-11-05",
+          "city": "北京市",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "lodging_address": "北京饭店",
+          "text": "不吃花生\n尽量少走路",
+          "revision": 2
+        },
+        "lodging": {
+          "poi_id": "B000A10FBB",
+          "name": "北京饭店",
+          "address": "东长安街33号",
+          "longitude": 116.409385,
+          "latitude": 39.908798,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:28+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        }
+      },
+      "plan": {
+        "id": "empty",
+        "title": "还没有行程计划",
+        "status": "未生成",
+        "text": "",
+        "overview": "",
+        "constraints_met": [],
+        "pending_items": [],
+        "risks": [],
+        "requirements_revision": null,
+        "display_status": "not_requested",
+        "display_source_hash": "",
+        "days": [],
+        "preparation": {
+          "clothing": [],
+          "accommodation": []
+        },
+        "has_content": false
+      },
+      "messages": [
+        {
+          "id": "m-102",
+          "sender": {
+            "id": "agent",
+            "name": "旅行规划 Agent",
+            "initials": "AI"
+          },
+          "sender_type": "agent",
+          "body": "同城行程已经建好。\n\n- 住宿：北京饭店\n- 位置：北京市 · 东长安街33号\n- 游玩：1天，每天从住宿出发并返回\n- 日期：2026-11-05 至 2026-11-05\n\n可以直接说“生成路线”。创建资料已固定，可以在聊天或需求正文中补充自由要求。",
+          "created_at": "15:05",
+          "status": "sent",
+          "agent_card": {
+            "kind": "requirement-summary",
+            "title": "住宿位置已确认",
+            "summary": "在聊天中告诉我下一步安排。",
+            "bullets": [],
+            "actions": []
+          },
+          "execution_progress": {}
+        }
+      ],
+      "tasks": [],
+      "metrics": {
+        "message_count": 1,
+        "plan_day_count": 0,
+        "plan_date_range": "2026年11月5日 - 2026年11月5日",
+        "plan_item_count": 0,
+        "date_coverage_note": ""
+      },
+      "display_state": {
+        "plan_id": "empty",
+        "source_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "display_status": "not_requested",
+        "version": "empty:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855:not_requested:::2:empty:未生成:False:",
+        "enabled": true,
+        "has_text": false,
+        "requirements_revision": 2,
+        "basis_status": "empty",
+        "basis_message": "尚无行程方案。",
+        "guide_available": false,
+        "guide_version": "",
+        "busy": false
+      }
+    }
+  },
+  {
+    "time": "2026-11-04T15:05:29.136802+08:00",
+    "name": "submitted_original_task",
+    "data": {
+      "task": {
+        "id": "aeb66632643541239fc342f01102da4f",
+        "trip_id": "trip-101",
+        "kind": "chat",
+        "request_id": "full-recheck-5cbb0cd0e1d563d2",
+        "status": "waiting",
+        "created_at": "2026-11-04T07:05:29+00:00",
+        "updated_at": "2026-11-04T07:05:29+00:00",
+        "message_id": "m-02c26bbde57b4410837048f686098f15",
+        "thinking_id": null,
+        "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+        "message": "等待上一轮完成"
+      },
+      "messages": [
+        {
+          "id": "m-02c26bbde57b4410837048f686098f15",
+          "sender": {
+            "id": "u100",
+            "name": "full-recheck-801ba15",
+            "initials": "F"
+          },
+          "sender_type": "user",
+          "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+          "created_at": "15:05",
+          "status": "waiting",
+          "agent_card": null,
+          "execution_progress": {}
+        }
+      ]
+    }
+  },
+  {
+    "time": "2026-11-04T15:06:05.549232+08:00",
+    "name": "after_task",
+    "data": {
+      "queue": {
+        "paused": false,
+        "pause_reason": "",
+        "revision": 3,
+        "chat_generation": 0,
+        "current_task": null,
+        "waiting_tasks": [],
+        "draining": false
+      },
+      "undo": {
+        "available_count": 1,
+        "latest_entry_id": "c104a06df78a473ebc2d289f14c5726e",
+        "message_id": "m-cabef243118444e498e7547867887071",
+        "version": 2,
+        "can_undo": true,
+        "reason": ""
+      },
+      "trip": {
+        "id": "trip-101",
+        "destination": "北京市同城游玩",
+        "date_range": "2026年11月5日 - 2026年11月5日",
+        "status": "草案",
+        "last_activity": "Agent 等待补充信息",
+        "mode": "city",
+        "owner": {
+          "id": "u100",
+          "name": "full-recheck-801ba15",
+          "initials": "F"
+        },
+        "requirements": {
+          "start_date": "2026-11-05",
+          "end_date": "2026-11-05",
+          "city": "北京市",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "lodging_address": "北京饭店",
+          "text": "不吃花生\n尽量少走路\n极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决\n不再安排其他景点\n交通以创建资料的公交为准，近距离可说明无需乘车",
+          "revision": 3
+        },
+        "lodging": {
+          "poi_id": "B000A10FBB",
+          "name": "北京饭店",
+          "address": "东长安街33号",
+          "longitude": 116.409385,
+          "latitude": 39.908798,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:28+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        }
+      },
+      "plan": {
+        "id": "plan-103",
+        "title": "北京市行程",
+        "status": "草案",
+        "text": "## 概览\n\n11月5日在北京市，从北京饭店步行至王府井步行街（约912米/12分钟），游览后午餐、返回住宿休息，晚餐回住宿解决。全天仅此一处目的地，无其他景点。天气预计有雾、4.7～16.2°C，无降水，适合短途步行；建议保暖外套。\n\n---\n\n## 11月5日（周三）\n\n### 早餐\n在北京饭店用餐，无需出门。\n\n### 上午：步行至王府井步行街\n- **路线**：北京饭店 → 沿王府井大街向北步行约912米，预计12分钟。距离很近，无需乘坐公交。\n- **目的地**：王府井步行街（王府井大街256号，东城区），24小时开放，评分4.8。\n- **游览建议**：沿步行街主街慢逛即可，不必走完全程，量力而行。街区内商铺密集，可随意进出休息。\n- **花生提醒**：街边小吃和商场餐饮请注意查看配料，选择明确不含花生的菜品。\n\n### 午餐\n在王府井步行街附近用餐。选择标准：\n- 明确标注不含花生的菜品或餐厅\n- 步行距离短，避免为就餐再走远\n- 商场内餐厅通常备料规范，比街边小摊更易确认配料\n\n### 下午：返回住宿休息\n- **路线**：王府井步行街 → 原路步行回北京饭店，同样约912米/12分钟。\n- 回房后可休息，不再安排其他活动。\n\n### 晚餐\n在北京饭店用餐，无需出门。\n\n---\n\n## 费用估算（每人）\n\n| 项目 | 说明 |\n|------|------|\n| 交通 | 步行往返，0元 |\n| 门票 | 步行街免费开放 |\n| 餐饮 | 两顿在住宿解决（含房费），午餐约40～120元视选择而定 |\n\n全天游玩直接支出主要为午餐，无门票和交通费用。\n\n## 注意事项\n- 天气有雾，能见度可能偏低，步行时注意路面。\n- 气温4.7～16.2°C，早晚偏凉，建议保暖外套。\n- 全程步行约1.8公里（往返），节奏可自定，随时可停歇。\n- 花生过敏请在点餐时明确告知服务员。",
+        "overview": "",
+        "constraints_met": [],
+        "pending_items": [],
+        "risks": [],
+        "requirements_revision": 3,
+        "display_status": "pending",
+        "display_source_hash": "",
+        "days": [],
+        "preparation": {
+          "clothing": [],
+          "accommodation": []
+        },
+        "has_content": true
+      },
+      "messages": [
+        {
+          "id": "m-102",
+          "sender": {
+            "id": "agent",
+            "name": "旅行规划 Agent",
+            "initials": "AI"
+          },
+          "sender_type": "agent",
+          "body": "同城行程已经建好。\n\n- 住宿：北京饭店\n- 位置：北京市 · 东长安街33号\n- 游玩：1天，每天从住宿出发并返回\n- 日期：2026-11-05 至 2026-11-05\n\n可以直接说“生成路线”。创建资料已固定，可以在聊天或需求正文中补充自由要求。",
+          "created_at": "15:05",
+          "status": "sent",
+          "agent_card": {
+            "kind": "requirement-summary",
+            "title": "住宿位置已确认",
+            "summary": "在聊天中告诉我下一步安排。",
+            "bullets": [],
+            "actions": []
+          },
+          "execution_progress": {}
+        },
+        {
+          "id": "m-02c26bbde57b4410837048f686098f15",
+          "sender": {
+            "id": "u100",
+            "name": "full-recheck-801ba15",
+            "initials": "F"
+          },
+          "sender_type": "user",
+          "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+          "created_at": "15:05",
+          "status": "sent",
+          "agent_card": null,
+          "execution_progress": {}
+        },
+        {
+          "id": "m-cabef243118444e498e7547867887071",
+          "sender": {
+            "id": "agent",
+            "name": "旅行规划 Agent",
+            "initials": "AI"
+          },
+          "sender_type": "agent",
+          "body": "需求正文已保存。\n\n行程已更新。\n\n## 概览\n\n11月5日在北京市，从北京饭店步行至王府井步行街（约912米/12分钟），游览后午餐、返回住宿休息，晚餐回住宿解决。全天仅此一处目的地，无其他景点。天气预计有雾、4.7～16.2°C，无降水，适合短途步行；建议保暖外套。\n\n---\n\n## 11月5日（周三）\n\n### 早餐\n在北京饭店用餐，无需出门。\n\n### 上午：步行至王府井步行街\n- **路线**：北京饭店 → 沿王府井大街向北步行约912米，预计12分钟。距离很近，无需乘坐公交。\n- **目的地**：王府井步行街（王府井大街256号，东城区），24小时开放，评分4.8。\n- **游览建议**：沿步行街主街慢逛即可，不必走完全程，量力而行。街区内商铺密集，可随意进出休息。\n- **花生提醒**：街边小吃和商场餐饮请注意查看配料，选择明确不含花生的菜品。\n\n### 午餐\n在王府井步行街附近用餐。选择标准：\n- 明确标注不含花生的菜品或餐厅\n- 步行距离短，避免为就餐再走远\n- 商场内餐厅通常备料规范，比街边小摊更易确认配料\n\n### 下午：返回住宿休息\n- **路线**：王府井步行街 → 原路步行回北京饭店，同样约912米/12分钟。\n- 回房后可休息，不再安排其他活动。\n\n### 晚餐\n在北京饭店用餐，无需出门。\n\n---\n\n## 费用估算（每人）\n\n| 项目 | 说明 |\n|------|------|\n| 交通 | 步行往返，0元 |\n| 门票 | 步行街免费开放 |\n| 餐饮 | 两顿在住宿解决（含房费），午餐约40～120元视选择而定 |\n\n全天游玩直接支出主要为午餐，无门票和交通费用。\n\n## 注意事项\n- 天气有雾，能见度可能偏低，步行时注意路面。\n- 气温4.7～16.2°C，早晚偏凉，建议保暖外套。\n- 全程步行约1.8公里（往返），节奏可自定，随时可停歇。\n- 花生过敏请在点餐时明确告知服务员。\n\n行程已保存并生成。如需调整（比如午餐具体推荐、或想加入一段公共交通替代步行），随时告诉我。",
+          "created_at": "15:06",
+          "status": "sent",
+          "agent_card": {
+            "kind": "missing-info",
+            "title": "需要补充",
+            "summary": "需求正文已保存。\n\n行程已更新。\n\n## 概览\n\n11月5日在北京市，从北京饭店步行至王府井步行街（约912米/12分钟），游览后午餐、返回住宿休息，晚餐回住宿解决。全天仅此一处目的地，无其他景点。天气预计有雾、4.7～16.2°C，无降水",
+            "bullets": [],
+            "actions": [
+              {
+                "label": "查看攻略",
+                "target": "itinerary"
+              }
+            ]
+          },
+          "execution_progress": {
+            "state": "succeeded",
+            "started_at": 1793775929143,
+            "updated_at": 1793775965425,
+            "duration_ms": 36282,
+            "revision": 21,
+            "omitted": 0,
+            "steps": [
+              {
+                "id": 1,
+                "kind": "model",
+                "label": "分析旅行需求与安排",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775929206,
+                "duration_ms": 3965
+              },
+              {
+                "id": 3,
+                "kind": "tool",
+                "label": "检索地点与餐饮",
+                "detail": "北京 · 王府井",
+                "status": "succeeded",
+                "started_at": 1793775933178,
+                "duration_ms": 431
+              },
+              {
+                "id": 5,
+                "kind": "model",
+                "label": "整理结果与下一步",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775933618,
+                "duration_ms": 2923
+              },
+              {
+                "id": 7,
+                "kind": "tool",
+                "label": "查询地点详情",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775936547,
+                "duration_ms": 115
+              },
+              {
+                "id": 9,
+                "kind": "model",
+                "label": "整理结果与下一步",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775936670,
+                "duration_ms": 3530
+              },
+              {
+                "id": 11,
+                "kind": "tool",
+                "label": "查询步行路线",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775940207,
+                "duration_ms": 253
+              },
+              {
+                "id": 13,
+                "kind": "model",
+                "label": "整理结果与下一步",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775940467,
+                "duration_ms": 8280
+              },
+              {
+                "id": 15,
+                "kind": "tool",
+                "label": "查询天气",
+                "detail": "北京",
+                "status": "succeeded",
+                "started_at": 1793775948754,
+                "duration_ms": 2288
+              },
+              {
+                "id": 17,
+                "kind": "model",
+                "label": "整理结果与下一步",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775951049,
+                "duration_ms": 14324
+              },
+              {
+                "id": 19,
+                "kind": "tool",
+                "label": "检查旅行修改",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775965381,
+                "duration_ms": 13
+              }
+            ]
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "id": "aeb66632643541239fc342f01102da4f",
+          "trip_id": "trip-101",
+          "kind": "chat",
+          "request_id": "full-recheck-5cbb0cd0e1d563d2",
+          "status": "succeeded",
+          "created_at": "2026-11-04T07:05:29+00:00",
+          "updated_at": "2026-11-04T07:06:05+00:00",
+          "message_id": "m-02c26bbde57b4410837048f686098f15",
+          "thinking_id": "m-cabef243118444e498e7547867887071",
+          "plan_id": "empty",
+          "requirements_revision": 2,
+          "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+          "message": "行程已保存并生成。如需调整（比如午餐具体推荐、或想加入一段公共交通替代步行），随时告诉我。"
+        }
+      ],
+      "metrics": {
+        "message_count": 3,
+        "plan_day_count": 0,
+        "plan_date_range": "2026-11-05 — 2026-11-05",
+        "plan_item_count": 0,
+        "date_coverage_note": ""
+      },
+      "display_state": {
+        "plan_id": "plan-103",
+        "source_hash": "8270aed9803e6a393c0e5319308a2effcf8d1d715429bb5a6d2322eeffa19412",
+        "display_status": "pending",
+        "version": "plan-103:8270aed9803e6a393c0e5319308a2effcf8d1d715429bb5a6d2322eeffa19412:pending:3f0060a1721b4c6fbf5be9297cb897d9:2026-11-04T07:06:05+00:00:3:fresh:草案:False:",
+        "enabled": true,
+        "has_text": true,
+        "requirements_revision": 3,
+        "basis_status": "fresh",
+        "basis_message": "方案与当前游玩设置及已确认住宿一致，出发前仍需核实。 站点为方案顺序，不是地图几何；历史路线仅为查询时估算，不证明开放、免费、门票、预约或遮蔽条件。",
+        "guide_available": false,
+        "guide_version": "",
+        "busy": false
+      }
+    }
+  },
+  {
+    "time": "2026-11-04T15:06:33.715922+08:00",
+    "name": "display_state",
+    "data": {
+      "plan_id": "plan-103",
+      "source_hash": "8270aed9803e6a393c0e5319308a2effcf8d1d715429bb5a6d2322eeffa19412",
+      "display_status": "ready",
+      "version": "plan-103:8270aed9803e6a393c0e5319308a2effcf8d1d715429bb5a6d2322eeffa19412:ready:3f0060a1721b4c6fbf5be9297cb897d9:2026-11-04T07:06:33+00:00:3:fresh:草案:False:65783f804f83f7f059ae28e70ee820a82c9365670edb55b2d87cfd90268e61c2",
+      "enabled": true,
+      "has_text": true,
+      "requirements_revision": 3,
+      "basis_status": "fresh",
+      "basis_message": "方案与当前游玩设置及已确认住宿一致，出发前仍需核实。 站点为方案顺序，不是地图几何；历史路线仅为查询时估算，不证明开放、免费、门票、预约或遮蔽条件。",
+      "guide_available": true,
+      "guide_version": "65783f804f83f7f059ae28e70ee820a82c9365670edb55b2d87cfd90268e61c2",
+      "busy": false
+    }
+  },
+  {
+    "time": "2026-11-04T15:06:33.727770+08:00",
+    "name": "guide_fetched",
+    "data": {
+      "bytes": 7238,
+      "status": 200
+    }
+  },
+  {
+    "time": "2026-11-04T15:06:33.741189+08:00",
+    "name": "final_workspace",
+    "data": {
+      "queue": {
+        "paused": false,
+        "pause_reason": "",
+        "revision": 3,
+        "chat_generation": 0,
+        "current_task": null,
+        "waiting_tasks": [],
+        "draining": false
+      },
+      "undo": {
+        "available_count": 1,
+        "latest_entry_id": "c104a06df78a473ebc2d289f14c5726e",
+        "message_id": "m-cabef243118444e498e7547867887071",
+        "version": 2,
+        "can_undo": true,
+        "reason": ""
+      },
+      "trip": {
+        "id": "trip-101",
+        "destination": "北京市同城游玩",
+        "date_range": "2026年11月5日 - 2026年11月5日",
+        "status": "草案",
+        "last_activity": "Agent 等待补充信息",
+        "mode": "city",
+        "owner": {
+          "id": "u100",
+          "name": "full-recheck-801ba15",
+          "initials": "F"
+        },
+        "requirements": {
+          "start_date": "2026-11-05",
+          "end_date": "2026-11-05",
+          "city": "北京市",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "lodging_address": "北京饭店",
+          "text": "不吃花生\n尽量少走路\n极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决\n不再安排其他景点\n交通以创建资料的公交为准，近距离可说明无需乘车",
+          "revision": 3
+        },
+        "lodging": {
+          "poi_id": "B000A10FBB",
+          "name": "北京饭店",
+          "address": "东长安街33号",
+          "longitude": 116.409385,
+          "latitude": 39.908798,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:05:28+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        }
+      },
+      "plan": {
+        "id": "plan-103",
+        "title": "北京市行程",
+        "status": "草案",
+        "text": "## 概览\n\n11月5日在北京市，从北京饭店步行至王府井步行街（约912米/12分钟），游览后午餐、返回住宿休息，晚餐回住宿解决。全天仅此一处目的地，无其他景点。天气预计有雾、4.7～16.2°C，无降水，适合短途步行；建议保暖外套。\n\n---\n\n## 11月5日（周三）\n\n### 早餐\n在北京饭店用餐，无需出门。\n\n### 上午：步行至王府井步行街\n- **路线**：北京饭店 → 沿王府井大街向北步行约912米，预计12分钟。距离很近，无需乘坐公交。\n- **目的地**：王府井步行街（王府井大街256号，东城区），24小时开放，评分4.8。\n- **游览建议**：沿步行街主街慢逛即可，不必走完全程，量力而行。街区内商铺密集，可随意进出休息。\n- **花生提醒**：街边小吃和商场餐饮请注意查看配料，选择明确不含花生的菜品。\n\n### 午餐\n在王府井步行街附近用餐。选择标准：\n- 明确标注不含花生的菜品或餐厅\n- 步行距离短，避免为就餐再走远\n- 商场内餐厅通常备料规范，比街边小摊更易确认配料\n\n### 下午：返回住宿休息\n- **路线**：王府井步行街 → 原路步行回北京饭店，同样约912米/12分钟。\n- 回房后可休息，不再安排其他活动。\n\n### 晚餐\n在北京饭店用餐，无需出门。\n\n---\n\n## 费用估算（每人）\n\n| 项目 | 说明 |\n|------|------|\n| 交通 | 步行往返，0元 |\n| 门票 | 步行街免费开放 |\n| 餐饮 | 两顿在住宿解决（含房费），午餐约40～120元视选择而定 |\n\n全天游玩直接支出主要为午餐，无门票和交通费用。\n\n## 注意事项\n- 天气有雾，能见度可能偏低，步行时注意路面。\n- 气温4.7～16.2°C，早晚偏凉，建议保暖外套。\n- 全程步行约1.8公里（往返），节奏可自定，随时可停歇。\n- 花生过敏请在点餐时明确告知服务员。",
+        "overview": "",
+        "constraints_met": [],
+        "pending_items": [],
+        "risks": [],
+        "requirements_revision": 3,
+        "display_status": "ready",
+        "display_source_hash": "8270aed9803e6a393c0e5319308a2effcf8d1d715429bb5a6d2322eeffa19412",
+        "days": [],
+        "preparation": {
+          "clothing": [],
+          "accommodation": []
+        },
+        "has_content": true
+      },
+      "messages": [
+        {
+          "id": "m-102",
+          "sender": {
+            "id": "agent",
+            "name": "旅行规划 Agent",
+            "initials": "AI"
+          },
+          "sender_type": "agent",
+          "body": "同城行程已经建好。\n\n- 住宿：北京饭店\n- 位置：北京市 · 东长安街33号\n- 游玩：1天，每天从住宿出发并返回\n- 日期：2026-11-05 至 2026-11-05\n\n可以直接说“生成路线”。创建资料已固定，可以在聊天或需求正文中补充自由要求。",
+          "created_at": "15:05",
+          "status": "sent",
+          "agent_card": {
+            "kind": "requirement-summary",
+            "title": "住宿位置已确认",
+            "summary": "在聊天中告诉我下一步安排。",
+            "bullets": [],
+            "actions": []
+          },
+          "execution_progress": {}
+        },
+        {
+          "id": "m-02c26bbde57b4410837048f686098f15",
+          "sender": {
+            "id": "u100",
+            "name": "full-recheck-801ba15",
+            "initials": "F"
+          },
+          "sender_type": "user",
+          "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+          "created_at": "15:05",
+          "status": "sent",
+          "agent_card": null,
+          "execution_progress": {}
+        },
+        {
+          "id": "m-cabef243118444e498e7547867887071",
+          "sender": {
+            "id": "agent",
+            "name": "旅行规划 Agent",
+            "initials": "AI"
+          },
+          "sender_type": "agent",
+          "body": "需求正文已保存。\n\n行程已更新。\n\n## 概览\n\n11月5日在北京市，从北京饭店步行至王府井步行街（约912米/12分钟），游览后午餐、返回住宿休息，晚餐回住宿解决。全天仅此一处目的地，无其他景点。天气预计有雾、4.7～16.2°C，无降水，适合短途步行；建议保暖外套。\n\n---\n\n## 11月5日（周三）\n\n### 早餐\n在北京饭店用餐，无需出门。\n\n### 上午：步行至王府井步行街\n- **路线**：北京饭店 → 沿王府井大街向北步行约912米，预计12分钟。距离很近，无需乘坐公交。\n- **目的地**：王府井步行街（王府井大街256号，东城区），24小时开放，评分4.8。\n- **游览建议**：沿步行街主街慢逛即可，不必走完全程，量力而行。街区内商铺密集，可随意进出休息。\n- **花生提醒**：街边小吃和商场餐饮请注意查看配料，选择明确不含花生的菜品。\n\n### 午餐\n在王府井步行街附近用餐。选择标准：\n- 明确标注不含花生的菜品或餐厅\n- 步行距离短，避免为就餐再走远\n- 商场内餐厅通常备料规范，比街边小摊更易确认配料\n\n### 下午：返回住宿休息\n- **路线**：王府井步行街 → 原路步行回北京饭店，同样约912米/12分钟。\n- 回房后可休息，不再安排其他活动。\n\n### 晚餐\n在北京饭店用餐，无需出门。\n\n---\n\n## 费用估算（每人）\n\n| 项目 | 说明 |\n|------|------|\n| 交通 | 步行往返，0元 |\n| 门票 | 步行街免费开放 |\n| 餐饮 | 两顿在住宿解决（含房费），午餐约40～120元视选择而定 |\n\n全天游玩直接支出主要为午餐，无门票和交通费用。\n\n## 注意事项\n- 天气有雾，能见度可能偏低，步行时注意路面。\n- 气温4.7～16.2°C，早晚偏凉，建议保暖外套。\n- 全程步行约1.8公里（往返），节奏可自定，随时可停歇。\n- 花生过敏请在点餐时明确告知服务员。\n\n行程已保存并生成。如需调整（比如午餐具体推荐、或想加入一段公共交通替代步行），随时告诉我。",
+          "created_at": "15:06",
+          "status": "sent",
+          "agent_card": {
+            "kind": "missing-info",
+            "title": "需要补充",
+            "summary": "需求正文已保存。\n\n行程已更新。\n\n## 概览\n\n11月5日在北京市，从北京饭店步行至王府井步行街（约912米/12分钟），游览后午餐、返回住宿休息，晚餐回住宿解决。全天仅此一处目的地，无其他景点。天气预计有雾、4.7～16.2°C，无降水",
+            "bullets": [],
+            "actions": [
+              {
+                "label": "查看攻略",
+                "target": "itinerary"
+              }
+            ]
+          },
+          "execution_progress": {
+            "state": "succeeded",
+            "started_at": 1793775929143,
+            "updated_at": 1793775965425,
+            "duration_ms": 36282,
+            "revision": 21,
+            "omitted": 0,
+            "steps": [
+              {
+                "id": 1,
+                "kind": "model",
+                "label": "分析旅行需求与安排",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775929206,
+                "duration_ms": 3965
+              },
+              {
+                "id": 3,
+                "kind": "tool",
+                "label": "检索地点与餐饮",
+                "detail": "北京 · 王府井",
+                "status": "succeeded",
+                "started_at": 1793775933178,
+                "duration_ms": 431
+              },
+              {
+                "id": 5,
+                "kind": "model",
+                "label": "整理结果与下一步",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775933618,
+                "duration_ms": 2923
+              },
+              {
+                "id": 7,
+                "kind": "tool",
+                "label": "查询地点详情",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775936547,
+                "duration_ms": 115
+              },
+              {
+                "id": 9,
+                "kind": "model",
+                "label": "整理结果与下一步",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775936670,
+                "duration_ms": 3530
+              },
+              {
+                "id": 11,
+                "kind": "tool",
+                "label": "查询步行路线",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775940207,
+                "duration_ms": 253
+              },
+              {
+                "id": 13,
+                "kind": "model",
+                "label": "整理结果与下一步",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775940467,
+                "duration_ms": 8280
+              },
+              {
+                "id": 15,
+                "kind": "tool",
+                "label": "查询天气",
+                "detail": "北京",
+                "status": "succeeded",
+                "started_at": 1793775948754,
+                "duration_ms": 2288
+              },
+              {
+                "id": 17,
+                "kind": "model",
+                "label": "整理结果与下一步",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775951049,
+                "duration_ms": 14324
+              },
+              {
+                "id": 19,
+                "kind": "tool",
+                "label": "检查旅行修改",
+                "detail": "",
+                "status": "succeeded",
+                "started_at": 1793775965381,
+                "duration_ms": 13
+              }
+            ]
+          }
+        }
+      ],
+      "tasks": [
+        {
+          "id": "aeb66632643541239fc342f01102da4f",
+          "trip_id": "trip-101",
+          "kind": "chat",
+          "request_id": "full-recheck-5cbb0cd0e1d563d2",
+          "status": "succeeded",
+          "created_at": "2026-11-04T07:05:29+00:00",
+          "updated_at": "2026-11-04T07:06:05+00:00",
+          "message_id": "m-02c26bbde57b4410837048f686098f15",
+          "thinking_id": "m-cabef243118444e498e7547867887071",
+          "plan_id": "empty",
+          "requirements_revision": 2,
+          "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+          "message": "行程已保存并生成。如需调整（比如午餐具体推荐、或想加入一段公共交通替代步行），随时告诉我。"
+        }
+      ],
+      "metrics": {
+        "message_count": 3,
+        "plan_day_count": 1,
+        "plan_date_range": "2026-11-05 — 2026-11-05",
+        "plan_item_count": 0,
+        "date_coverage_note": ""
+      },
+      "display_state": {
+        "plan_id": "plan-103",
+        "source_hash": "8270aed9803e6a393c0e5319308a2effcf8d1d715429bb5a6d2322eeffa19412",
+        "display_status": "ready",
+        "version": "plan-103:8270aed9803e6a393c0e5319308a2effcf8d1d715429bb5a6d2322eeffa19412:ready:3f0060a1721b4c6fbf5be9297cb897d9:2026-11-04T07:06:33+00:00:3:fresh:草案:False:65783f804f83f7f059ae28e70ee820a82c9365670edb55b2d87cfd90268e61c2",
+        "enabled": true,
+        "has_text": true,
+        "requirements_revision": 3,
+        "basis_status": "fresh",
+        "basis_message": "方案与当前游玩设置及已确认住宿一致，出发前仍需核实。 站点为方案顺序，不是地图几何；历史路线仅为查询时估算，不证明开放、免费、门票、预约或遮蔽条件。",
+        "guide_available": true,
+        "guide_version": "65783f804f83f7f059ae28e70ee820a82c9365670edb55b2d87cfd90268e61c2",
+        "busy": false
+      }
+    }
+  }
+]

@@ -1,0 +1,7 @@
+[
+  {
+    "role": "tool",
+    "tool_call_id": "bg9F90XtGXgQ3LkwfPK9dLFh1GBEpFJT",
+    "content": "{\"status\": \"invalid_arguments\", \"reason\": \"行程生成需要本轮明确的肯定指令，不能凭原话引用推断授权\", \"recoverable\": true}"
+  }
+]

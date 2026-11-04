@@ -67,11 +67,23 @@ def test_boolean_does_not_guess(monkeypatch, value):
 @pytest.mark.parametrize('value', ['', 'invalid', '0', '-1', 'nan', 'inf', '-inf', '1e999'])
 @pytest.mark.parametrize('name,getter', [('OPENAI_TIMEOUT_SECONDS', config.model_timeout),
     ('TRAVEL_DISPLAY_TIMEOUT_SECONDS', config.display_timeout),
-    ('AMAP_MCP_TIMEOUT_SECONDS', config.amap_timeout)])
+    ('AMAP_MCP_TIMEOUT_SECONDS', config.amap_timeout),
+    ('AMAP_REST_TIMEOUT_SECONDS', config.amap_rest_timeout)])
 def test_timeout_rejects_nonfinite_nonpositive_and_invalid(monkeypatch, value, name, getter):
     monkeypatch.setenv(name, value)
     with pytest.raises(config.ConfigurationError, match=name):
         getter()
+
+
+def test_rest_timeout_default_does_not_require_existing_env_changes(monkeypatch):
+    monkeypatch.delenv('AMAP_REST_TIMEOUT_SECONDS', raising=False)
+    assert config.amap_rest_timeout() == 10
+    assert config.validate_configuration('web') is None
+    monkeypatch.setenv('AMAP_REST_TIMEOUT_SECONDS', '0.25')
+    assert config.amap_rest_timeout() == .25
+    monkeypatch.setenv('AMAP_REST_TIMEOUT_SECONDS', '120.001')
+    with pytest.raises(config.ConfigurationError, match='AMAP_REST_TIMEOUT_SECONDS'):
+        config.amap_rest_timeout()
 
 
 def test_timeout_bounds_and_fractional_values(monkeypatch):

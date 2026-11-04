@@ -97,21 +97,21 @@ def test_optional_defaults_and_read_pagination_boundaries():
 
 
 def test_submit_quote_full_replacement_and_no_unauthorized_operation():
-    case = {'expected': {'tool': 'submit_changes', 'arguments': {
+    case = {'expected': {'tool': 'save_trip_changes', 'arguments': {
         'user_quote': '请记录：不吃辣。\n只记录。', 'requirements_text': '不吃辣。'},
         'alternatives': {}, 'optional': {}}}
     good = deepcopy(case['expected']['arguments'])
-    assert ev.grade_response(case, response('submit_changes', json.dumps(good)))['passed']
+    assert ev.grade_response(case, response('save_trip_changes', json.dumps(good)))['passed']
     for patch in [{'user_quote': '请记录：不吃辣。'}, {'requirements_text': '吃辣。'},
                   {'itinerary': {'action': 'clear'}}, {'next_question': '要重排吗？'}]:
-        assert not ev.grade_response(case, response('submit_changes', json.dumps({**good, **patch})))['passed']
+        assert not ev.grade_response(case, response('save_trip_changes', json.dumps({**good, **patch})))['passed']
 
 
 def test_dataset_all_tools_and_gold_pass_without_exposing_gold():
     data = ev.load_dataset()
     assert len(data['cases']) == 100
     assert len({c['id'] for c in data['cases']}) == 100
-    assert set(c['expected']['tool'] for c in data['cases']) == set(ev.registry())
+    assert set(c['expected']['tool'] for c in data['cases']) == set(ev.registry()) - {'read_skill'}
     for case in data['cases']:
         gold = case['expected']
         row = ev.grade_response(case, response(gold['tool'], json.dumps(gold['arguments'])))
@@ -169,7 +169,7 @@ def test_optional_rules_are_validated_before_live_run(tmp_path):
 
 def test_gold_quote_cannot_diverge_from_user_input(tmp_path):
     data = ev.load_dataset()
-    case = next(c for c in data['cases'] if c['expected']['tool'] == 'submit_changes')
+    case = next(c for c in data['cases'] if c['expected']['tool'] == 'save_trip_changes')
     case['expected']['arguments']['user_quote'] = 'different message'
     path = tmp_path / 'bad.json'
     path.write_text(json.dumps(data), encoding='utf-8')
@@ -200,7 +200,8 @@ def test_offline_cli_does_not_create_client_or_claim_accuracy(monkeypatch, capsy
     monkeypatch.setattr(ev.resources, 'client_scope', lambda: pytest.fail('offline created client'))
     assert ev.main([]) == 0
     output = capsys.readouterr().out
-    assert '100' in output and '8' in output
+    assert '100' in output and '10 tools' in output
+    assert 'read_skill' in output and 'not covered' in output
     assert '--live' in output
     assert 'passed=' not in output
 
@@ -211,7 +212,7 @@ def test_run_cases_one_request_no_tool_execution_and_error_in_denominator(monkey
     calls = []
     def request(client, model, messages, **kwargs):
         calls.append(kwargs)
-        assert len(kwargs['tools']) == 8
+        assert len(kwargs['tools']) == 10
         assert not kwargs.get('fallback_model') and not kwargs.get('trace')
         if len(calls) == 2:
             raise TimeoutError('key=private-secret')
@@ -228,7 +229,7 @@ def test_run_cases_one_request_no_tool_execution_and_error_in_denominator(monkey
 
 def test_plan_snapshot_is_real_and_gold_never_supplies_missing_plan():
     data = ev.load_dataset()
-    case = next(c for c in data['cases'] if c['expected']['tool'] == 'submit_changes'
+    case = next(c for c in data['cases'] if c['expected']['tool'] == 'save_trip_changes'
                 and c['expected']['arguments'].get('itinerary', {}).get('action') == 'confirm')
     payload = json.loads(ev.build_messages(data, case)[1]['content'])
     assert payload['current_plan']['text'] == '上午西湖散步。\n午餐清淡。\n下午喝茶。'
@@ -236,12 +237,12 @@ def test_plan_snapshot_is_real_and_gold_never_supplies_missing_plan():
 
 
 def test_valid_optional_edit_context_is_not_a_false_negative():
-    case = {'expected': {'tool': 'submit_changes', 'arguments': {'user_quote': '改字',
+    case = {'expected': {'tool': 'save_trip_changes', 'arguments': {'user_quote': '改字',
         'itinerary': {'action': 'edit_text', 'operation': 'replace', 'old_text': '甲', 'new_text': '乙'}},
         'alternatives': {}, 'optional': {}}}
     args = deepcopy(case['expected']['arguments'])
     args['itinerary']['context'] = None
-    assert ev.grade_response(case, response('submit_changes', json.dumps(args)))['passed']
+    assert ev.grade_response(case, response('save_trip_changes', json.dumps(args)))['passed']
 
 
 def test_exact_edit_valid_context_passes_but_wrong_context_fails():
@@ -249,9 +250,9 @@ def test_exact_edit_valid_context_passes_but_wrong_context_fails():
     case = next(c for c in data['cases'] if c['id'] == 'submit-13')
     args = deepcopy(case['expected']['arguments'])
     args['itinerary']['context'] = '上午西湖散步。'
-    assert ev.grade_response(case, response('submit_changes', json.dumps(args)))['passed']
+    assert ev.grade_response(case, response('save_trip_changes', json.dumps(args)))['passed']
     args['itinerary']['context'] = '下午喝茶。'
-    assert not ev.grade_response(case, response('submit_changes', json.dumps(args)))['passed']
+    assert not ev.grade_response(case, response('save_trip_changes', json.dumps(args)))['passed']
 
 
 @pytest.mark.parametrize('wire', ['chat_completions', 'responses'])
@@ -268,7 +269,7 @@ def test_real_transport_boundary_only_requests_once_and_keeps_arguments(monkeypa
     client = NS(chat=NS(completions=NS(create=create)), responses=NS(create=create))
     rows = list(ev.run_cases(ev.load_dataset(), [weather()], client, 'fake'))
     assert rows[0]['passed'] and rows[0]['usage']['prompt_tokens'] == 100
-    assert len(sent) == 1 and len(sent[0]['tools']) == 8
+    assert len(sent) == 1 and len(sent[0]['tools']) == 10
     assert sent[0]['store'] is False
 
 
@@ -291,6 +292,15 @@ def test_real_transport_failures_do_not_retry(monkeypatch, kind):
     assert rows[0]['format_ok'] is None
     assert rows[0]['exception_type'] == ('RateLimitError' if kind == 'rate_limit' else IncompleteModelOutput.__name__)
     assert 'private-provider-body' not in json.dumps(rows)
+
+
+def test_report_discloses_skill_profile_and_uncovered_tool(tmp_path):
+    report = {'rows': [], 'summary': ev.summarize([], 100),
+              'metadata': {'profile': ev.PROFILE, 'uncovered_tools': ['read_skill']}}
+    path = tmp_path / 'report.json'
+    ev.write_report(path, report)
+    text = path.with_suffix('.md').read_text(encoding='utf-8')
+    assert ev.PROFILE in text and 'read_skill' in text and '未覆盖' in text
 
 
 def test_report_preserves_raw_calls_and_marks_incomplete(tmp_path):

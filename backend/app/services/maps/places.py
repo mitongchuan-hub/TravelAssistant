@@ -10,7 +10,7 @@ def _text(value):
     return value.strip() if isinstance(value, str) else ''
 
 
-def normalize_pois(payload, city=''):
+def normalize_pois(payload, city='', *, include_unlocated=False):
     """Only provider coordinates can create a routable place; search summaries may lack them."""
     payload = payload if isinstance(payload, dict) else {}
     queried = datetime.now(timezone.utc).isoformat(timespec='seconds')
@@ -23,29 +23,47 @@ def normalize_pois(payload, city=''):
             continue
         poi_id, name = _text(poi.get('id')), _text(poi.get('name'))
         location = _text(poi.get('location')).split(',')
-        if not poi_id or not name or poi_id in seen or len(location) != 2:
+        if not poi_id or not name or poi_id in seen:
             continue
         try:
             longitude, latitude = map(float, location)
-            if not math.isfinite(longitude) or not math.isfinite(latitude) or not -180 <= longitude <= 180 or not -90 <= latitude <= 90:
-                continue
+            located = (math.isfinite(longitude) and math.isfinite(latitude)
+                       and -180 <= longitude <= 180 and -90 <= latitude <= 90)
         except ValueError:
+            located = False
+        if not located and not include_unlocated:
             continue
         seen.add(poi_id)
+        metadata = poi.get('metadata') if isinstance(poi.get('metadata'), dict) else {}
+        biz = poi.get('biz_ext') if isinstance(poi.get('biz_ext'), dict) else {}
         candidate = {'poi_id': poi_id, 'name': name, 'address': _text(poi.get('address')),
-            'longitude': longitude, 'latitude': latitude, 'city': _text(poi.get('city') or poi.get('cityname')) or city,
-            'district': _text(poi.get('adname')), 'source': '高德地图 POI', 'fetched_at': queried}
+            'city': _text(poi.get('city') or poi.get('cityname')) or city,
+            'district': _text(poi.get('adname')), 'source': '高德地图 POI',
+            'fetched_at': _text(metadata.get('fetched_at')) or queried}
+        if located:
+            candidate.update(longitude=longitude, latitude=latitude)
         if _text(poi.get('type')):
             candidate['place_type'] = _text(poi['type'])
-        hours = _text(poi.get('opentime2')) or _text(poi.get('open_time'))
+        hours = (_text(poi.get('opentime2')) or _text(poi.get('open_time'))
+                 or _text(biz.get('opentime2')) or _text(biz.get('open_time')))
         if hours:
             candidate['opening_hours'] = hours
         candidates.append(candidate)
+    metadata = payload.get('metadata') if isinstance(payload.get('metadata'), dict) else {}
+    biz = payload.get('biz_ext') if isinstance(payload.get('biz_ext'), dict) else {}
+    references = {}
+    if payload.get('id'):
+        for key in ('rating', 'cost'):
+            value = payload.get(key, biz.get(key))
+            if isinstance(value, str) and value.strip():
+                references[key] = value.strip()
+            elif isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value):
+                references[key] = value
     return {'status': 'available' if candidates else 'unavailable', 'city': city,
             'candidates': candidates[:10], 'total_matched': payload.get('total_matched', len(candidates)),
-            'source': '高德地图 POI', 'transport': 'amap_mcp',
-            **{key: _text(payload[key]) for key in ('rating', 'cost')
-               if payload.get('id') and _text(payload.get(key))}}
+            'source': '高德地图 POI',
+            'transport': metadata.get('provider') or payload.get('transport', 'amap_mcp'),
+            **references}
 
 
 def search_places(arguments):

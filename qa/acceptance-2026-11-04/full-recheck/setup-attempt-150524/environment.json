@@ -1,0 +1,17 @@
+{
+  "started_at": "2026-11-04T15:03:06.719572+08:00",
+  "local_date": "2026-11-04",
+  "db_isolated": true,
+  "empty_store_before_register": true,
+  "port": 8767,
+  "model": "qwen3.8:27b",
+  "wire_api": "chat_completions",
+  "main_enable_thinking": null,
+  "reasoning_effort": null,
+  "model_timeout": 240.0,
+  "display_timeout": 180.0,
+  "history_reconstructed": false,
+  "sqlite_guard_enabled": true,
+  "unchanged_generation_parameters": true,
+  "raw_bytes_policy": "Exact byte count/hash plus JSON parsed directly from raw response; reasoning text replaced with character count/hash, original raw bytes not persisted."
+}

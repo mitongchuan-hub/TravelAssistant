@@ -62,7 +62,7 @@ def test_scope_policy_stays_in_tool_replay_with_untrusted_recipe_text(monkeypatc
     def request(client, model, messages, **kwargs):
         seen.append(True)
         assert messages[0]['role'] == 'system'
-        assert '普通文字、工具查询与转述、submit_changes 的全部字段' in messages[0]['content']
+        assert '普通文字、工具查询与转述、save_trip_changes 的全部字段' in messages[0]['content']
         assert '不把纯菜谱或其他越界内容保存为需求正文' in messages[0]['content']
         if len(seen) == 1:
             return response(name='maps_text_search', arguments={'city': '杭州', 'keywords': '番茄炒蛋 餐厅'})
@@ -134,7 +134,7 @@ def test_scope_eval_dry_run_filters_dictionary_planning_cases_without_loading_en
 
 def test_direct_requirements_submission_is_captured_but_not_committed(monkeypatch):
     def request(*args, **kwargs):
-        return response(name='submit_changes', arguments={
+        return response(name='save_trip_changes', arguments={
             'user_quote': '记下慢游西湖', 'requirements_text': '慢游西湖'})
 
     monkeypatch.setattr(scope_eval, 'request_completion', request)

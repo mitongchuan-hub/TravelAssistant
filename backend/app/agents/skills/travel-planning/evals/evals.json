@@ -1,0 +1,86 @@
+{
+  "skill_name": "travel-planning",
+  "version": 1,
+  "status": "not_run",
+  "protocol": {
+    "model": "use current project configuration after explicit budget approval",
+    "comparison": "same base safety prompt, business tools, inputs, fixed evidence, model parameters and budget; with_skill adds catalog and read_skill, without_skill omits both and never receives skill content",
+    "external_services": "fixed synthetic fixtures only; no real maps/weather/store/booking",
+    "grading": "inspect transcript and source evidence for objective checks; human review for comfort, tradeoffs and readability; keyword occurrence is not sufficient evidence",
+    "fixture_status": "scenario definitions only; freeze concrete POI/detail/routes/weather fixtures and input snapshots before any live comparison",
+    "limits": "live request count, per-case deadlines and token allowance require separate approval; no automatic repetitions"
+  },
+  "evals": [
+    {
+      "id": 1,
+      "name": "first-two-day-itinerary",
+      "prompt": "住宿和日期就按创建时的资料，帮我安排杭州两天。想去西湖、灵隐寺，吃杭帮菜，也想有一点逛街时间。每天九点出门、晚上八点前回住宿，别排得太紧。请直接生成，不用再逐项问我兴趣。",
+      "expected_output": "使用已确认住宿及固定两天日期，覆盖有效愿望、餐休及每日往返；先核查关键移动，未知门票/预约保持未知，不推断人数和预算，使用授权提交交付完整正文。",
+      "files": [],
+      "context_requirements": {
+        "city": "杭州",
+        "start_date": "2030-05-10",
+        "end_date": "2030-05-11",
+        "day_count": 2,
+        "transport_mode": "transit",
+        "lodging": "server-confirmed synthetic Hangzhou lodging and coordinates",
+        "requirements_text": "不吃辣。",
+        "plan": null
+      },
+      "review_checks": ["Skill加载后参与规划而不是直接全量注入", "固定两日期都覆盖且每日住宿往返", "不遗漏不吃辣及明确活动愿望", "交通数字可追溯到对应方向方式的夹具", "未查到的门票预约不作保证", "不追问已知兴趣或编造人数预算"],
+      "human_review": ["节奏是否适中", "餐休和活动衔接是否自然", "正文是否清晰而非堆砌"]
+    },
+    {
+      "id": 2,
+      "name": "elder-budget-time-conflict",
+      "prompt": "带两位老人，想西湖、灵隐、龙井村、博物馆一天都去，还想吃一顿杭帮菜。我们三个人当天游玩总预算500元，不含住宿，走路尽量少，下午四点必须回住宿。请帮我安排；如果时间或费用冲突就把取舍说清楚，别假装都能去。",
+      "expected_output": "基于真实夹具识别时间/费用及少步行约束冲突，说明哪些愿望不能同时满足并提出有理由的取舍或关键澄清，不擅自放弃用户指定项、不凭年龄推断疾病、不编门票或保证预算够。",
+      "files": [],
+      "context_requirements": {
+        "city": "杭州",
+        "start_date": "2030-05-10",
+        "end_date": "2030-05-10",
+        "day_count": 1,
+        "transport_mode": "transit",
+        "lodging": "server-confirmed synthetic Hangzhou lodging and coordinates",
+        "requirements_text": "",
+        "plan": null
+      },
+      "review_checks": ["方法加载不被当作修改固定资料授权", "明确处理所有愿望和少步行/16点返回约束", "指出有依据的冲突而非声称全部满足", "预算口径为三人全队且包含游玩费用", "未知价格不按零计入", "年龄不被转化为医疗事实"],
+      "human_review": ["取舍是否具体且尊重用户优先级", "老人节奏是否合理", "关键问题是否必要"]
+    },
+    {
+      "id": 3,
+      "name": "only-second-afternoon-revision",
+      "prompt": "第一天和第二天上午都保留，只把第二天下午的龙井村换成博物馆。午餐别改，晚上还是回原住宿，不要顺便重排其他安排。",
+      "expected_output": "主文与修改参考按需加载，基于已保存完整两日行程只调整第二天下午及必要前后衔接，复核午餐到新地点和新地点返回住宿的依据；其他日期与未授权需求保持。不能保证全部逐字不变或编新路线时间。",
+      "files": [],
+      "context_requirements": {
+        "city": "杭州",
+        "start_date": "2030-05-10",
+        "end_date": "2030-05-11",
+        "day_count": 2,
+        "transport_mode": "transit",
+        "lodging": "same server-confirmed synthetic Hangzhou lodging",
+        "requirements_text": "不吃辣。第二天午餐地点已确定。",
+        "plan": "freeze full two-day draft before live; includes first day, second morning, fixed lunch, second afternoon Longjing, return lodging"
+      },
+      "review_checks": ["读取局部修改参考并使用已保存正文", "保留第一天第二天上午和午餐", "仅替换第二天下午与必要衔接", "路线方向及端点对应新活动而非照搬旧依据", "不更换住宿不改需求正文", "交付完整更新行程或明确关键阻碍"],
+      "human_review": ["关联调整是否确有必要", "是否把局部修改扩大成全局重排", "变化说明是否简洁清晰"]
+    }
+  ],
+  "trigger_evals": [
+    {"query": "资料都齐了，帮我生成两天的同城行程。", "should_trigger": true},
+    {"query": "三天重新排一下，保留我说的必去活动。", "should_trigger": true},
+    {"query": "只换第二天下午的活动，帮我衔接前后交通。", "should_trigger": true},
+    {"query": "你好，你能帮我做什么？", "should_trigger": false},
+    {"query": "只记下不吃辣，不生成行程。", "should_trigger": false},
+    {"query": "把原文里的‘散步’精确改为‘慢走’，其他字别动。", "should_trigger": false},
+    {"query": "只查明天杭州天气，不改行程。", "should_trigger": false},
+    {"query": "查住宿附近的餐厅，先给候选，不重排。", "should_trigger": false},
+    {"query": "解释当前行程为什么把午餐安排在这里。", "should_trigger": false},
+    {"query": "确认当前已看到的方案。", "should_trigger": false},
+    {"query": "明确清空整份行程，不动需求。", "should_trigger": false},
+    {"query": "帮我订杭州到北京的车票和北京酒店。", "should_trigger": false}
+  ]
+}

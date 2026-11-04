@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src &#x27;none&#x27;; script-src &#x27;none&#x27;; style-src &#x27;unsafe-inline&#x27;; img-src &#x27;none&#x27;; font-src &#x27;none&#x27;; connect-src &#x27;none&#x27;; object-src &#x27;none&#x27;; frame-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>北京·王府井步行街 — 2026年11月5日</title>
+<style>
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html {
+  font-size: 16px;
+}
+body {
+  font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  background: #F9F7F7;
+  color: #112D4E;
+  font-size: 15px;
+  line-height: 1.7;
+  padding: 24px 16px 48px;
+  max-width: 430px;
+  margin: 0 auto;
+  word-break: break-word;
+}
+h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #112D4E;
+  line-height: 1.4;
+}
+h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #112D4E;
+  margin-top: 32px;
+  margin-bottom: 12px;
+}
+h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #112D4E;
+}
+.subtitle {
+  font-size: 0.85rem;
+  color: #3F72AF;
+  margin-top: 4px;
+  font-weight: 400;
+}
+.route-overview {
+  margin-top: 20px;
+  padding: 12px 14px;
+  background: #EEF3F8;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+.route-overview .arrow {
+  color: #3F72AF;
+  font-weight: 600;
+}
+.weather-bar {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: #555;
+  line-height: 1.7;
+}
+.timeline {
+  margin-top: 8px;
+  position: relative;
+  padding-left: 20px;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: #D4DEE8;
+  border-radius: 1px;
+}
+.timeline-item {
+  position: relative;
+  margin-bottom: 28px;
+}
+.timeline-item:last-child {
+  margin-bottom: 0;
+}
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: -17px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3F72AF;
+  border: 2px solid #F9F7F7;
+}
+.timeline-item .item-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #3F72AF;
+  margin-bottom: 2px;
+}
+.timeline-item .item-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #112D4E;
+  margin-bottom: 6px;
+}
+.timeline-item p {
+  margin-bottom: 6px;
+}
+.timeline-item ul {
+  padding-left: 1.1em;
+  margin-top: 4px;
+}
+.timeline-item li {
+  margin-bottom: 4px;
+}
+.timeline-item .note {
+  font-size: 0.85rem;
+  color: #666;
+  background: #F4F1ED;
+  border-left: 3px solid #D4C9A8;
+  padding: 8px 10px;
+  border-radius: 0 6px 6px 0;
+  margin-top: 8px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+th, td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #E4E8EC;
+}
+th {
+  font-weight: 600;
+  background: #EEF3F8;
+  color: #112D4E;
+}
+td {
+  color: #333;
+}
+tr:last-child td {
+  border-bottom: none;
+}
+.budget-note {
+  font-size: 0.85rem;
+  color: #555;
+  margin-top: 8px;
+}
+details {
+  margin-top: 24px;
+  border: 1px solid #E0E4E8;
+  border-radius: 8px;
+  background: #fff;
+}
+summary {
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #112D4E;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+summary::before {
+  content: "▸";
+  font-size: 0.8rem;
+  color: #3F72AF;
+  transition: transform 0.2s;
+}
+details[open] summary::before {
+  transform: rotate(90deg);
+}
+details .detail-body {
+  padding: 0 14px 14px;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+details .detail-body ul {
+  padding-left: 1.2em;
+  margin-top: 6px;
+}
+details .detail-body li {
+  margin-bottom: 4px;
+}
+.divider {
+  border: none;
+  border-top: 1px solid #E4E8EC;
+  margin: 32px 0 0;
+}
+@media print {
+  body {
+    background: #fff;
+    padding: 16px;
+    max-width: 100%;
+  }
+  details {
+    border: none;
+    break-inside: avoid;
+  }
+  details .detail-body {
+    display: block !important;
+  }
+  summary {
+    display: none;
+  }
+  .timeline {
+    break-inside: avoid;
+  }
+  .timeline-item {
+    break-inside: avoid;
+  }
+}
+</style>
+</head>
+<body>
+
+<h1>北京 · 王府井步行街</h1>
+<p class="subtitle">2026年11月5日（周三） · 全天</p>
+
+<div class="route-overview">
+  <span>北京饭店</span> <span class="arrow">→</span> <span>王府井步行街（步行约912米 / 约12分钟）</span> <span class="arrow">→</span> <span>返回北京饭店</span>
+</div>
+
+<p class="weather-bar">天气预计有雾 · 4.7～16.2 °C · 无降水 · 适合短途步行</p>
+
+<h2>当日安排</h2>
+
+<div class="timeline">
+
+  <div class="timeline-item">
+    <p class="item-label">早餐</p>
+    <p class="item-title">北京饭店用餐</p>
+    <p>无需出门，在住宿内解决。</p>
+  </div>
+
+  <div class="timeline-item">
+    <p class="item-label">上午</p>
+    <p class="item-title">步行至王府井步行街</p>
+    <p>从北京饭店沿王府井大街向北步行约912米，预计12分钟。距离很近，无需乘坐公交。</p>
+    <p>目的地：王府井步行街（王府井大街256号，东城区），24小时开放，评分4.8。</p>
+    <p>游览建议：沿步行街主街慢逛即可，不必走完全程，量力而行。街区内商铺密集，可随意进出休息。</p>
+    <div class="note">⚠ 花生提醒：街边小吃和商场餐饮请注意查看配料，选择明确不含花生的菜品。</div>
+  </div>
+
+  <div class="timeline-item">
+    <p class="item-label">午餐</p>
+    <p class="item-title">王府井步行街附近用餐</p>
+    <ul>
+      <li>选择明确标注不含花生的菜品或餐厅</li>
+      <li>步行距离短，避免为就餐再走远</li>
+      <li>商场内餐厅通常备料规范，比街边小摊更易确认配料</li>
+    </ul>
+  </div>
+
+  <div class="timeline-item">
+    <p class="item-label">下午</p>
+    <p class="item-title">返回住宿休息</p>
+    <p>从王府井步行街原路步行回北京饭店，同样约912米 / 约12分钟。</p>
+    <p>回房后可休息，不再安排其他活动。</p>
+  </div>
+
+  <div class="timeline-item">
+    <p class="item-label">晚餐</p>
+    <p class="item-title">北京饭店用餐</p>
+    <p>无需出门，在住宿内解决。</p>
+  </div>
+
+</div>
+
+<h2>费用估算（每人）</h2>
+<table>
+  <tr><th>项目</th><th>说明</th></tr>
+  <tr><td>交通</td><td>步行往返，0元</td></tr>
+  <tr><td>门票</td><td>步行街免费开放</td></tr>
+  <tr><td>餐饮</td><td>两顿在住宿解决（含房费），午餐约40～120元视选择而定</td></tr>
+</table>
+<p class="budget-note">全天游玩直接支出主要为午餐，无门票和交通费用。</p>
+
+<details>
+  <summary>注意事项与出行提示</summary>
+  <div class="detail-body">
+    <ul>
+      <li>天气有雾，能见度可能偏低，步行时注意路面。</li>
+      <li>气温4.7～16.2 °C，早晚偏凉，建议保暖外套。</li>
+      <li>全程步行约1.8公里（往返），节奏可自定，随时可停歇。</li>
+      <li>花生过敏请在点餐时明确告知服务员。</li>
+    </ul>
+  </div>
+</details>
+
+</body>
+</html>

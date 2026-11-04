@@ -1,0 +1,75 @@
+{
+  "round": 3,
+  "sdk": {
+    "id": "chatcmpl-HwGjcrR59b6owNZv0WEjr3kmsJZpQ7bE",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": [
+            {
+              "id": "ODtMSHInyQV8Ac7yX0Z30fKFhhAiiJoF",
+              "function": {
+                "arguments": "{\"origin\":\"116.409385,39.908798\",\"destination\":\"116.412007,39.913479\"}",
+                "name": "maps_direction_walking"
+              },
+              "type": "function"
+            }
+          ],
+          "reasoning_content": {
+            "redacted": true,
+            "characters": 374,
+            "sha256": "72ef6e35e314bdfad5ff294058ee1e0bf5f82e1dd041630733fc99a835a88ebd"
+          }
+        }
+      }
+    ],
+    "created": 1793775939,
+    "model": "qwen3.8:27b",
+    "object": "chat.completion",
+    "metadata": null,
+    "moderation": null,
+    "service_tier": null,
+    "system_fingerprint": "b0-unknown",
+    "usage": {
+      "completion_tokens": 338,
+      "prompt_tokens": 8554,
+      "total_tokens": 8892,
+      "completion_tokens_details": null,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cache_write_tokens": null,
+        "cached_tokens": 7143,
+        "image_tokens": null,
+        "text_tokens": null
+      }
+    },
+    "timings": {
+      "cache_n": 7143,
+      "prompt_n": 1411,
+      "prompt_ms": 636.165,
+      "prompt_per_token_ms": 0.4508610914245216,
+      "prompt_per_second": 2217.9780402882902,
+      "predicted_n": 338,
+      "predicted_ms": 2847.084,
+      "predicted_per_token_ms": 8.448320474777448,
+      "predicted_per_second": 118.36672188105445,
+      "draft_n": 240,
+      "draft_n_accepted": 234
+    }
+  },
+  "comparison": {
+    "finish_reason": true,
+    "content": true,
+    "tool_calls": true,
+    "returned_usage_fields": true
+  }
+}

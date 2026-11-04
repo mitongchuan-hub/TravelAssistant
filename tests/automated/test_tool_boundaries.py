@@ -42,7 +42,7 @@ def test_page_and_agent_share_one_provider_and_poi_parser(monkeypatch):
     assert agent_places is web_places
     assert trips.search_places is web_places.search_places
     assert registry.amap_mcp is agent_provider
-    assert agent_provider.ALLOWED_TOOLS == {'maps_text_search', 'maps_search_detail',
+    assert agent_provider.ALLOWED_TOOLS == {'maps_around_search', 'maps_text_search', 'maps_search_detail',
         'maps_direction_walking', 'maps_direction_driving', 'maps_direction_transit_integrated'}
     assert hasattr(agent_provider, 'budget_scope')
     monkeypatch.setattr(agent_provider, 'search_pois', lambda *args: {'pois': [poi('shared')]})
@@ -296,6 +296,7 @@ def test_provider_session_applies_shared_connection_deadline_and_closes(monkeypa
 
 @pytest.mark.parametrize('provider', PROVIDERS, ids=['shared'])
 def test_provider_detail_identity_authority_and_bounds(monkeypatch, provider):
+    from app.services.maps import amap_rest
     calls = []
     class Tools:
         def call(self, name, args):
@@ -311,6 +312,12 @@ def test_provider_detail_identity_authority_and_bounds(monkeypatch, provider):
     def session():
         yield Tools()
     monkeypatch.setattr(provider, 'session', session)
+    def detail(poi_id, *, deadline=None):
+        try:
+            return Tools().call('maps_search_detail', {'id': poi_id})
+        except provider.AmapMCPError:
+            raise amap_rest.AmapRESTError('detail unavailable') from None
+    monkeypatch.setattr(amap_rest, 'detail', detail)
     response = provider.search_pois('', '公园', limit=100)
     assert calls[0] == ('maps_text_search', {'keywords': '公园', 'citylimit': False})
     assert [args['id'] for name, args in calls[1:]] == ['a', 'b', 'c', 'd', 'e']

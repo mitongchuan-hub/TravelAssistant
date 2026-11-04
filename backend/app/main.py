@@ -1,7 +1,7 @@
 """纯 API 装配入口：先校验配置，再初始化持久化并管理应用资源。"""
 import logging
 import sqlite3
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, ExitStack
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException
 from app.core.config import load_environment, validate_configuration
 from app.domain.message import MessageValidationError
 from app.core.resources import client_scope
+from app.services.maps.amap_rest import client_scope as map_client_scope
 
 load_environment()
 validate_configuration('web')
@@ -31,8 +32,15 @@ async def lifespan(application):
     application.state.store = deps.store
     application.state.auth = deps.auth
     application.state.registration_lock = deps.registration_lock
-    resources = client_scope()
-    await run_in_threadpool(resources.__enter__)
+    resources = ExitStack()
+    def start_resources():
+        try:
+            resources.enter_context(client_scope())
+            resources.enter_context(map_client_scope())
+        except BaseException:
+            resources.close()
+            raise
+    await run_in_threadpool(start_resources)
     try:
         deps.store.start_display_worker()
         yield

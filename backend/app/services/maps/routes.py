@@ -117,7 +117,17 @@ def normalize_route(payload, origin, destination, mode='transit'):
                 raise ValueError()
         except (TypeError, ValueError, KeyError):
             return {**result, 'reason': '地点坐标待核实。'}
-    if origin['poi_id'] == destination['poi_id']:
+    same_endpoint = (origin['poi_id'] == destination['poi_id']
+        and origin['longitude'] == destination['longitude']
+        and origin['latitude'] == destination['latitude']
+        and origin.get('endpoint_kind', 'center') == destination.get('endpoint_kind', 'center'))
+    for side, point in [('origin', origin), ('destination', destination)]:
+        result[side + '_endpoint'] = {key: point[key] for key in
+            ('poi_id', 'longitude', 'latitude', 'endpoint_ref', 'endpoint_kind', 'evidence_ref') if key in point}
+    if (isinstance(payload, dict) and (str(payload.get('status', '1')) != '1'
+            or str(payload.get('infocode', '10000')) != '10000')):
+        return {**result, 'reason': '路线服务权限、配额或请求暂不可用，耗时待核实。'}
+    if same_endpoint:
         return {**result, 'status': 'available', 'duration_minutes': 0, 'distance_meters': 0,
                 'source': '同一已匹配地点', 'reason': '同一地点，未计场地内部步行。'}
     try:
@@ -144,7 +154,7 @@ def normalize_route(payload, origin, destination, mode='transit'):
         parsed = []
         for duration_value, distance_value, path in options:
             steps = _transit_steps(path) if mode == 'transit' else []
-            parsed.append((duration_value, distance_value, steps))
+            parsed.append((duration_value, distance_value, steps, path))
         if mode == 'transit':
             # Prefer the provider's first plan that carries usable line details;
             # an estimate without stops must not hide a later complete plan.
@@ -153,10 +163,12 @@ def normalize_route(payload, origin, destination, mode='transit'):
                         or parsed[0])
         else:
             selected = parsed[0]
-        duration, distance, transit_steps = selected
+        duration, distance, transit_steps, selected_path = selected
+        if mode == 'transit':
+            result['fare_yuan'] = _number(selected_path.get('cost'))
         result.update(status='available', duration_minutes=math.ceil(duration / 60),
                       distance_meters=round(distance) if distance is not None else None,
-                      reason='高德MCP查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。')
+                      reason='高德查询时的预计耗时，未来路况与班次可能变化；未额外计候车、安检或场地内部步行。')
         if mode == 'transit':
             detail_status = transit_detail_status(transit_steps)
             result['transit_steps'] = transit_steps

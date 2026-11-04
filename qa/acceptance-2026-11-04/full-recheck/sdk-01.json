@@ -1,0 +1,75 @@
+{
+  "round": 1,
+  "sdk": {
+    "id": "chatcmpl-jSjApbeHiMgIYBCGrNzWG9PzkX1DWptR",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": [
+            {
+              "id": "FUTSLePhU18JC8m5u8zUM5wW8qOfJoHY",
+              "function": {
+                "arguments": "{\"keywords\":\"王府井\",\"city\":\"北京\",\"citylimit\":true}",
+                "name": "maps_text_search"
+              },
+              "type": "function"
+            }
+          ],
+          "reasoning_content": {
+            "redacted": true,
+            "characters": 1109,
+            "sha256": "7ae7c99517afd248c1f1a79222099a25439747a4ca4b60495911c346d3e448b7"
+          }
+        }
+      }
+    ],
+    "created": 1793775932,
+    "model": "qwen3.8:27b",
+    "object": "chat.completion",
+    "metadata": null,
+    "moderation": null,
+    "service_tier": null,
+    "system_fingerprint": "b0-unknown",
+    "usage": {
+      "completion_tokens": 359,
+      "prompt_tokens": 4987,
+      "total_tokens": 5346,
+      "completion_tokens_details": null,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cache_write_tokens": null,
+        "cached_tokens": 4515,
+        "image_tokens": null,
+        "text_tokens": null
+      }
+    },
+    "timings": {
+      "cache_n": 4515,
+      "prompt_n": 472,
+      "prompt_ms": 244.371,
+      "prompt_per_token_ms": 0.5177351694915254,
+      "prompt_per_second": 1931.4894156835303,
+      "predicted_n": 359,
+      "predicted_ms": 3543.501,
+      "predicted_per_token_ms": 9.89804748603352,
+      "predicted_per_second": 101.03002651897091,
+      "draft_n": 265,
+      "draft_n_accepted": 222
+    }
+  },
+  "comparison": {
+    "finish_reason": true,
+    "content": true,
+    "tool_calls": true,
+    "returned_usage_fields": true
+  }
+}

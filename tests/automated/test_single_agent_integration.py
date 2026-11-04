@@ -81,7 +81,7 @@ def runtime_for(store, body, model, *, kind='chat', payload=None, budget=None):
 
 
 def run_commit(store, body, args, **kwargs):
-    model = ScriptedModel(('submit_changes', {'user_quote': body, **args}), '未保存任何修改。')
+    model = ScriptedModel(('save_trip_changes', {'user_quote': body, **args}), '未保存任何修改。')
     runtime = runtime_for(store, body, model, **kwargs)
     proposal = runtime.run()
     receipt = store.commit_turn(runtime.request_context, proposal)
@@ -114,9 +114,9 @@ def test_scripted_sparse_requirement_and_idea_survive_reload_and_replay(store):
 
 def test_scripted_invalid_submission_can_correct_without_saving_subset(store):
     body = '记下晚上夜骑这个想法'
-    model = ScriptedModel(('submit_changes', {'user_quote': 'wrong', 'ideas': [
+    model = ScriptedModel(('save_trip_changes', {'user_quote': 'wrong', 'ideas': [
         {'action': 'create', 'kind': '地点', 'title': '错误', 'body': '不应保存'}]}),
-        ('submit_changes', {'user_quote': body, 'requirements_text': '晚上夜骑'}))
+        ('save_trip_changes', {'user_quote': body, 'requirements_text': '晚上夜骑'}))
     runtime = runtime_for(store, body, model)
     proposal = runtime.run()
     assert not proposal.failed
@@ -163,7 +163,7 @@ def test_scripted_valid_coverage_and_new_idea_survive_reload(store):
 
 def test_scripted_stale_idea_write_is_rejected_atomically(store):
     body = '记录慢游龙井'
-    runtime = runtime_for(store, body, ScriptedModel(('submit_changes', {'user_quote': body, 'requirements_text': '慢游龙井'})))
+    runtime = runtime_for(store, body, ScriptedModel(('save_trip_changes', {'user_quote': body, 'requirements_text': '慢游龙井'})))
     proposal = runtime.run()
     store.save_requirements_text(TRIP, '并发修改', store.trips[TRIP].requirements.revision)
     before = deepcopy(store.trips[TRIP].requirements)
@@ -176,7 +176,7 @@ def test_scripted_stale_idea_write_is_rejected_atomically(store):
 def test_scripted_persistence_failure_never_publishes_or_reloads_subset(store, monkeypatch):
     body = '记下晚上夜骑这个想法，并游玩天数改为2天'
     args = {'user_quote': body, 'requirements_text': '晚上夜骑'}
-    runtime = runtime_for(store, body, ScriptedModel(('submit_changes', args)))
+    runtime = runtime_for(store, body, ScriptedModel(('save_trip_changes', args)))
     proposal = runtime.run()
     before = deepcopy((store.trips, store.plans, store.trips, store.messages, store.tasks))
     def fail(*args, **kwargs):
@@ -199,7 +199,7 @@ def test_scripted_query_budget_exhaustion_cannot_save_next_submission(store, mon
     body = '记录夜骑，并查询西湖'
     runtime = runtime_for(store, body, ScriptedModel(
         ('maps_text_search', {'city': '杭州', 'keywords': '西湖'}),
-        ('submit_changes', {'user_quote': body, 'ideas': [
+        ('save_trip_changes', {'user_quote': body, 'ideas': [
             {'action': 'create', 'kind': '地点', 'title': '夜骑', 'body': '夜骑'}]})),
         budget=TurnBudget(max_external=0))
     proposal = runtime.run()
@@ -293,7 +293,7 @@ def test_missing_transit_details_cannot_publish_fabricated_terminal_itinerary(st
     model = ScriptedModel(('maps_text_search', {'city': '杭州', 'keywords': '西湖'}),
         ('maps_search_detail', {'id': lake['poi_id']}),
         ('maps_direction_transit_integrated', {'origin': '120.15,30.25', 'destination': '120.14,30.24', 'city': '杭州', 'cityd': '杭州'}),
-        ('submit_changes', {'user_quote': body, 'itinerary': {'action': 'replace', 'text': text}}),
+        ('save_trip_changes', {'user_quote': body, 'itinerary': {'action': 'replace', 'text': text}}),
         '公交线路明细待核实，本轮不保存新行程。')
     runtime = runtime_for(store, body, model)
     proposal = runtime.run()
@@ -312,7 +312,7 @@ def test_web_message_background_task_runs_real_runtime_and_commit(store, monkeyp
     calls = []
     def generate(context, execution, **kwargs):
         model = ScriptedModel(('read_context', {'section': 'requirements'}),
-            ('submit_changes', {'user_quote': context.body, 'requirements_text': '晚上夜骑'}))
+            ('save_trip_changes', {'user_quote': context.body, 'requirements_text': '晚上夜骑'}))
         runtime = TaskExecutionRuntime(None, 'offline-script', context, execution, model)
         proposal = runtime.run()
         calls.append(runtime)

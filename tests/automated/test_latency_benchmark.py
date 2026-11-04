@@ -16,9 +16,9 @@ def test_current_agents_and_default_offline(monkeypatch, capsys):
     agents = benchmark.build_agents()
     assert [agent['name'] for agent in agents] == ['travel_agent', 'display']
     travel, display = agents
-    assert len(travel['tools']) == 8
+    assert len(travel['tools']) == 10
     assert {tool['function']['name'] for tool in travel['tools']} == {
-        'read_context', 'submit_changes', 'query_weather', 'maps_text_search', 'maps_search_detail',
+        'read_context', 'read_skill', 'save_trip_changes', 'query_weather', 'maps_around_search', 'maps_text_search', 'maps_search_detail',
         'maps_direction_walking', 'maps_direction_driving', 'maps_direction_transit_integrated',
     }
     assert travel['user']['message']['text'] == benchmark.USER_MSG

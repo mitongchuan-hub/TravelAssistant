@@ -26,7 +26,7 @@ os.environ.update({
     'TRAVEL_DISPLAY_TIMEOUT_SECONDS': '5', 'TRAVEL_COOKIE_SECURE': 'false',
     'TRAVEL_AGENT_DISABLE_LLM': 'true', 'AMAP_MAPS_API_KEY': 'offline-browser-map',
     'AMAP_MAP_KEY': '', 'AMAP_MCP_URL': 'https://maps.offline.invalid/mcp',
-    'AMAP_MCP_TIMEOUT_SECONDS': '5',
+    'AMAP_MCP_TIMEOUT_SECONDS': '5', 'AMAP_REST_TIMEOUT_SECONDS': '5',
 })
 import dotenv
 dotenv.load_dotenv = lambda *args, **kwargs: False
@@ -66,15 +66,40 @@ def fake_places(arguments):
          'source': '高德地图 POI', 'fetched_at': '2030-01-01T00:00:00+00:00'}
         for i, (name, address) in enumerate([('湖滨酒店（西湖店）', '湖滨路1号'), ('湖滨酒店（城站店）', '城站路2号')]) ]}
 trips.search_places = fake_places
-def fake_tool(name, arguments, **kwargs):
+from app.services.maps import amap_rest, amap_mcp
+
+
+def fake_detail(poi_id, *, deadline=None):
+    row = next(row for row in fake_places({})['candidates'] if row['poi_id'] == poi_id)
+    poi = {'id': row['poi_id'], 'name': row['name'], 'address': row['address'], 'city': row['city'],
+           'location': f"{row['longitude']},{row['latitude']}"}
+    return {**poi, 'metadata': {'provider': 'amap_rest', 'api_version': 'v3',
+        'endpoint_kind': 'place_detail', 'fetched_at': row['fetched_at']},
+        'raw': {'status': '1', 'infocode': '10000', 'pois': [poi]}}
+
+
+def fake_mcp(name, arguments):
     if name == 'maps_text_search':
         return {'pois': [{'id': row['poi_id'], 'name': row['name']} for row in fake_places(arguments)['candidates']]}
-    if name == 'maps_search_detail':
-        row = next(row for row in fake_places(arguments)['candidates'] if row['poi_id'] == arguments['id'])
-        return {'id': row['poi_id'], 'name': row['name'], 'address': row['address'], 'city': row['city'],
-                'location': f"{row['longitude']},{row['latitude']}"}
-    raise AssertionError('Unexpected external tool in browser fixture')
-registry.run_tool = fake_tool
+    raise AssertionError('Unexpected MCP tool in browser fixture')
+
+
+def fake_route(name, arguments):
+    transit = name == 'maps_direction_transit_integrated'
+    plan = {'duration': '600', 'distance': '800'}
+    if transit:
+        plan.update(cost='2', segments=[{'bus': {'buslines': [{'name': '测试公交',
+            'departure_stop': {'name': '湖滨站'}, 'arrival_stop': {'name': '酒店站'}}]}}])
+    return {'status': '1', 'infocode': '10000',
+        'route': {'transits' if transit else 'paths': [plan]},
+        'metadata': {'provider': 'amap_rest', 'api_version': 'v3',
+                     'endpoint_kind': name.removeprefix('maps_direction_')}}
+
+
+amap_rest.route = fake_route
+# Keep registry dispatch real so detail and routes exercise REST seams, not MCP.
+amap_rest.detail = fake_detail
+amap_mcp.call = fake_mcp
 
 
 class ScriptedModel:
@@ -93,7 +118,7 @@ class ScriptedModel:
         else:
             previous = execution.trip.requirements.text
             changes['requirements_text'] = previous + ('\n' if previous else '') + '晚上夜骑'
-        self.steps = iter([('read_context', {'section': 'requirements'}), ('submit_changes', changes)])
+        self.steps = iter([('read_context', {'section': 'requirements'}), ('save_trip_changes', changes)])
 
     def __call__(self, client, model, messages, **kwargs):
         kwargs['budget'].model()

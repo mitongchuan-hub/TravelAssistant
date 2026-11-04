@@ -1,0 +1,6 @@
+{
+  "time": "2026-11-04T15:00:14.126687+08:00",
+  "error_type": "RuntimeError",
+  "message": "Original POI absent in real candidates; no substitution",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\16156\\AppData\\Local\\Temp\\travel-full-recheck-i3baqny3\\run.py\", line 133, in <module>\n    if selected is None: raise RuntimeError('Original POI absent in real candidates; no substitution')\n                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: Original POI absent in real candidates; no substitution\n"
+}

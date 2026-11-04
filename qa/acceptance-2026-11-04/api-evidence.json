@@ -1,0 +1,2875 @@
+{
+  "started": "2026-11-04T06:08:16.756Z",
+  "steps": [
+    {
+      "time": "2026-11-04T06:08:17.964Z",
+      "name": "registered",
+      "data": {
+        "synthetic": true
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:18.227Z",
+      "name": "login",
+      "data": {
+        "ok": true
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:19.218Z",
+      "name": "lodging_lookup",
+      "data": {
+        "status": "choices_required",
+        "candidates": [
+          {
+            "poi_id": "B000A82FYT",
+            "name": "北京国际饭店",
+            "address": "建国门内大街9号",
+            "longitude": 116.428434,
+            "latitude": 39.909665,
+            "city": "北京市",
+            "district": "东城区",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-11-04T06:08:18+00:00",
+            "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+          },
+          {
+            "poi_id": "B0FFKFX85Z",
+            "name": "北京燕京饭店",
+            "address": "西长安街复兴门外大街19号",
+            "longitude": 116.342863,
+            "latitude": 39.908074,
+            "city": "北京市",
+            "district": "西城区",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-11-04T06:08:18+00:00",
+            "place_type": "住宿服务;住宿服务相关;住宿服务相关"
+          },
+          {
+            "poi_id": "B000A7CQYB",
+            "name": "北京中国大饭店",
+            "address": "建国门外大街1号",
+            "longitude": 116.458924,
+            "latitude": 39.910226,
+            "city": "北京市",
+            "district": "朝阳区",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-11-04T06:08:19+00:00",
+            "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+          }
+        ],
+        "values": {
+          "revision": "",
+          "transport_mode": "transit",
+          "lodging_address": "北京饭店",
+          "start_date": "2026-11-05",
+          "day_count": "1"
+        }
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:19.353Z",
+      "name": "trip_created",
+      "data": {
+        "id": "trip-101",
+        "destination": "北京市同城游玩",
+        "date_range": "2026年11月5日 - 2026年11月5日",
+        "status": "未生成",
+        "last_activity": "旅行已创建，开始和 Agent 对话",
+        "mode": "city",
+        "requirements": {
+          "start_date": "2026-11-05",
+          "end_date": "2026-11-05",
+          "city": "北京市",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "lodging_address": "北京饭店",
+          "text": "",
+          "revision": 1
+        },
+        "lodging": {
+          "poi_id": "B000A82FYT",
+          "name": "北京国际饭店",
+          "address": "建国门内大街9号",
+          "longitude": 116.428434,
+          "latitude": 39.909665,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T06:08:18+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        }
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:19.395Z",
+      "name": "submitted requirements",
+      "data": {
+        "id": "5eb00c75fa7b4ecf8a6d354fe7ebbb09",
+        "trip_id": "trip-101",
+        "kind": "chat",
+        "request_id": "live-requirements-1793772499369",
+        "status": "waiting",
+        "created_at": "2026-11-04T06:08:19+00:00",
+        "updated_at": "2026-11-04T06:08:19+00:00",
+        "message_id": "m-82c495fa9d424d6cb0441b68e072db8b",
+        "thinking_id": null,
+        "body": "请记下我的需求：想去香山，不吃花生，尽量少走路。现在只保存需求，不生成路线。",
+        "message": "等待上一轮完成"
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:24.259Z",
+      "name": "finished requirements",
+      "data": {
+        "id": "5eb00c75fa7b4ecf8a6d354fe7ebbb09",
+        "trip_id": "trip-101",
+        "kind": "chat",
+        "request_id": "live-requirements-1793772499369",
+        "status": "succeeded",
+        "created_at": "2026-11-04T06:08:19+00:00",
+        "updated_at": "2026-11-04T06:08:23+00:00",
+        "message_id": "m-82c495fa9d424d6cb0441b68e072db8b",
+        "thinking_id": "m-3cc71a080dbb4fc4b1c3d9ae3675e450",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "body": "请记下我的需求：想去香山，不吃花生，尽量少走路。现在只保存需求，不生成路线。",
+        "message": "已为你记下这三条需求。之后随时说\"生成路线\"即可出行程。"
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:24.267Z",
+      "name": "requirements_after_add",
+      "data": {
+        "start_date": "2026-11-05",
+        "end_date": "2026-11-05",
+        "city": "北京市",
+        "day_count": 1,
+        "transport_mode": "transit",
+        "lodging_address": "北京饭店",
+        "text": "想去香山；不吃花生；尽量少走路。",
+        "revision": 2
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:24.286Z",
+      "name": "submitted delete-xiangshan",
+      "data": {
+        "id": "878eb21dcbb04df3a925fbe1667408e1",
+        "trip_id": "trip-101",
+        "kind": "chat",
+        "request_id": "live-delete-xiangshan-1793772504268",
+        "status": "waiting",
+        "created_at": "2026-11-04T06:08:24+00:00",
+        "updated_at": "2026-11-04T06:08:24+00:00",
+        "message_id": "m-0cb8f6a0419a4ab9ac8addc304e24dcd",
+        "thinking_id": null,
+        "body": "删掉想去香山这一项，保留不吃花生和尽量少走路，其他内容不要误清。只更新需求，不生成路线。",
+        "message": "等待上一轮完成"
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:26.721Z",
+      "name": "finished delete-xiangshan",
+      "data": {
+        "id": "878eb21dcbb04df3a925fbe1667408e1",
+        "trip_id": "trip-101",
+        "kind": "chat",
+        "request_id": "live-delete-xiangshan-1793772504268",
+        "status": "succeeded",
+        "created_at": "2026-11-04T06:08:24+00:00",
+        "updated_at": "2026-11-04T06:08:26+00:00",
+        "message_id": "m-0cb8f6a0419a4ab9ac8addc304e24dcd",
+        "thinking_id": "m-bd4a400bc397411c85404fbea77f3b48",
+        "plan_id": "empty",
+        "requirements_revision": 2,
+        "body": "删掉想去香山这一项，保留不吃花生和尽量少走路，其他内容不要误清。只更新需求，不生成路线。",
+        "message": "已完成"
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:26.730Z",
+      "name": "requirements_after_delete",
+      "data": {
+        "start_date": "2026-11-05",
+        "end_date": "2026-11-05",
+        "city": "北京市",
+        "day_count": 1,
+        "transport_mode": "transit",
+        "lodging_address": "北京饭店",
+        "text": "不吃花生；尽量少走路。",
+        "revision": 3
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:27.564Z",
+      "name": "default_trip",
+      "data": {
+        "id": "trip-103",
+        "destination": "北京市同城游玩",
+        "date_range": "2026年11月5日 - 2026年11月5日",
+        "status": "未生成",
+        "last_activity": "旅行已创建，开始和 Agent 对话",
+        "mode": "city",
+        "requirements": {
+          "start_date": "2026-11-05",
+          "end_date": "2026-11-05",
+          "city": "北京市",
+          "day_count": 1,
+          "transport_mode": "transit",
+          "lodging_address": "北京饭店",
+          "text": "",
+          "revision": 1
+        },
+        "lodging": {
+          "poi_id": "B000A10FBB",
+          "name": "北京饭店",
+          "address": "东长安街33号",
+          "longitude": 116.409385,
+          "latitude": 39.908798,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T06:08:27+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        }
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:27.616Z",
+      "name": "submitted plan-A",
+      "data": {
+        "id": "35f3a339a6284509a3e34535b5566caf",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-plan-A-1793772507591",
+        "status": "waiting",
+        "created_at": "2026-11-04T06:08:27+00:00",
+        "updated_at": "2026-11-04T06:08:27+00:00",
+        "message_id": "m-b57ab9ebbb684e16be894bbe2bc5f8ff",
+        "thinking_id": null,
+        "body": "请直接生成这一天的同城游玩路线，我没有其他偏好。请用真实地点和公交查询，从住宿出发并返回；包括餐饮、休息、必要预约或开放条件，说明未提供信息采用的默认假设，但不要把默认假设写入我的需求。",
+        "message": "等待上一轮完成"
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:27.669Z",
+      "name": "submitted followup-B",
+      "data": {
+        "id": "ae04daa9fc814a069c9594e657161ebd",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-followup-B-1793772507617",
+        "status": "waiting",
+        "created_at": "2026-11-04T06:08:27+00:00",
+        "updated_at": "2026-11-04T06:08:27+00:00",
+        "message_id": "m-bf58a332409e4dec9975543801d4990d",
+        "thinking_id": null,
+        "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+        "message": "等待上一轮完成"
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:27.687Z",
+      "name": "submitted followup-C",
+      "data": {
+        "id": "3d67637129674c9bafd5110507252933",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-followup-C-1793772507670",
+        "status": "waiting",
+        "created_at": "2026-11-04T06:08:27+00:00",
+        "updated_at": "2026-11-04T06:08:27+00:00",
+        "message_id": "m-47bcf47afb80493e8500274e8c8cc861",
+        "thinking_id": null,
+        "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+        "message": "等待上一轮完成"
+      }
+    },
+    {
+      "time": "2026-11-04T06:08:27.692Z",
+      "name": "queue_ABC",
+      "data": {
+        "paused": false,
+        "pause_reason": "",
+        "revision": 4,
+        "chat_generation": 0,
+        "current_task": {
+          "id": "35f3a339a6284509a3e34535b5566caf",
+          "trip_id": "trip-103",
+          "kind": "chat",
+          "request_id": "live-plan-A-1793772507591",
+          "status": "running",
+          "created_at": "2026-11-04T06:08:27+00:00",
+          "updated_at": "2026-11-04T06:08:27+00:00",
+          "message_id": "m-b57ab9ebbb684e16be894bbe2bc5f8ff",
+          "thinking_id": "m-487008ba99f84f2699cae3bd27b8e0ca",
+          "plan_id": "empty",
+          "requirements_revision": 1,
+          "body": "请直接生成这一天的同城游玩路线，我没有其他偏好。请用真实地点和公交查询，从住宿出发并返回；包括餐饮、休息、必要预约或开放条件，说明未提供信息采用的默认假设，但不要把默认假设写入我的需求。",
+          "message": "正在处理，请稍候"
+        },
+        "waiting_tasks": [
+          {
+            "id": "ae04daa9fc814a069c9594e657161ebd",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-B-1793772507617",
+            "status": "waiting",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:08:27+00:00",
+            "message_id": "m-bf58a332409e4dec9975543801d4990d",
+            "thinking_id": null,
+            "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+            "message": "等待上一轮完成"
+          },
+          {
+            "id": "3d67637129674c9bafd5110507252933",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-C-1793772507670",
+            "status": "waiting",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:08:27+00:00",
+            "message_id": "m-47bcf47afb80493e8500274e8c8cc861",
+            "thinking_id": null,
+            "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+            "message": "等待上一轮完成"
+          }
+        ],
+        "draining": true
+      }
+    },
+    {
+      "time": "2026-11-04T06:10:55.715Z",
+      "name": "finished plan-A",
+      "data": {
+        "id": "35f3a339a6284509a3e34535b5566caf",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-plan-A-1793772507591",
+        "status": "failed",
+        "created_at": "2026-11-04T06:08:27+00:00",
+        "updated_at": "2026-11-04T06:10:55+00:00",
+        "message_id": "m-b57ab9ebbb684e16be894bbe2bc5f8ff",
+        "thinking_id": "m-487008ba99f84f2699cae3bd27b8e0ca",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "body": "请直接生成这一天的同城游玩路线，我没有其他偏好。请用真实地点和公交查询，从住宿出发并返回；包括餐饮、休息、必要预约或开放条件，说明未提供信息采用的默认假设，但不要把默认假设写入我的需求。",
+        "message": "本次处理未完成，请重新发送消息。已有内容已保留。"
+      }
+    },
+    {
+      "name": "failure_pause_observed",
+      "time": "2026-11-04T06:14:08.257Z",
+      "data": {
+        "paused": true,
+        "pause_reason": "failed",
+        "revision": 5,
+        "chat_generation": 0,
+        "current_task": null,
+        "waiting_tasks": [
+          {
+            "id": "ae04daa9fc814a069c9594e657161ebd",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-B-1793772507617",
+            "status": "waiting",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:08:27+00:00",
+            "message_id": "m-bf58a332409e4dec9975543801d4990d",
+            "thinking_id": null,
+            "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+            "message": "等待上一轮完成"
+          },
+          {
+            "id": "3d67637129674c9bafd5110507252933",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-C-1793772507670",
+            "status": "waiting",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:08:27+00:00",
+            "message_id": "m-47bcf47afb80493e8500274e8c8cc861",
+            "thinking_id": null,
+            "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+            "message": "等待上一轮完成"
+          }
+        ],
+        "draining": false
+      }
+    },
+    {
+      "name": "finished B",
+      "time": "2026-11-04T06:14:15.406Z",
+      "data": {
+        "id": "ae04daa9fc814a069c9594e657161ebd",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-followup-B-1793772507617",
+        "status": "succeeded",
+        "created_at": "2026-11-04T06:08:27+00:00",
+        "updated_at": "2026-11-04T06:14:14+00:00",
+        "message_id": "m-bf58a332409e4dec9975543801d4990d",
+        "thinking_id": "m-32ec7d31392f4406b602283e6238fe3e",
+        "plan_id": "empty",
+        "requirements_revision": 1,
+        "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+        "message": "已完成"
+      }
+    },
+    {
+      "name": "finished C",
+      "time": "2026-11-04T06:14:18.443Z",
+      "data": {
+        "id": "3d67637129674c9bafd5110507252933",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-followup-C-1793772507670",
+        "status": "succeeded",
+        "created_at": "2026-11-04T06:08:27+00:00",
+        "updated_at": "2026-11-04T06:14:17+00:00",
+        "message_id": "m-47bcf47afb80493e8500274e8c8cc861",
+        "thinking_id": "m-cab466b9983346a1b8c7cebd53aac4cf",
+        "plan_id": "empty",
+        "requirements_revision": 2,
+        "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+        "message": "已完成"
+      }
+    },
+    {
+      "name": "after_ABC",
+      "time": "2026-11-04T06:14:18.452Z",
+      "data": {
+        "queue": {
+          "paused": false,
+          "pause_reason": "",
+          "revision": 10,
+          "chat_generation": 0,
+          "current_task": null,
+          "waiting_tasks": [],
+          "draining": false
+        },
+        "undo": {
+          "available_count": 2,
+          "latest_entry_id": "ab4b0b99a5854b04b55cbaead9a4a3fe",
+          "message_id": "m-cab466b9983346a1b8c7cebd53aac4cf",
+          "version": 2,
+          "can_undo": true,
+          "reason": ""
+        },
+        "trip": {
+          "id": "trip-103",
+          "destination": "北京市同城游玩",
+          "date_range": "2026年11月5日 - 2026年11月5日",
+          "status": "未生成",
+          "last_activity": "Agent 已完成本轮请求",
+          "mode": "city",
+          "requirements": {
+            "start_date": "2026-11-05",
+            "end_date": "2026-11-05",
+            "city": "北京市",
+            "day_count": 1,
+            "transport_mode": "transit",
+            "lodging_address": "北京饭店",
+            "text": "不吃花生\n尽量少走路",
+            "revision": 3
+          },
+          "lodging": {
+            "poi_id": "B000A10FBB",
+            "name": "北京饭店",
+            "address": "东长安街33号",
+            "longitude": 116.409385,
+            "latitude": 39.908798,
+            "city": "北京市",
+            "district": "东城区",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-11-04T06:08:27+00:00",
+            "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+          }
+        },
+        "plan": {
+          "id": "empty",
+          "title": "还没有行程计划",
+          "status": "未生成",
+          "text": "",
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "requirements_revision": null,
+          "display_status": "not_requested",
+          "display_source_hash": "",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "has_content": false
+        },
+        "messages": [
+          {
+            "id": "m-104",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "同城行程已经建好。\n\n- 住宿：北京饭店\n- 位置：北京市 · 东长安街33号\n- 游玩：1天，每天从住宿出发并返回\n- 日期：2026-11-05 至 2026-11-05\n\n可以直接说“生成路线”。创建资料已固定，可以在聊天或需求正文中补充自由要求。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "住宿位置已确认",
+              "summary": "在聊天中告诉我下一步安排。",
+              "bullets": [],
+              "actions": []
+            },
+            "execution_progress": {}
+          },
+          {
+            "id": "m-b57ab9ebbb684e16be894bbe2bc5f8ff",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "请直接生成这一天的同城游玩路线，我没有其他偏好。请用真实地点和公交查询，从住宿出发并返回；包括餐饮、休息、必要预约或开放条件，说明未提供信息采用的默认假设，但不要把默认假设写入我的需求。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-487008ba99f84f2699cae3bd27b8e0ca",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "本次处理未完成，请重新发送消息。已有内容已保留。",
+            "created_at": "14:10",
+            "status": "failed",
+            "agent_card": {
+              "kind": "missing-info",
+              "title": "旅行助手",
+              "summary": "本次处理未完成，请重新发送消息。已有内容已保留。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "failed",
+              "started_at": 1793772507621,
+              "updated_at": 1793772655703,
+              "duration_ms": 148082,
+              "revision": 41,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772507633,
+                  "duration_ms": 9370
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "查询天气",
+                  "detail": "北京",
+                  "status": "succeeded",
+                  "started_at": 1793772517009,
+                  "duration_ms": 3379
+                },
+                {
+                  "id": 5,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772520396,
+                  "duration_ms": 5368
+                },
+                {
+                  "id": 7,
+                  "kind": "tool",
+                  "label": "检索地点与餐饮",
+                  "detail": "北京 · 故宫",
+                  "status": "succeeded",
+                  "started_at": 1793772525770,
+                  "duration_ms": 390
+                },
+                {
+                  "id": 9,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772526166,
+                  "duration_ms": 1652
+                },
+                {
+                  "id": 11,
+                  "kind": "tool",
+                  "label": "查询地点详情",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772527825,
+                  "duration_ms": 107
+                },
+                {
+                  "id": 13,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772527940,
+                  "duration_ms": 14453
+                },
+                {
+                  "id": 15,
+                  "kind": "tool",
+                  "label": "检索地点与餐饮",
+                  "detail": "北京 · 景山公园",
+                  "status": "succeeded",
+                  "started_at": 1793772542399,
+                  "duration_ms": 351
+                },
+                {
+                  "id": 17,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772542756,
+                  "duration_ms": 2485
+                },
+                {
+                  "id": 19,
+                  "kind": "tool",
+                  "label": "查询地点详情",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772545247,
+                  "duration_ms": 114
+                },
+                {
+                  "id": 21,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772545371,
+                  "duration_ms": 15176
+                },
+                {
+                  "id": 23,
+                  "kind": "tool",
+                  "label": "查询步行路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772560553,
+                  "duration_ms": 255
+                },
+                {
+                  "id": 25,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772560815,
+                  "duration_ms": 9626
+                },
+                {
+                  "id": 27,
+                  "kind": "tool",
+                  "label": "查询公交地铁路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772570447,
+                  "duration_ms": 353
+                },
+                {
+                  "id": 29,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772570808,
+                  "duration_ms": 23209
+                },
+                {
+                  "id": 31,
+                  "kind": "tool",
+                  "label": "查询公交地铁路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772594023,
+                  "duration_ms": 350
+                },
+                {
+                  "id": 33,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772594381,
+                  "duration_ms": 43716
+                },
+                {
+                  "id": 35,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "failed",
+                  "started_at": 1793772638104,
+                  "duration_ms": 12
+                },
+                {
+                  "id": 37,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772638125,
+                  "duration_ms": 17532
+                },
+                {
+                  "id": 39,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "failed",
+                  "started_at": 1793772655665,
+                  "duration_ms": 14
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-bf58a332409e4dec9975543801d4990d",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-47bcf47afb80493e8500274e8c8cc861",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-32ec7d31392f4406b602283e6238fe3e",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "需求正文已保存。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "需求正文已保存。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772848285,
+              "updated_at": 1793772854764,
+              "duration_ms": 6479,
+              "revision": 5,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772848297,
+                  "duration_ms": 6436
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772854739,
+                  "duration_ms": 8
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-cab466b9983346a1b8c7cebd53aac4cf",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "需求正文已保存。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "需求正文已保存。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772854774,
+              "updated_at": 1793772857608,
+              "duration_ms": 2834,
+              "revision": 5,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772854782,
+                  "duration_ms": 2794
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772857582,
+                  "duration_ms": 7
+                }
+              ]
+            }
+          }
+        ],
+        "tasks": [
+          {
+            "id": "35f3a339a6284509a3e34535b5566caf",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-plan-A-1793772507591",
+            "status": "failed",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:10:55+00:00",
+            "message_id": "m-b57ab9ebbb684e16be894bbe2bc5f8ff",
+            "thinking_id": "m-487008ba99f84f2699cae3bd27b8e0ca",
+            "plan_id": "empty",
+            "requirements_revision": 1,
+            "body": "请直接生成这一天的同城游玩路线，我没有其他偏好。请用真实地点和公交查询，从住宿出发并返回；包括餐饮、休息、必要预约或开放条件，说明未提供信息采用的默认假设，但不要把默认假设写入我的需求。",
+            "message": "本次处理未完成，请重新发送消息。已有内容已保留。"
+          },
+          {
+            "id": "ae04daa9fc814a069c9594e657161ebd",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-B-1793772507617",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:14:14+00:00",
+            "message_id": "m-bf58a332409e4dec9975543801d4990d",
+            "thinking_id": "m-32ec7d31392f4406b602283e6238fe3e",
+            "plan_id": "empty",
+            "requirements_revision": 1,
+            "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+            "message": "已完成"
+          },
+          {
+            "id": "3d67637129674c9bafd5110507252933",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-C-1793772507670",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:14:17+00:00",
+            "message_id": "m-47bcf47afb80493e8500274e8c8cc861",
+            "thinking_id": "m-cab466b9983346a1b8c7cebd53aac4cf",
+            "plan_id": "empty",
+            "requirements_revision": 2,
+            "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+            "message": "已完成"
+          }
+        ],
+        "metrics": {
+          "message_count": 7,
+          "plan_day_count": 0,
+          "plan_date_range": "2026年11月5日 - 2026年11月5日",
+          "plan_item_count": 0,
+          "date_coverage_note": ""
+        },
+        "display_state": {
+          "plan_id": "empty",
+          "source_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "display_status": "not_requested",
+          "version": "empty:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855:not_requested:::3:empty:未生成:False:",
+          "enabled": true,
+          "has_text": false,
+          "requirements_revision": 3,
+          "basis_status": "empty",
+          "basis_message": "尚无行程方案。",
+          "guide_available": false,
+          "guide_version": "",
+          "busy": false
+        }
+      }
+    },
+    {
+      "name": "submitted stop-A",
+      "time": "2026-11-04T06:14:18.472Z",
+      "data": {
+        "id": "bd71f52a30dd4c549dfcfa0554285912",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-stop-A-1793772858453",
+        "status": "waiting",
+        "created_at": "2026-11-04T06:14:18+00:00",
+        "updated_at": "2026-11-04T06:14:18+00:00",
+        "message_id": "m-6c72215b07cd43d89790fb342417f005",
+        "thinking_id": null,
+        "body": "请查询天安门广场和景山公园的真实地图详情，比较从住宿坐公交的便利程度。只咨询，不修改任何内容。",
+        "message": "等待上一轮完成"
+      }
+    },
+    {
+      "name": "submitted resume-B",
+      "time": "2026-11-04T06:14:18.625Z",
+      "data": {
+        "id": "826bf9a68c6c4b1bb4c616a2739906a0",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-resume-B-1793772858604",
+        "status": "waiting",
+        "created_at": "2026-11-04T06:14:18+00:00",
+        "updated_at": "2026-11-04T06:14:18+00:00",
+        "message_id": "m-85f88d4c41484676804cddf1ee449591",
+        "thinking_id": null,
+        "body": "请读取并复述我现在已保存的饮食禁忌和步行偏好，只回答，不修改内容。",
+        "message": "等待上一轮完成"
+      }
+    },
+    {
+      "name": "before_stop",
+      "time": "2026-11-04T06:14:18.632Z",
+      "data": {
+        "observed_inflight_model": true,
+        "queue": {
+          "paused": false,
+          "pause_reason": "",
+          "revision": 13,
+          "chat_generation": 0,
+          "current_task": {
+            "id": "bd71f52a30dd4c549dfcfa0554285912",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-stop-A-1793772858453",
+            "status": "running",
+            "created_at": "2026-11-04T06:14:18+00:00",
+            "updated_at": "2026-11-04T06:14:18+00:00",
+            "message_id": "m-6c72215b07cd43d89790fb342417f005",
+            "thinking_id": "m-a82da924cc28427fb7f936feea425421",
+            "plan_id": "empty",
+            "requirements_revision": 3,
+            "body": "请查询天安门广场和景山公园的真实地图详情，比较从住宿坐公交的便利程度。只咨询，不修改任何内容。",
+            "message": "正在处理，请稍候"
+          },
+          "waiting_tasks": [
+            {
+              "id": "826bf9a68c6c4b1bb4c616a2739906a0",
+              "trip_id": "trip-103",
+              "kind": "chat",
+              "request_id": "live-resume-B-1793772858604",
+              "status": "waiting",
+              "created_at": "2026-11-04T06:14:18+00:00",
+              "updated_at": "2026-11-04T06:14:18+00:00",
+              "message_id": "m-85f88d4c41484676804cddf1ee449591",
+              "thinking_id": null,
+              "body": "请读取并复述我现在已保存的饮食禁忌和步行偏好，只回答，不修改内容。",
+              "message": "等待上一轮完成"
+            }
+          ],
+          "draining": true
+        }
+      }
+    },
+    {
+      "name": "paused_queue",
+      "time": "2026-11-04T06:14:18.659Z",
+      "data": {
+        "paused": true,
+        "pause_reason": "cancelled",
+        "revision": 14,
+        "chat_generation": 0,
+        "current_task": null,
+        "waiting_tasks": [
+          {
+            "id": "826bf9a68c6c4b1bb4c616a2739906a0",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-resume-B-1793772858604",
+            "status": "waiting",
+            "created_at": "2026-11-04T06:14:18+00:00",
+            "updated_at": "2026-11-04T06:14:18+00:00",
+            "message_id": "m-85f88d4c41484676804cddf1ee449591",
+            "thinking_id": null,
+            "body": "请读取并复述我现在已保存的饮食禁忌和步行偏好，只回答，不修改内容。",
+            "message": "等待上一轮完成"
+          }
+        ],
+        "draining": true
+      }
+    },
+    {
+      "name": "drained_after_stop",
+      "time": "2026-11-04T06:14:20.722Z",
+      "data": {
+        "paused": true,
+        "pause_reason": "cancelled",
+        "revision": 14,
+        "chat_generation": 0,
+        "current_task": null,
+        "waiting_tasks": [
+          {
+            "id": "826bf9a68c6c4b1bb4c616a2739906a0",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-resume-B-1793772858604",
+            "status": "waiting",
+            "created_at": "2026-11-04T06:14:18+00:00",
+            "updated_at": "2026-11-04T06:14:18+00:00",
+            "message_id": "m-85f88d4c41484676804cddf1ee449591",
+            "thinking_id": null,
+            "body": "请读取并复述我现在已保存的饮食禁忌和步行偏好，只回答，不修改内容。",
+            "message": "等待上一轮完成"
+          }
+        ],
+        "draining": false
+      }
+    },
+    {
+      "name": "finished resume-B",
+      "time": "2026-11-04T06:14:23.792Z",
+      "data": {
+        "id": "826bf9a68c6c4b1bb4c616a2739906a0",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-resume-B-1793772858604",
+        "status": "succeeded",
+        "created_at": "2026-11-04T06:14:18+00:00",
+        "updated_at": "2026-11-04T06:14:22+00:00",
+        "message_id": "m-85f88d4c41484676804cddf1ee449591",
+        "thinking_id": "m-b2b074ebd58541489fe134e4baaba070",
+        "plan_id": "empty",
+        "requirements_revision": 3,
+        "body": "请读取并复述我现在已保存的饮食禁忌和步行偏好，只回答，不修改内容。",
+        "message": "已完成"
+      }
+    },
+    {
+      "name": "after_resume",
+      "time": "2026-11-04T06:14:23.800Z",
+      "data": {
+        "paused": false,
+        "pause_reason": "",
+        "revision": 17,
+        "chat_generation": 0,
+        "current_task": null,
+        "waiting_tasks": [],
+        "draining": false
+      }
+    },
+    {
+      "name": "submitted simple-plan",
+      "time": "2026-11-04T06:14:23.820Z",
+      "data": {
+        "id": "380ff8d4d5454cf295cb3ff741e1c816",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-simple-plan-1793772863801",
+        "status": "waiting",
+        "created_at": "2026-11-04T06:14:23+00:00",
+        "updated_at": "2026-11-04T06:14:23+00:00",
+        "message_id": "m-025e3b3d9bab4ed6bee8381b13e326f8",
+        "thinking_id": null,
+        "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+        "message": "等待上一轮完成"
+      }
+    },
+    {
+      "name": "finished simple-plan",
+      "time": "2026-11-04T06:14:53.216Z",
+      "data": {
+        "id": "380ff8d4d5454cf295cb3ff741e1c816",
+        "trip_id": "trip-103",
+        "kind": "chat",
+        "request_id": "live-simple-plan-1793772863801",
+        "status": "succeeded",
+        "created_at": "2026-11-04T06:14:23+00:00",
+        "updated_at": "2026-11-04T06:14:52+00:00",
+        "message_id": "m-025e3b3d9bab4ed6bee8381b13e326f8",
+        "thinking_id": "m-f8e938234f0b4194b1b06d98952ab76c",
+        "plan_id": "empty",
+        "requirements_revision": 3,
+        "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+        "message": "已完成"
+      }
+    },
+    {
+      "name": "after_simple_plan",
+      "time": "2026-11-04T06:14:53.227Z",
+      "data": {
+        "queue": {
+          "paused": false,
+          "pause_reason": "",
+          "revision": 20,
+          "chat_generation": 0,
+          "current_task": null,
+          "waiting_tasks": [],
+          "draining": false
+        },
+        "undo": {
+          "available_count": 3,
+          "latest_entry_id": "4c251711e3924dfd961d455877b06223",
+          "message_id": "m-f8e938234f0b4194b1b06d98952ab76c",
+          "version": 3,
+          "can_undo": true,
+          "reason": ""
+        },
+        "trip": {
+          "id": "trip-103",
+          "destination": "北京市同城游玩",
+          "date_range": "2026年11月5日 - 2026年11月5日",
+          "status": "草案",
+          "last_activity": "Agent 已完成本轮请求",
+          "mode": "city",
+          "requirements": {
+            "start_date": "2026-11-05",
+            "end_date": "2026-11-05",
+            "city": "北京市",
+            "day_count": 1,
+            "transport_mode": "transit",
+            "lodging_address": "北京饭店",
+            "text": "不吃花生\n尽量少走路",
+            "revision": 3
+          },
+          "lodging": {
+            "poi_id": "B000A10FBB",
+            "name": "北京饭店",
+            "address": "东长安街33号",
+            "longitude": 116.409385,
+            "latitude": 39.908798,
+            "city": "北京市",
+            "district": "东城区",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-11-04T06:08:27+00:00",
+            "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+          }
+        },
+        "plan": {
+          "id": "plan-105",
+          "title": "北京市行程",
+          "status": "草案",
+          "text": "极简一日，仅逛王府井步行街，从北京饭店步行约900米即达，无需乘车。午餐后回房休息，晚餐在住宿解决，不再安排其他景点。全天步行量很小，符合",
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "requirements_revision": 3,
+          "display_status": "pending",
+          "display_source_hash": "",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "has_content": true
+        },
+        "messages": [
+          {
+            "id": "m-104",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "同城行程已经建好。\n\n- 住宿：北京饭店\n- 位置：北京市 · 东长安街33号\n- 游玩：1天，每天从住宿出发并返回\n- 日期：2026-11-05 至 2026-11-05\n\n可以直接说“生成路线”。创建资料已固定，可以在聊天或需求正文中补充自由要求。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "住宿位置已确认",
+              "summary": "在聊天中告诉我下一步安排。",
+              "bullets": [],
+              "actions": []
+            },
+            "execution_progress": {}
+          },
+          {
+            "id": "m-b57ab9ebbb684e16be894bbe2bc5f8ff",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "请直接生成这一天的同城游玩路线，我没有其他偏好。请用真实地点和公交查询，从住宿出发并返回；包括餐饮、休息、必要预约或开放条件，说明未提供信息采用的默认假设，但不要把默认假设写入我的需求。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-487008ba99f84f2699cae3bd27b8e0ca",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "本次处理未完成，请重新发送消息。已有内容已保留。",
+            "created_at": "14:10",
+            "status": "failed",
+            "agent_card": {
+              "kind": "missing-info",
+              "title": "旅行助手",
+              "summary": "本次处理未完成，请重新发送消息。已有内容已保留。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "failed",
+              "started_at": 1793772507621,
+              "updated_at": 1793772655703,
+              "duration_ms": 148082,
+              "revision": 41,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772507633,
+                  "duration_ms": 9370
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "查询天气",
+                  "detail": "北京",
+                  "status": "succeeded",
+                  "started_at": 1793772517009,
+                  "duration_ms": 3379
+                },
+                {
+                  "id": 5,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772520396,
+                  "duration_ms": 5368
+                },
+                {
+                  "id": 7,
+                  "kind": "tool",
+                  "label": "检索地点与餐饮",
+                  "detail": "北京 · 故宫",
+                  "status": "succeeded",
+                  "started_at": 1793772525770,
+                  "duration_ms": 390
+                },
+                {
+                  "id": 9,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772526166,
+                  "duration_ms": 1652
+                },
+                {
+                  "id": 11,
+                  "kind": "tool",
+                  "label": "查询地点详情",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772527825,
+                  "duration_ms": 107
+                },
+                {
+                  "id": 13,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772527940,
+                  "duration_ms": 14453
+                },
+                {
+                  "id": 15,
+                  "kind": "tool",
+                  "label": "检索地点与餐饮",
+                  "detail": "北京 · 景山公园",
+                  "status": "succeeded",
+                  "started_at": 1793772542399,
+                  "duration_ms": 351
+                },
+                {
+                  "id": 17,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772542756,
+                  "duration_ms": 2485
+                },
+                {
+                  "id": 19,
+                  "kind": "tool",
+                  "label": "查询地点详情",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772545247,
+                  "duration_ms": 114
+                },
+                {
+                  "id": 21,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772545371,
+                  "duration_ms": 15176
+                },
+                {
+                  "id": 23,
+                  "kind": "tool",
+                  "label": "查询步行路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772560553,
+                  "duration_ms": 255
+                },
+                {
+                  "id": 25,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772560815,
+                  "duration_ms": 9626
+                },
+                {
+                  "id": 27,
+                  "kind": "tool",
+                  "label": "查询公交地铁路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772570447,
+                  "duration_ms": 353
+                },
+                {
+                  "id": 29,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772570808,
+                  "duration_ms": 23209
+                },
+                {
+                  "id": 31,
+                  "kind": "tool",
+                  "label": "查询公交地铁路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772594023,
+                  "duration_ms": 350
+                },
+                {
+                  "id": 33,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772594381,
+                  "duration_ms": 43716
+                },
+                {
+                  "id": 35,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "failed",
+                  "started_at": 1793772638104,
+                  "duration_ms": 12
+                },
+                {
+                  "id": 37,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772638125,
+                  "duration_ms": 17532
+                },
+                {
+                  "id": 39,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "failed",
+                  "started_at": 1793772655665,
+                  "duration_ms": 14
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-bf58a332409e4dec9975543801d4990d",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-47bcf47afb80493e8500274e8c8cc861",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-32ec7d31392f4406b602283e6238fe3e",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "需求正文已保存。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "需求正文已保存。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772848285,
+              "updated_at": 1793772854764,
+              "duration_ms": 6479,
+              "revision": 5,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772848297,
+                  "duration_ms": 6436
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772854739,
+                  "duration_ms": 8
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-cab466b9983346a1b8c7cebd53aac4cf",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "需求正文已保存。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "需求正文已保存。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772854774,
+              "updated_at": 1793772857608,
+              "duration_ms": 2834,
+              "revision": 5,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772854782,
+                  "duration_ms": 2794
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772857582,
+                  "duration_ms": 7
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-6c72215b07cd43d89790fb342417f005",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "请查询天安门广场和景山公园的真实地图详情，比较从住宿坐公交的便利程度。只咨询，不修改任何内容。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-a82da924cc28427fb7f936feea425421",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "本次处理已终止，消息、需求和行程已保留。",
+            "created_at": "14:14",
+            "status": "cancelled",
+            "agent_card": null,
+            "execution_progress": {
+              "state": "superseded",
+              "started_at": 1793772858476,
+              "updated_at": 1793772858643,
+              "duration_ms": 167,
+              "revision": 2,
+              "omitted": 0,
+              "reason": "cancelled",
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "stopped",
+                  "started_at": 1793772858490,
+                  "duration_ms": 153
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-85f88d4c41484676804cddf1ee449591",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "请读取并复述我现在已保存的饮食禁忌和步行偏好，只回答，不修改内容。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-b2b074ebd58541489fe134e4baaba070",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "你目前保存的饮食禁忌和步行偏好如下：\n\n- **饮食禁忌**：不吃花生\n- **步行偏好**：尽量少走路\n\n就是这两条，没有更多了。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "你目前保存的饮食禁忌和步行偏好如下：\n\n- **饮食禁忌**：不吃花生\n- **步行偏好**：尽量少走路\n\n就是这两条，没有更多了。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772860744,
+              "updated_at": 1793772862947,
+              "duration_ms": 2203,
+              "revision": 3,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772860756,
+                  "duration_ms": 2174
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-025e3b3d9bab4ed6bee8381b13e326f8",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-f8e938234f0b4194b1b06d98952ab76c",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "行程已更新。\n\n极简一日，仅逛王府井步行街，从北京饭店步行约900米即达，无需乘车。午餐后回房休息，晚餐在住宿解决，不再安排其他景点。全天步行量很小，符合",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "itinerary-draft",
+              "title": "旅行助手",
+              "summary": "行程已更新。\n\n极简一日，仅逛王府井步行街，从北京饭店步行约900米即达，无需乘车。午餐后回房休息，晚餐在住宿解决，不再安排其他景点。全天步行量很小，符合",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "查看攻略",
+                  "target": "itinerary"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772863824,
+              "updated_at": 1793772892383,
+              "duration_ms": 28559,
+              "revision": 21,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772863837,
+                  "duration_ms": 3954
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "检索地点与餐饮",
+                  "detail": "北京 · 王府井步行街",
+                  "status": "succeeded",
+                  "started_at": 1793772867798,
+                  "duration_ms": 429
+                },
+                {
+                  "id": 5,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772868235,
+                  "duration_ms": 1631
+                },
+                {
+                  "id": 7,
+                  "kind": "tool",
+                  "label": "查询地点详情",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772869874,
+                  "duration_ms": 137
+                },
+                {
+                  "id": 9,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772870019,
+                  "duration_ms": 2197
+                },
+                {
+                  "id": 11,
+                  "kind": "tool",
+                  "label": "查询步行路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772872223,
+                  "duration_ms": 251
+                },
+                {
+                  "id": 13,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772872483,
+                  "duration_ms": 1434
+                },
+                {
+                  "id": 15,
+                  "kind": "tool",
+                  "label": "查询天气",
+                  "detail": "北京",
+                  "status": "succeeded",
+                  "started_at": 1793772873924,
+                  "duration_ms": 3311
+                },
+                {
+                  "id": 17,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772877242,
+                  "duration_ms": 15094
+                },
+                {
+                  "id": 19,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772892344,
+                  "duration_ms": 12
+                }
+              ]
+            }
+          }
+        ],
+        "tasks": [
+          {
+            "id": "35f3a339a6284509a3e34535b5566caf",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-plan-A-1793772507591",
+            "status": "failed",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:10:55+00:00",
+            "message_id": "m-b57ab9ebbb684e16be894bbe2bc5f8ff",
+            "thinking_id": "m-487008ba99f84f2699cae3bd27b8e0ca",
+            "plan_id": "empty",
+            "requirements_revision": 1,
+            "body": "请直接生成这一天的同城游玩路线，我没有其他偏好。请用真实地点和公交查询，从住宿出发并返回；包括餐饮、休息、必要预约或开放条件，说明未提供信息采用的默认假设，但不要把默认假设写入我的需求。",
+            "message": "本次处理未完成，请重新发送消息。已有内容已保留。"
+          },
+          {
+            "id": "ae04daa9fc814a069c9594e657161ebd",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-B-1793772507617",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:14:14+00:00",
+            "message_id": "m-bf58a332409e4dec9975543801d4990d",
+            "thinking_id": "m-32ec7d31392f4406b602283e6238fe3e",
+            "plan_id": "empty",
+            "requirements_revision": 1,
+            "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+            "message": "已完成"
+          },
+          {
+            "id": "3d67637129674c9bafd5110507252933",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-C-1793772507670",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:14:17+00:00",
+            "message_id": "m-47bcf47afb80493e8500274e8c8cc861",
+            "thinking_id": "m-cab466b9983346a1b8c7cebd53aac4cf",
+            "plan_id": "empty",
+            "requirements_revision": 2,
+            "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+            "message": "已完成"
+          },
+          {
+            "id": "bd71f52a30dd4c549dfcfa0554285912",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-stop-A-1793772858453",
+            "status": "cancelled",
+            "created_at": "2026-11-04T06:14:18+00:00",
+            "updated_at": "2026-11-04T06:14:18+00:00",
+            "message_id": "m-6c72215b07cd43d89790fb342417f005",
+            "thinking_id": "m-a82da924cc28427fb7f936feea425421",
+            "plan_id": "empty",
+            "requirements_revision": 3,
+            "body": "请查询天安门广场和景山公园的真实地图详情，比较从住宿坐公交的便利程度。只咨询，不修改任何内容。",
+            "message": "已终止，已有内容已保留"
+          },
+          {
+            "id": "826bf9a68c6c4b1bb4c616a2739906a0",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-resume-B-1793772858604",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:14:18+00:00",
+            "updated_at": "2026-11-04T06:14:22+00:00",
+            "message_id": "m-85f88d4c41484676804cddf1ee449591",
+            "thinking_id": "m-b2b074ebd58541489fe134e4baaba070",
+            "plan_id": "empty",
+            "requirements_revision": 3,
+            "body": "请读取并复述我现在已保存的饮食禁忌和步行偏好，只回答，不修改内容。",
+            "message": "已完成"
+          },
+          {
+            "id": "380ff8d4d5454cf295cb3ff741e1c816",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-simple-plan-1793772863801",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:14:23+00:00",
+            "updated_at": "2026-11-04T06:14:52+00:00",
+            "message_id": "m-025e3b3d9bab4ed6bee8381b13e326f8",
+            "thinking_id": "m-f8e938234f0b4194b1b06d98952ab76c",
+            "plan_id": "empty",
+            "requirements_revision": 3,
+            "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+            "message": "已完成"
+          }
+        ],
+        "metrics": {
+          "message_count": 13,
+          "plan_day_count": 0,
+          "plan_date_range": "2026-11-05 — 2026-11-05",
+          "plan_item_count": 0,
+          "date_coverage_note": ""
+        },
+        "display_state": {
+          "plan_id": "plan-105",
+          "source_hash": "85e4c864f327ae7c84a7ff5fedae7763efdf89dd44b7763f5e72d877c0af7304",
+          "display_status": "pending",
+          "version": "plan-105:85e4c864f327ae7c84a7ff5fedae7763efdf89dd44b7763f5e72d877c0af7304:pending:d7f204e67ef74db28be705e6b80bd85a:2026-11-04T06:14:52+00:00:3:fresh:草案:False:",
+          "enabled": true,
+          "has_text": true,
+          "requirements_revision": 3,
+          "basis_status": "fresh",
+          "basis_message": "方案与当前游玩设置及已确认住宿一致，出发前仍需核实。 站点为方案顺序，不是地图几何；历史路线仅为查询时估算，不证明开放、免费、门票、预约或遮蔽条件。",
+          "guide_available": false,
+          "guide_version": "",
+          "busy": false
+        }
+      }
+    },
+    {
+      "name": "plan_state",
+      "time": "2026-11-04T06:15:09.434Z",
+      "data": {
+        "plan_id": "plan-105",
+        "source_hash": "85e4c864f327ae7c84a7ff5fedae7763efdf89dd44b7763f5e72d877c0af7304",
+        "display_status": "ready",
+        "version": "plan-105:85e4c864f327ae7c84a7ff5fedae7763efdf89dd44b7763f5e72d877c0af7304:ready:d7f204e67ef74db28be705e6b80bd85a:2026-11-04T06:15:08+00:00:3:fresh:草案:False:451234c2c0fe506a3353b1c715edd0c9099d6fbc08d94d2e352a2cdb9414ac17",
+        "enabled": true,
+        "has_text": true,
+        "requirements_revision": 3,
+        "basis_status": "fresh",
+        "basis_message": "方案与当前游玩设置及已确认住宿一致，出发前仍需核实。 站点为方案顺序，不是地图几何；历史路线仅为查询时估算，不证明开放、免费、门票、预约或遮蔽条件。",
+        "guide_available": true,
+        "guide_version": "451234c2c0fe506a3353b1c715edd0c9099d6fbc08d94d2e352a2cdb9414ac17",
+        "busy": false
+      }
+    },
+    {
+      "name": "chat_layout",
+      "time": "2026-11-04T06:15:10.546Z",
+      "data": {
+        "width": 320,
+        "excess": 0
+      }
+    },
+    {
+      "name": "chat_layout",
+      "time": "2026-11-04T06:15:10.589Z",
+      "data": {
+        "width": 430,
+        "excess": 0
+      }
+    },
+    {
+      "name": "guide_layout",
+      "time": "2026-11-04T06:15:11.233Z",
+      "data": {
+        "width": 320,
+        "sandbox": "allow-popups allow-popups-to-escape-sandbox",
+        "outer_excess": 0,
+        "inner": {
+          "width": 320,
+          "scroll": 320,
+          "text": "北京·王府井步行街\n\n2026 年 11 月 5 日\n\n路线概览\n\n北京饭店 → 王府井步行街（步行约 900 米）→ 回房休息 → 住宿用晚餐\n\n当日安排\n\n王府井步行街\n\n从北京饭店步行约 900 米即达，无需乘车。\n\n午餐\n\n午餐后回房休息。\n\n回房休息\n\n晚餐\n\n在住宿解决，不再安排其他景点。\n\n全天步行量很小，仅包含北京饭店至王府井步行街的约 900 米单程步行，节奏轻松。",
+          "font": "15px"
+        }
+      }
+    },
+    {
+      "name": "guide_layout",
+      "time": "2026-11-04T06:15:11.798Z",
+      "data": {
+        "width": 430,
+        "sandbox": "allow-popups allow-popups-to-escape-sandbox",
+        "outer_excess": 0,
+        "inner": {
+          "width": 430,
+          "scroll": 430,
+          "text": "北京·王府井步行街\n\n2026 年 11 月 5 日\n\n路线概览\n\n北京饭店 → 王府井步行街（步行约 900 米）→ 回房休息 → 住宿用晚餐\n\n当日安排\n\n王府井步行街\n\n从北京饭店步行约 900 米即达，无需乘车。\n\n午餐\n\n午餐后回房休息。\n\n回房休息\n\n晚餐\n\n在住宿解决，不再安排其他景点。\n\n全天步行量很小，仅包含北京饭店至王府井步行街的约 900 米单程步行，节奏轻松。",
+          "font": "15px"
+        }
+      }
+    },
+    {
+      "name": "download_api",
+      "time": "2026-11-04T06:15:11.812Z",
+      "data": {
+        "status": 200,
+        "disposition": "attachment; filename=travel-guide.html; filename*=UTF-8''%E5%8C%97%E4%BA%AC%C2%B7%E7%8E%8B%E5%BA%9C%E4%BA%95%E6%AD%A5%E8%A1%8C%E8%A1%97%20%E2%80%94%202026%E5%B9%B411%E6%9C%885%E6%97%A5.html",
+        "bytes": 3536
+      }
+    },
+    {
+      "name": "open_guide_browser",
+      "time": "2026-11-04T06:15:11.934Z",
+      "data": {
+        "title": "北京·王府井步行街 — 2026年11月5日",
+        "path": "/api/trips/trip-103/guide"
+      }
+    },
+    {
+      "name": "browser_download",
+      "time": "2026-11-04T06:15:12.156Z",
+      "data": {
+        "filename": "北京·王府井步行街 — 2026年11月5日.html",
+        "failure": null
+      }
+    },
+    {
+      "name": "final_workspace",
+      "time": "2026-11-04T06:15:12.171Z",
+      "data": {
+        "queue": {
+          "paused": false,
+          "pause_reason": "",
+          "revision": 20,
+          "chat_generation": 0,
+          "current_task": null,
+          "waiting_tasks": [],
+          "draining": false
+        },
+        "undo": {
+          "available_count": 3,
+          "latest_entry_id": "4c251711e3924dfd961d455877b06223",
+          "message_id": "m-f8e938234f0b4194b1b06d98952ab76c",
+          "version": 3,
+          "can_undo": true,
+          "reason": ""
+        },
+        "trip": {
+          "id": "trip-103",
+          "destination": "北京市同城游玩",
+          "date_range": "2026年11月5日 - 2026年11月5日",
+          "status": "草案",
+          "last_activity": "Agent 已完成本轮请求",
+          "mode": "city",
+          "requirements": {
+            "start_date": "2026-11-05",
+            "end_date": "2026-11-05",
+            "city": "北京市",
+            "day_count": 1,
+            "transport_mode": "transit",
+            "lodging_address": "北京饭店",
+            "text": "不吃花生\n尽量少走路",
+            "revision": 3
+          },
+          "lodging": {
+            "poi_id": "B000A10FBB",
+            "name": "北京饭店",
+            "address": "东长安街33号",
+            "longitude": 116.409385,
+            "latitude": 39.908798,
+            "city": "北京市",
+            "district": "东城区",
+            "source": "高德地图 POI",
+            "fetched_at": "2026-11-04T06:08:27+00:00",
+            "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+          }
+        },
+        "plan": {
+          "id": "plan-105",
+          "title": "北京市行程",
+          "status": "草案",
+          "text": "极简一日，仅逛王府井步行街，从北京饭店步行约900米即达，无需乘车。午餐后回房休息，晚餐在住宿解决，不再安排其他景点。全天步行量很小，符合",
+          "overview": "",
+          "constraints_met": [],
+          "pending_items": [],
+          "risks": [],
+          "requirements_revision": 3,
+          "display_status": "ready",
+          "display_source_hash": "85e4c864f327ae7c84a7ff5fedae7763efdf89dd44b7763f5e72d877c0af7304",
+          "days": [],
+          "preparation": {
+            "clothing": [],
+            "accommodation": []
+          },
+          "has_content": true
+        },
+        "messages": [
+          {
+            "id": "m-104",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "同城行程已经建好。\n\n- 住宿：北京饭店\n- 位置：北京市 · 东长安街33号\n- 游玩：1天，每天从住宿出发并返回\n- 日期：2026-11-05 至 2026-11-05\n\n可以直接说“生成路线”。创建资料已固定，可以在聊天或需求正文中补充自由要求。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "住宿位置已确认",
+              "summary": "在聊天中告诉我下一步安排。",
+              "bullets": [],
+              "actions": []
+            },
+            "execution_progress": {}
+          },
+          {
+            "id": "m-b57ab9ebbb684e16be894bbe2bc5f8ff",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "请直接生成这一天的同城游玩路线，我没有其他偏好。请用真实地点和公交查询，从住宿出发并返回；包括餐饮、休息、必要预约或开放条件，说明未提供信息采用的默认假设，但不要把默认假设写入我的需求。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-487008ba99f84f2699cae3bd27b8e0ca",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "本次处理未完成，请重新发送消息。已有内容已保留。",
+            "created_at": "14:10",
+            "status": "failed",
+            "agent_card": {
+              "kind": "missing-info",
+              "title": "旅行助手",
+              "summary": "本次处理未完成，请重新发送消息。已有内容已保留。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "failed",
+              "started_at": 1793772507621,
+              "updated_at": 1793772655703,
+              "duration_ms": 148082,
+              "revision": 41,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772507633,
+                  "duration_ms": 9370
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "查询天气",
+                  "detail": "北京",
+                  "status": "succeeded",
+                  "started_at": 1793772517009,
+                  "duration_ms": 3379
+                },
+                {
+                  "id": 5,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772520396,
+                  "duration_ms": 5368
+                },
+                {
+                  "id": 7,
+                  "kind": "tool",
+                  "label": "检索地点与餐饮",
+                  "detail": "北京 · 故宫",
+                  "status": "succeeded",
+                  "started_at": 1793772525770,
+                  "duration_ms": 390
+                },
+                {
+                  "id": 9,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772526166,
+                  "duration_ms": 1652
+                },
+                {
+                  "id": 11,
+                  "kind": "tool",
+                  "label": "查询地点详情",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772527825,
+                  "duration_ms": 107
+                },
+                {
+                  "id": 13,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772527940,
+                  "duration_ms": 14453
+                },
+                {
+                  "id": 15,
+                  "kind": "tool",
+                  "label": "检索地点与餐饮",
+                  "detail": "北京 · 景山公园",
+                  "status": "succeeded",
+                  "started_at": 1793772542399,
+                  "duration_ms": 351
+                },
+                {
+                  "id": 17,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772542756,
+                  "duration_ms": 2485
+                },
+                {
+                  "id": 19,
+                  "kind": "tool",
+                  "label": "查询地点详情",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772545247,
+                  "duration_ms": 114
+                },
+                {
+                  "id": 21,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772545371,
+                  "duration_ms": 15176
+                },
+                {
+                  "id": 23,
+                  "kind": "tool",
+                  "label": "查询步行路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772560553,
+                  "duration_ms": 255
+                },
+                {
+                  "id": 25,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772560815,
+                  "duration_ms": 9626
+                },
+                {
+                  "id": 27,
+                  "kind": "tool",
+                  "label": "查询公交地铁路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772570447,
+                  "duration_ms": 353
+                },
+                {
+                  "id": 29,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772570808,
+                  "duration_ms": 23209
+                },
+                {
+                  "id": 31,
+                  "kind": "tool",
+                  "label": "查询公交地铁路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772594023,
+                  "duration_ms": 350
+                },
+                {
+                  "id": 33,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772594381,
+                  "duration_ms": 43716
+                },
+                {
+                  "id": 35,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "failed",
+                  "started_at": 1793772638104,
+                  "duration_ms": 12
+                },
+                {
+                  "id": 37,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772638125,
+                  "duration_ms": 17532
+                },
+                {
+                  "id": 39,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "failed",
+                  "started_at": 1793772655665,
+                  "duration_ms": 14
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-bf58a332409e4dec9975543801d4990d",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-47bcf47afb80493e8500274e8c8cc861",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+            "created_at": "14:08",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-32ec7d31392f4406b602283e6238fe3e",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "需求正文已保存。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "需求正文已保存。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772848285,
+              "updated_at": 1793772854764,
+              "duration_ms": 6479,
+              "revision": 5,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772848297,
+                  "duration_ms": 6436
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772854739,
+                  "duration_ms": 8
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-cab466b9983346a1b8c7cebd53aac4cf",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "需求正文已保存。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "需求正文已保存。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772854774,
+              "updated_at": 1793772857608,
+              "duration_ms": 2834,
+              "revision": 5,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772854782,
+                  "duration_ms": 2794
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772857582,
+                  "duration_ms": 7
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-6c72215b07cd43d89790fb342417f005",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "请查询天安门广场和景山公园的真实地图详情，比较从住宿坐公交的便利程度。只咨询，不修改任何内容。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-a82da924cc28427fb7f936feea425421",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "本次处理已终止，消息、需求和行程已保留。",
+            "created_at": "14:14",
+            "status": "cancelled",
+            "agent_card": null,
+            "execution_progress": {
+              "state": "superseded",
+              "started_at": 1793772858476,
+              "updated_at": 1793772858643,
+              "duration_ms": 167,
+              "revision": 2,
+              "omitted": 0,
+              "reason": "cancelled",
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "stopped",
+                  "started_at": 1793772858490,
+                  "duration_ms": 153
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-85f88d4c41484676804cddf1ee449591",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "请读取并复述我现在已保存的饮食禁忌和步行偏好，只回答，不修改内容。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-b2b074ebd58541489fe134e4baaba070",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "你目前保存的饮食禁忌和步行偏好如下：\n\n- **饮食禁忌**：不吃花生\n- **步行偏好**：尽量少走路\n\n就是这两条，没有更多了。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "requirement-summary",
+              "title": "旅行助手",
+              "summary": "你目前保存的饮食禁忌和步行偏好如下：\n\n- **饮食禁忌**：不吃花生\n- **步行偏好**：尽量少走路\n\n就是这两条，没有更多了。",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "继续聊天",
+                  "target": "chat"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772860744,
+              "updated_at": 1793772862947,
+              "duration_ms": 2203,
+              "revision": 3,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772860756,
+                  "duration_ms": 2174
+                }
+              ]
+            }
+          },
+          {
+            "id": "m-025e3b3d9bab4ed6bee8381b13e326f8",
+            "sender": {
+              "id": "u100",
+              "name": "live-acceptance-1793",
+              "initials": "L"
+            },
+            "sender_type": "user",
+            "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": null,
+            "execution_progress": {}
+          },
+          {
+            "id": "m-f8e938234f0b4194b1b06d98952ab76c",
+            "sender": {
+              "id": "agent",
+              "name": "旅行规划 Agent",
+              "initials": "AI"
+            },
+            "sender_type": "agent",
+            "body": "行程已更新。\n\n极简一日，仅逛王府井步行街，从北京饭店步行约900米即达，无需乘车。午餐后回房休息，晚餐在住宿解决，不再安排其他景点。全天步行量很小，符合",
+            "created_at": "14:14",
+            "status": "sent",
+            "agent_card": {
+              "kind": "itinerary-draft",
+              "title": "旅行助手",
+              "summary": "行程已更新。\n\n极简一日，仅逛王府井步行街，从北京饭店步行约900米即达，无需乘车。午餐后回房休息，晚餐在住宿解决，不再安排其他景点。全天步行量很小，符合",
+              "bullets": [],
+              "actions": [
+                {
+                  "label": "查看攻略",
+                  "target": "itinerary"
+                }
+              ]
+            },
+            "execution_progress": {
+              "state": "succeeded",
+              "started_at": 1793772863824,
+              "updated_at": 1793772892383,
+              "duration_ms": 28559,
+              "revision": 21,
+              "omitted": 0,
+              "steps": [
+                {
+                  "id": 1,
+                  "kind": "model",
+                  "label": "分析旅行需求与安排",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772863837,
+                  "duration_ms": 3954
+                },
+                {
+                  "id": 3,
+                  "kind": "tool",
+                  "label": "检索地点与餐饮",
+                  "detail": "北京 · 王府井步行街",
+                  "status": "succeeded",
+                  "started_at": 1793772867798,
+                  "duration_ms": 429
+                },
+                {
+                  "id": 5,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772868235,
+                  "duration_ms": 1631
+                },
+                {
+                  "id": 7,
+                  "kind": "tool",
+                  "label": "查询地点详情",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772869874,
+                  "duration_ms": 137
+                },
+                {
+                  "id": 9,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772870019,
+                  "duration_ms": 2197
+                },
+                {
+                  "id": 11,
+                  "kind": "tool",
+                  "label": "查询步行路线",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772872223,
+                  "duration_ms": 251
+                },
+                {
+                  "id": 13,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772872483,
+                  "duration_ms": 1434
+                },
+                {
+                  "id": 15,
+                  "kind": "tool",
+                  "label": "查询天气",
+                  "detail": "北京",
+                  "status": "succeeded",
+                  "started_at": 1793772873924,
+                  "duration_ms": 3311
+                },
+                {
+                  "id": 17,
+                  "kind": "model",
+                  "label": "整理结果与下一步",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772877242,
+                  "duration_ms": 15094
+                },
+                {
+                  "id": 19,
+                  "kind": "tool",
+                  "label": "检查旅行修改",
+                  "detail": "",
+                  "status": "succeeded",
+                  "started_at": 1793772892344,
+                  "duration_ms": 12
+                }
+              ]
+            }
+          }
+        ],
+        "tasks": [
+          {
+            "id": "35f3a339a6284509a3e34535b5566caf",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-plan-A-1793772507591",
+            "status": "failed",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:10:55+00:00",
+            "message_id": "m-b57ab9ebbb684e16be894bbe2bc5f8ff",
+            "thinking_id": "m-487008ba99f84f2699cae3bd27b8e0ca",
+            "plan_id": "empty",
+            "requirements_revision": 1,
+            "body": "请直接生成这一天的同城游玩路线，我没有其他偏好。请用真实地点和公交查询，从住宿出发并返回；包括餐饮、休息、必要预约或开放条件，说明未提供信息采用的默认假设，但不要把默认假设写入我的需求。",
+            "message": "本次处理未完成，请重新发送消息。已有内容已保留。"
+          },
+          {
+            "id": "ae04daa9fc814a069c9594e657161ebd",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-B-1793772507617",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:14:14+00:00",
+            "message_id": "m-bf58a332409e4dec9975543801d4990d",
+            "thinking_id": "m-32ec7d31392f4406b602283e6238fe3e",
+            "plan_id": "empty",
+            "requirements_revision": 1,
+            "body": "补充需求B：不吃花生。只保存这个需求，保留其他已有需求，不重排行程。",
+            "message": "已完成"
+          },
+          {
+            "id": "3d67637129674c9bafd5110507252933",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-followup-C-1793772507670",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:08:27+00:00",
+            "updated_at": "2026-11-04T06:14:17+00:00",
+            "message_id": "m-47bcf47afb80493e8500274e8c8cc861",
+            "thinking_id": "m-cab466b9983346a1b8c7cebd53aac4cf",
+            "plan_id": "empty",
+            "requirements_revision": 2,
+            "body": "补充需求C：尽量少走路。请先读取最新需求，保留不吃花生，只补充这个需求，不重排行程。",
+            "message": "已完成"
+          },
+          {
+            "id": "bd71f52a30dd4c549dfcfa0554285912",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-stop-A-1793772858453",
+            "status": "cancelled",
+            "created_at": "2026-11-04T06:14:18+00:00",
+            "updated_at": "2026-11-04T06:14:18+00:00",
+            "message_id": "m-6c72215b07cd43d89790fb342417f005",
+            "thinking_id": "m-a82da924cc28427fb7f936feea425421",
+            "plan_id": "empty",
+            "requirements_revision": 3,
+            "body": "请查询天安门广场和景山公园的真实地图详情，比较从住宿坐公交的便利程度。只咨询，不修改任何内容。",
+            "message": "已终止，已有内容已保留"
+          },
+          {
+            "id": "826bf9a68c6c4b1bb4c616a2739906a0",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-resume-B-1793772858604",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:14:18+00:00",
+            "updated_at": "2026-11-04T06:14:22+00:00",
+            "message_id": "m-85f88d4c41484676804cddf1ee449591",
+            "thinking_id": "m-b2b074ebd58541489fe134e4baaba070",
+            "plan_id": "empty",
+            "requirements_revision": 3,
+            "body": "请读取并复述我现在已保存的饮食禁忌和步行偏好，只回答，不修改内容。",
+            "message": "已完成"
+          },
+          {
+            "id": "380ff8d4d5454cf295cb3ff741e1c816",
+            "trip_id": "trip-103",
+            "kind": "chat",
+            "request_id": "live-simple-plan-1793772863801",
+            "status": "succeeded",
+            "created_at": "2026-11-04T06:14:23+00:00",
+            "updated_at": "2026-11-04T06:14:52+00:00",
+            "message_id": "m-025e3b3d9bab4ed6bee8381b13e326f8",
+            "thinking_id": "m-f8e938234f0b4194b1b06d98952ab76c",
+            "plan_id": "empty",
+            "requirements_revision": 3,
+            "body": "请生成一个极简一日路线：早餐后从北京饭店步行到王府井街区，午餐后回住宿休息，晚餐在住宿解决。不再安排其他景点。交通仍以创建资料的公交为准，近距离可说明无需乘车。不吃花生，尽量少走路。请先读取最新需求，查真实王府井地点，给必要条件和估算说明。请保存可用正文并生成攻略网页。",
+            "message": "已完成"
+          }
+        ],
+        "metrics": {
+          "message_count": 13,
+          "plan_day_count": 1,
+          "plan_date_range": "2026-11-05 — 2026-11-05",
+          "plan_item_count": 0,
+          "date_coverage_note": ""
+        },
+        "display_state": {
+          "plan_id": "plan-105",
+          "source_hash": "85e4c864f327ae7c84a7ff5fedae7763efdf89dd44b7763f5e72d877c0af7304",
+          "display_status": "ready",
+          "version": "plan-105:85e4c864f327ae7c84a7ff5fedae7763efdf89dd44b7763f5e72d877c0af7304:ready:d7f204e67ef74db28be705e6b80bd85a:2026-11-04T06:15:08+00:00:3:fresh:草案:False:451234c2c0fe506a3353b1c715edd0c9099d6fbc08d94d2e352a2cdb9414ac17",
+          "enabled": true,
+          "has_text": true,
+          "requirements_revision": 3,
+          "basis_status": "fresh",
+          "basis_message": "方案与当前游玩设置及已确认住宿一致，出发前仍需核实。 站点为方案顺序，不是地图几何；历史路线仅为查询时估算，不证明开放、免费、门票、预约或遮蔽条件。",
+          "guide_available": true,
+          "guide_version": "451234c2c0fe506a3353b1c715edd0c9099d6fbc08d94d2e352a2cdb9414ac17",
+          "busy": false
+        }
+      }
+    }
+  ],
+  "errors": [],
+  "trip": "trip-101",
+  "preference_trip": "trip-101",
+  "planning_trip": "trip-103",
+  "ended": "2026-11-04T06:15:12.172Z"
+}

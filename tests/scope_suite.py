@@ -18,9 +18,9 @@ from app.core import config, resources
 from tests.scope_eval import run_case
 
 DATASET = PROJECT_ROOT / 'tests/datasets/scope_comprehensive.json'
-BUSINESS = {'query_weather', 'maps_text_search', 'maps_search_detail',
+BUSINESS = {'maps_around_search', 'query_weather', 'maps_text_search', 'maps_search_detail',
             'maps_direction_walking', 'maps_direction_driving',
-            'maps_direction_transit_integrated', 'submit_changes'}
+            'maps_direction_transit_integrated', 'save_trip_changes'}
 
 
 def load_cases():

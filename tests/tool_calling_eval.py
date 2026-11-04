@@ -23,6 +23,7 @@ from app.agents.inputs.context import project_main_context
 from app.agents.inputs.execution import TaskExecutionContext
 from app.agents.model_client import request_completion
 from app.agents.roles import travel_role, role_reasoning_effort
+from app.agents.skills import skill_catalog, read_skill_resource
 from app.agents.tools.registry import agent_tool_registry
 from app.application.contracts import RequestContext
 from app.core import config, resources
@@ -30,8 +31,10 @@ from app.domain.itinerary.identity import plan_basis
 from app.domain.models import TripRequirements
 
 DATASET = ROOT / 'tests/datasets/tool_calling_single.json'
-COUNTS = {'read_context': 16, 'submit_changes': 24, 'query_weather': 12,
-          'maps_text_search': 16, 'maps_search_detail': 8, 'maps_direction_walking': 8,
+PROFILE = 'single-call-10-tools-planning-skill-v1'
+UNCOVERED_TOOLS = {'read_skill'}
+COUNTS = {'read_context': 16, 'save_trip_changes': 24, 'query_weather': 12,
+          'maps_text_search': 12, 'maps_around_search': 4, 'maps_search_detail': 8, 'maps_direction_walking': 8,
           'maps_direction_driving': 8, 'maps_direction_transit_integrated': 8}
 
 
@@ -40,8 +43,8 @@ def forbidden_handler(*args, **kwargs):
 
 
 def registry():
-    return agent_tool_registry(read_context=forbidden_handler, submit_changes=forbidden_handler,
-                               query=forbidden_handler)
+    return agent_tool_registry(read_context=forbidden_handler, save_trip_changes=forbidden_handler,
+                               query=forbidden_handler, read_skill=forbidden_handler)
 
 
 def strict_object(raw):
@@ -189,7 +192,7 @@ def load_dataset(path=DATASET):
         cases = data['cases']
         if data['version'] != 1 or len(cases) != 100:
             raise ValueError('expected version 1 and 100 cases')
-        if set(registry()) != set(COUNTS):
+        if set(registry()) != set(COUNTS) | UNCOVERED_TOOLS:
             raise ValueError('registered tool library drift')
         if len({c['id'] for c in cases}) != len(cases):
             raise ValueError('duplicate case id')
@@ -214,7 +217,7 @@ def load_dataset(path=DATASET):
                 raise ValueError('invalid alternatives')
             if parameter_errors(expected, expected['arguments']):
                 raise ValueError(f'invalid gold: {case["id"]}')
-            if expected['tool'] == 'submit_changes' and expected['arguments']['user_quote'] != case['input']:
+            if expected['tool'] == 'save_trip_changes' and expected['arguments']['user_quote'] != case['input']:
                 raise ValueError('gold user_quote must equal complete user input')
             if parameter_errors(expected, {**expected['arguments'], **expected['optional']}):
                 raise ValueError('invalid optional parameter rule')
@@ -300,6 +303,9 @@ def write_report(path, report):
         'COMPLETE' if summary['complete'] else 'INCOMPLETE',
         f"完成 {summary['completed']}/{summary['total']}；通过 {summary['passed']}；比例 {summary['rate']:.2%}",
         f"达到95%目标：{summary['meets_target']}", '', '| 工具 | 已评测 | 通过 |', '|---|---:|---:|']
+    metadata = report.get('metadata', {})
+    lines[2:2] = [f"Profile: {metadata.get('profile', 'legacy/unspecified')}",
+                  f"未覆盖工具：{', '.join(metadata.get('uncovered_tools', [])) or '未声明'}", '']
     lines += [f"| {name} | {value['total']} | {value['passed']} |" for name, value in summary['by_tool'].items()]
     lines += ['', '## 分项指标（分母为全部选定用例）', json.dumps(summary['metrics'], ensure_ascii=False),
               '', '## 错误分类', json.dumps(summary['errors'], ensure_ascii=False),
@@ -335,6 +341,7 @@ def main(argv=None):
             parser.error('Unknown IDs: ' + ', '.join(sorted(unknown)))
         cases = [c for c in cases if c['id'] in args.ids]
     print(f'Synthetic single-tool evaluation: {len(cases)}/100 cases, {len(registry())} tools; no tool execution.')
+    print(f'Profile: {PROFILE}; not covered by these 100 cases: {sorted(UNCOVERED_TOOLS)}')
     if not args.live:
         print('Dataset valid. Offline only; --live required for model requests. No accuracy measured.')
         return 0
@@ -343,7 +350,10 @@ def main(argv=None):
     if config.store_responses():
         parser.error('Live evaluation requires OPENAI_STORE_RESPONSES=false (checked after loading .env).')
     role = travel_role()
-    metadata = {'model': config.model_name(), 'wire_api': config.wire_api(),
+    metadata = {'profile': PROFILE, 'uncovered_tools': sorted(UNCOVERED_TOOLS),
+        'skill_hashes': {item['name']: {resource: read_skill_resource(item['name'], resource)['hash']
+                        for resource in item['resources']} for item in skill_catalog()},
+        'model': config.model_name(), 'wire_api': config.wire_api(),
         'reasoning_effort': role_reasoning_effort(role),
         'thinking': os.getenv('OPENAI_MAIN_ENABLE_THINKING', ''), 'timeout': config.model_timeout(),
         'store': False, 'retries': 0, 'fallback': False, 'subset': bool(args.ids),

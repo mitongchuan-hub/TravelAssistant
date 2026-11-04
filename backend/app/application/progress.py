@@ -16,11 +16,14 @@ MODEL_LABELS = {
 TOOL_LABELS = {
     'read_context': '读取旅行信息', 'query_weather': '查询天气',
     'maps_text_search': '检索地点与餐饮', 'maps_search_detail': '查询地点详情',
+    'maps_around_search': '查询周边地点',
     'maps_direction_walking': '查询步行路线', 'maps_direction_driving': '查询驾车路线',
     'maps_direction_transit_integrated': '查询公交地铁路线',
     'search_places': '检索地点', 'search_food': '查找餐饮', 'query_route': '查询交通路线',
     'check_requirements': '检查出行需求', 'update_requirements': '整理需求变更',
     'edit_plan_text': '调整行程文字',
+    'save_trip_changes': '检查旅行修改',
+    # 只读兼容历史 trace 的工具标签，不注册旧 Agent 工具入口。
     'submit_changes': '检查旅行修改',
 }
 MAX_STEPS = 80
@@ -42,6 +45,11 @@ def _detail(name, arguments):
     if name == 'read_context':
         return {'requirements': '出行需求', 'plan': '当前行程', 'evidence': '已查询资料',
                 'messages': '聊天记录'}.get(arguments.get('section'), '')
+    if name == 'maps_around_search':
+        values = [arguments.get('keywords')]
+        if isinstance(arguments.get('radius'), str) and arguments['radius'].strip():
+            values.append('搜索半径参数 ' + arguments['radius'])
+        return ' · '.join(v.strip()[:80] for v in values if isinstance(v, str) and v.strip())[:180]
     if name not in {'query_weather', 'search_places', 'search_food', 'maps_text_search'}:
         return ''
     # Only these user-facing query fields may leave the internal trace.

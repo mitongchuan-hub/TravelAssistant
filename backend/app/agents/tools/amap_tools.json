@@ -1,5 +1,35 @@
 [
   {
+    "name": "maps_around_search",
+    "description": "周边搜，根据用户传入关键词以及坐标location，搜索出radius半径范围的POI",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "keywords": {
+          "type": "string",
+          "description": "搜索关键词"
+        },
+        "location": {
+          "type": "string",
+          "description": "中心点经度纬度"
+        },
+        "radius": {
+          "type": "string",
+          "description": "搜索半径"
+        },
+        "strategy": {
+          "type": "integer",
+          "description": "召回策略，0=默认召回策略，1=优先召回扫街榜POI",
+          "default": 0
+        }
+      },
+      "required": [
+        "keywords",
+        "location"
+      ]
+    }
+  },
+  {
     "name": "maps_direction_driving",
     "description": "驾车路径规划 API 可以根据用户起终点经纬度坐标规划以小客车、轿车通勤出行的方案，并且返回通勤方案的数据。",
     "parameters": {
@@ -12,12 +42,17 @@
         "destination": {
           "type": "string",
           "description": "目的地经纬度，坐标格式为：经度，纬度"
+        },
+        "origin_ref": {
+          "type": "string",
+          "description": "来自成功详情navigation_endpoints的服务器ref；出发可用center/exit，到达可用center/entrance。每端坐标或ref至少一个，同时提供必须一致。"
+        },
+        "destination_ref": {
+          "type": "string",
+          "description": "来自成功详情navigation_endpoints的服务器ref；出发可用center/exit，到达可用center/entrance。每端坐标或ref至少一个，同时提供必须一致。"
         }
       },
-      "required": [
-        "origin",
-        "destination"
-      ]
+      "required": []
     }
   },
   {
@@ -41,11 +76,32 @@
         "cityd": {
           "type": "string",
           "description": "公共交通规划终点城市"
+        },
+        "origin_ref": {
+          "type": "string",
+          "description": "来自成功详情navigation_endpoints的服务器ref；出发可用center/exit，到达可用center/entrance。每端坐标或ref至少一个，同时提供必须一致。"
+        },
+        "destination_ref": {
+          "type": "string",
+          "description": "来自成功详情navigation_endpoints的服务器ref；出发可用center/exit，到达可用center/entrance。每端坐标或ref至少一个，同时提供必须一致。"
+        },
+        "departure_at": {
+          "type": "string",
+          "description": "本地ISO出发时间；当前供应商支持窗未验证，提供时明确不可用，不发送请求、不替换为今天。"
+        },
+        "strategy": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            3,
+            5
+          ],
+          "description": "查询时参考策略：0最快捷，1最经济，2最少换乘，3最少步行，5不乘地铁；不确证未来班次。"
         }
       },
       "required": [
-        "origin",
-        "destination",
         "city",
         "cityd"
       ]
@@ -64,17 +120,22 @@
         "destination": {
           "type": "string",
           "description": "目的地经度，纬度，坐标格式为：经度，纬度"
+        },
+        "origin_ref": {
+          "type": "string",
+          "description": "来自成功详情navigation_endpoints的服务器ref；出发可用center/exit，到达可用center/entrance。每端坐标或ref至少一个，同时提供必须一致。"
+        },
+        "destination_ref": {
+          "type": "string",
+          "description": "来自成功详情navigation_endpoints的服务器ref；出发可用center/exit，到达可用center/entrance。每端坐标或ref至少一个，同时提供必须一致。"
         }
       },
-      "required": [
-        "origin",
-        "destination"
-      ]
+      "required": []
     }
   },
   {
     "name": "maps_search_detail",
-    "description": "查询关键词搜或者周边搜获取到的POI ID的详细信息",
+    "description": "用已查询的真实POI ID单次查询高德REST v3详情，返回中心坐标及实际可用的行政区、电话、网站、多图和biz_ext营业/评分/消费参考；metadata为查询来源/时间，timestamp为上游更新时间，raw为同次响应。空值保持未知，消费参考不是门票价，网站不保证官方，营业描述不保证当天开放或预约。入口仅辅助信息，不能替代中心路线坐标。失败不自动回退MCP。",
     "parameters": {
       "type": "object",
       "properties": {

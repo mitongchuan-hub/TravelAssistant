@@ -147,9 +147,9 @@ def run_case(case, client, model, structured=False):
     runtime = TaskExecutionRuntime(client, model, context, execution, request=request, trace=Trace())
     # Replace every external fact boundary, not child capabilities. Unrecognized
     # future tools fail loudly so this harness can never silently use real APIs.
-    external = {'query_weather', 'maps_text_search', 'maps_search_detail',
+    external = {'maps_around_search', 'query_weather', 'maps_text_search', 'maps_search_detail',
                     'maps_direction_walking', 'maps_direction_driving', 'maps_direction_transit_integrated'}
-    assert set(runtime.registry) == external | {'read_context', 'submit_changes'}
+    assert set(runtime.registry) == external | {'read_context', 'read_skill', 'save_trip_changes'}
     for name in external:
         runtime.registry[name] = replace(runtime.registry[name], handler=unavailable)
     before = asdict(trip)

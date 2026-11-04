@@ -118,7 +118,7 @@ def prepare_changes(args, request_context, execution_context, evidence=()):
     if args['user_quote'] != request_context.body:
         raise ValueError('user_quote必须逐字引用完整本轮用户消息')
     if not any(key in args for key in _OPERATIONS):
-        raise ValueError('submit_changes至少需要一项实际操作')
+        raise ValueError('save_trip_changes至少需要一项实际操作')
     if 'next_question' in args:
         _text(args['next_question'], 'next_question', 2000)
     trip, plan = _get(execution_context, 'trip'), _get(execution_context, 'plan')

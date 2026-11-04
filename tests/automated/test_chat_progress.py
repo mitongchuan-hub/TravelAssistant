@@ -7,6 +7,23 @@ import pytest
 from app.application.progress import advance_progress, finish_progress, new_progress
 
 
+@pytest.mark.parametrize('module_name', ['app.application.progress', 'app.workflow.task_progress'])
+@pytest.mark.parametrize('tool_name', ['save_trip_changes', 'submit_changes'])
+def test_save_progress_supports_current_and_readonly_historical_labels(module_name, tool_name):
+    from importlib import import_module
+    module = import_module(module_name)
+    progress = module.advance_progress(module.new_progress(timestamp=0), '工具开始', {
+        'role': 'travel_agent', 'name': tool_name,
+        'arguments': {'user_quote': 'PRIVATE', 'requirements_text': 'PRIVATE'},
+    }, timestamp=100)
+    assert progress['steps'][0]['label'] == '检查旅行修改'
+    progress = module.advance_progress(progress, '工具执行', {
+        'role': 'travel_agent', 'name': tool_name, 'result': None, 'error_type': None,
+    }, timestamp=200)
+    assert progress['steps'][0]['status'] == 'succeeded'
+    assert 'PRIVATE' not in json.dumps(progress)
+
+
 def test_model_lifecycle_does_not_publish_prompt_or_response():
     progress = new_progress(timestamp=1000)
     progress = advance_progress(progress, '模型请求', {
@@ -263,7 +280,7 @@ def test_run_record_reads_current_model_and_budget_events(terminal):
                            'usage': {'prompt_tokens': 10, 'completion_tokens': 2}})
     trace.add('切换备用模型', {'to': 'fallback'})
     final = {'content': '最终回复' if terminal == 'reply' else None,
-             'tool_calls': [] if terminal == 'reply' else [{'name': 'submit_changes', 'arguments': '{}'}],
+             'tool_calls': [] if terminal == 'reply' else [{'name': 'save_trip_changes', 'arguments': '{}'}],
              'usage': {'prompt_tokens': 15, 'completion_tokens': 5}}
     trace.add('模型响应', final)
     trace.add('Task Runtime预算', {'tool_calls': 2})

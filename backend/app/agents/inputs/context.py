@@ -297,10 +297,18 @@ def _allowlisted_facts(tool: str, result: Any) -> dict[str, Any]:
     if tool == "search_places" and isinstance(result.get("candidates"), list):
         facts["candidates"] = [
             {key: _fact_value(candidate.get(key)) for key in
-             ("name", "address", "city", "district", "place_type", "opening_hours")
+             ("poi_id", "name", "address", "city", "district", "place_type", "opening_hours")
              if _fact_value(candidate.get(key)) is not None}
             for candidate in result["candidates"][:5] if isinstance(candidate, Mapping)
         ]
+        import math
+        for projected, candidate in zip(facts['candidates'],
+                [c for c in result['candidates'][:5] if isinstance(c, Mapping)]):
+            lon, lat = candidate.get('longitude'), candidate.get('latitude')
+            if (type(lon) in (int, float) and type(lat) in (int, float)
+                    and math.isfinite(lon) and math.isfinite(lat)
+                    and -180 <= lon <= 180 and -90 <= lat <= 90):
+                projected.update(longitude=lon, latitude=lat)
     if tool == "search_food" and isinstance(result.get("recommendations"), list):
         facts["recommendations"] = [
             {key: _fact_value(candidate.get(key)) for key in
@@ -355,6 +363,11 @@ def _project_evidence_row(row: Any, *, ref: str | None = None,
             "summary": _clip_text(row.get("summary", "")),
             "status": result.get("status", "unknown"),
             "facts": _allowlisted_facts(map_evidence_kind(row), result)}
+    if tool == 'maps_search_detail':
+        from app.services.maps.evidence import detail_endpoints
+        endpoints = detail_endpoints(row)
+        if endpoints:
+            item['facts']['navigation_endpoints'] = endpoints
     if not item["summary"] and isinstance(row.get("reason"), str):
         item["summary"] = _clip_text(row["reason"])
     return {key: value for key, value in item.items() if value not in (None, "", {})}

@@ -1,0 +1,75 @@
+{
+  "round": 2,
+  "sdk": {
+    "id": "chatcmpl-k4bFGa5nX2yyR78iCSYrNiCu1vG4dFrV",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": [
+            {
+              "id": "bxgry4QZ4sRUnoGNCGntRcZAPFuI4tTg",
+              "function": {
+                "arguments": "{\"id\":\"B000A48169\"}",
+                "name": "maps_search_detail"
+              },
+              "type": "function"
+            }
+          ],
+          "reasoning_content": {
+            "redacted": true,
+            "characters": 590,
+            "sha256": "3a329d4ab38f5eba4f1779252655c67de752588446b772b008dcb26e374d1614"
+          }
+        }
+      }
+    ],
+    "created": 1793775935,
+    "model": "qwen3.8:27b",
+    "object": "chat.completion",
+    "metadata": null,
+    "moderation": null,
+    "service_tier": null,
+    "system_fingerprint": "b0-unknown",
+    "usage": {
+      "completion_tokens": 199,
+      "prompt_tokens": 7147,
+      "total_tokens": 7346,
+      "completion_tokens_details": null,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cache_write_tokens": null,
+        "cached_tokens": 4983,
+        "image_tokens": null,
+        "text_tokens": null
+      }
+    },
+    "timings": {
+      "cache_n": 4983,
+      "prompt_n": 2164,
+      "prompt_ms": 825.56,
+      "prompt_per_token_ms": 0.38149722735674674,
+      "prompt_per_second": 2621.251029604148,
+      "predicted_n": 199,
+      "predicted_ms": 2061.35,
+      "predicted_per_token_ms": 10.410858585858586,
+      "predicted_per_second": 96.05355713488733,
+      "draft_n": 137,
+      "draft_n_accepted": 116
+    }
+  },
+  "comparison": {
+    "finish_reason": true,
+    "content": true,
+    "tool_calls": true,
+    "returned_usage_fields": true
+  }
+}

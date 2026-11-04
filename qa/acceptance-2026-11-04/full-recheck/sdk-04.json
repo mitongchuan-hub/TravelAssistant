@@ -1,0 +1,75 @@
+{
+  "round": 4,
+  "sdk": {
+    "id": "chatcmpl-iJgInDk1zKEcn5i2XeJZXHgk8STq4yS5",
+    "choices": [
+      {
+        "finish_reason": "tool_calls",
+        "index": 0,
+        "logprobs": null,
+        "message": {
+          "content": "",
+          "refusal": null,
+          "role": "assistant",
+          "annotations": null,
+          "audio": null,
+          "function_call": null,
+          "tool_calls": [
+            {
+              "id": "iY923Hh5t5wmAAL8sH1GZiP7iSOcWeu7",
+              "function": {
+                "arguments": "{\"city\":\"北京\",\"date\":\"2026-11-05\"}",
+                "name": "query_weather"
+              },
+              "type": "function"
+            }
+          ],
+          "reasoning_content": {
+            "redacted": true,
+            "characters": 2289,
+            "sha256": "1b34d378212fb3d414a632056f1ae5ba21a9ff52cd8842e561628d2ba02a3e5c"
+          }
+        }
+      }
+    ],
+    "created": 1793775948,
+    "model": "qwen3.8:27b",
+    "object": "chat.completion",
+    "metadata": null,
+    "moderation": null,
+    "service_tier": null,
+    "system_fingerprint": "b0-unknown",
+    "usage": {
+      "completion_tokens": 741,
+      "prompt_tokens": 8984,
+      "total_tokens": 9725,
+      "completion_tokens_details": null,
+      "prompt_tokens_details": {
+        "audio_tokens": null,
+        "cache_write_tokens": null,
+        "cached_tokens": 8550,
+        "image_tokens": null,
+        "text_tokens": null
+      }
+    },
+    "timings": {
+      "cache_n": 8550,
+      "prompt_n": 434,
+      "prompt_ms": 348.499,
+      "prompt_per_token_ms": 0.8029930875576038,
+      "prompt_per_second": 1245.3407326850293,
+      "predicted_n": 741,
+      "predicted_ms": 7890.679,
+      "predicted_per_token_ms": 10.66307972972973,
+      "predicted_per_second": 93.78153641784186,
+      "draft_n": 481,
+      "draft_n_accepted": 431
+    }
+  },
+  "comparison": {
+    "finish_reason": true,
+    "content": true,
+    "tool_calls": true,
+    "returned_usage_fields": true
+  }
+}

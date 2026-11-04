@@ -32,6 +32,7 @@ TEST_ENVIRONMENT = {
     'AMAP_MAPS_API_KEY': 'offline-map-key',
     'AMAP_MCP_URL': 'https://maps.offline.invalid/mcp',
     'AMAP_MCP_TIMEOUT_SECONDS': '5',
+    'AMAP_REST_TIMEOUT_SECONDS': '5',
 }
 os.environ.update(TEST_ENVIRONMENT)
 # Never inherit real aliases or a real-process model-disable setting. Test-side

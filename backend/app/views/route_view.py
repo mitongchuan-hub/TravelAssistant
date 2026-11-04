@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 
 from app.domain.models import PlaceDetails, Trip, TripPlan
 from app.domain.lodging import collect_places
+from app.services.maps.evidence import evidence_kind, evidence_result, ROUTE_TOOLS
 from app.services.itinerary.plan_display import text_hash
 from app.services.itinerary.freshness import (
     BASIS_NOTE,
@@ -44,9 +45,9 @@ def _catalog(evidence):
     candidates, identities, names = [], {}, {}
     rejected, conflicts = set(), set()
     for row in evidence:
-        if not isinstance(row, dict) or row.get('tool') != 'search_places':
+        if not isinstance(row, dict) or evidence_kind(row) != 'search_places':
             continue
-        result = row.get('result')
+        result = evidence_result(row)
         if not isinstance(result, dict) or result.get('status') != 'available':
             continue
         values = result.get('candidates')
@@ -121,13 +122,50 @@ def _match(item, catalog, ambiguous, city, text):
 
 
 def _route_records(evidence, places):
+    from app.services.maps.evidence import detail_endpoints
+    trusted_refs = {point['ref']: point for row in evidence if isinstance(row, dict)
+                    for point in detail_endpoints(row)}
     records = {}
     for row in evidence:
-        if not isinstance(row, dict) or row.get('tool') != 'query_route':
+        if not isinstance(row, dict) or evidence_kind(row) != 'query_route':
             continue
-        args, result = row.get('arguments'), row.get('result')
+        args, result = row.get('arguments'), evidence_result(row)
         if not isinstance(args, dict) or not isinstance(result, dict):
             continue
+        if row.get('tool') in ROUTE_TOOLS:
+            # Native evidence carries coordinates, unlike the old ID-based tool.
+            args = dict(args)
+            if result.get('mode') != ROUTE_TOOLS[row['tool']]:
+                continue
+            valid = True
+            for side in ('origin', 'destination'):
+                point = places.get(result.get(side + '_poi_id'))
+                try:
+                    coords = tuple(map(float, args.get(side, '').split(',')))
+                except (ValueError, AttributeError):
+                    valid = False
+                    break
+                ref = args.get(side + '_ref')
+                endpoint = trusted_refs.get(ref) if ref else None
+                if ref:
+                    expected_kind = {'center', 'exit'} if side == 'origin' else {'center', 'entrance'}
+                    if (point is None or endpoint is None or endpoint['poi_id'] != point.poi_id
+                            or endpoint['kind'] not in expected_kind
+                            or coords != (endpoint['longitude'], endpoint['latitude'])):
+                        valid = False
+                        break
+                    actual = result.get(side + '_endpoint', {})
+                    if (actual.get('endpoint_ref') != ref
+                            or actual.get('longitude') != coords[0] or actual.get('latitude') != coords[1]):
+                        valid = False
+                        break
+                elif point is None or coords != (point.longitude, point.latitude):
+                    valid = False
+                    break
+                args[side + '_poi_id'] = point.poi_id
+            if not valid:
+                continue
+            args['mode'] = ROUTE_TOOLS[row['tool']]
         origin_id, destination_id, mode = (args.get(key) for key in
             ('origin_poi_id', 'destination_poi_id', 'mode'))
         if not all(isinstance(value, str) for value in (origin_id, destination_id, mode)) or mode not in MODE_LABELS:
@@ -162,6 +200,8 @@ def _route_records(evidence, places):
         key = (origin_id, destination_id)
         value = {'mode': mode, 'status': status, 'duration': duration, 'distance': distance,
                  'source': source, 'queried_at': queried_at}
+        if row.get('tool') in ROUTE_TOOLS:
+            value['actual_endpoints'] = [result.get(side + '_endpoint') for side in ('origin', 'destination')]
         if mode == 'transit' and status == 'available':
             value['transit_steps'] = result.get('transit_steps') or []
         modes = records.setdefault(key, {})
@@ -233,7 +273,14 @@ def _leg(origin, destination, origin_name, destination_name, records):
     modes = records.get((origin.poi_id, destination.poi_id), {})
     record = next(iter(modes.values()))[1] if len(modes) == 1 else None
     mode = record['mode'] if record else 'transit'
-    leg['navigation_url'] = _navigation_url(origin, destination, mode)
+    actual = record.get('actual_endpoints') if record else None
+    if actual and all(isinstance(point, dict) and 'longitude' in point and 'latitude' in point for point in actual):
+        from types import SimpleNamespace
+        selected = [SimpleNamespace(name=place.name, longitude=point['longitude'], latitude=point['latitude'])
+                    for place, point in zip((origin, destination), actual)]
+        leg['navigation_url'] = _navigation_url(*selected, mode)
+    else:
+        leg['navigation_url'] = _navigation_url(origin, destination, mode)
     if record is None and origin.poi_id == destination.poi_id:
         leg.update(source='同一已匹配地点', summary='同一已匹配地点，无需地点间接驳；未估算场地内部步行。' + ' ' + REPLAN_NOTE)
         return leg

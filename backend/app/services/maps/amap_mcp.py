@@ -19,7 +19,7 @@ from mcp.client.streamable_http import streamable_http_client
 
 from app.core.config import amap_api_key, amap_timeout, amap_url
 
-ALLOWED_TOOLS = frozenset({'maps_text_search', 'maps_search_detail', 'maps_direction_walking',
+ALLOWED_TOOLS = frozenset({'maps_text_search', 'maps_around_search', 'maps_search_detail', 'maps_direction_walking',
                           'maps_direction_driving', 'maps_direction_transit_integrated'})
 _budget_context = ContextVar('amap_mcp_budget', default=None)
 _phase_context = ContextVar('amap_mcp_phase', default=None)
@@ -142,6 +142,12 @@ def budget_scope(budget):
         yield
     finally:
         _budget_context.reset(token)
+
+
+def remaining_budget():
+    """Check shared cancellation/deadline without consuming another external call."""
+    scope = _budget_context.get()
+    return scope['budget'].remaining() if scope else float('inf')
 
 
 def consume_call():
@@ -267,35 +273,35 @@ def session():
 
 
 def search_pois(city, keywords, limit=5):
-    """Search then obtain coordinates/details, capped at five candidates per query."""
+    """MCP search, then at most five distinct REST attempts outside that session."""
+    from app.services.maps import amap_rest
     limit = max(1, min(int(limit), 5))
+    deadline = monotonic() + timeout_seconds()
     with session() as tools:
         params = {'keywords': keywords, 'citylimit': bool(city)}
         if city:
             params['city'] = city
         payload = tools.call('maps_text_search', params)
-        pois = payload.get('pois')
-        if not isinstance(pois, list):
-            raise AmapMCPError('高德MCP地点列表无效')
-        candidates, seen, inspected = [], set(), 0
-        for poi in pois:
-            if not isinstance(poi, dict) or not isinstance(poi.get('id'), str) or not poi['id'] or poi['id'] in seen:
-                continue
-            seen.add(poi['id'])
-            if inspected >= limit:
-                break
-            inspected += 1
-            try:
-                detail = tools.call('maps_search_detail', {'id': poi['id']})
-            except AmapMCPError:
-                # A failed detail cannot create coordinates, ratings or prices.
-                continue
-            if detail.get('id') != poi['id']:
-                continue
-            # Detail is the authoritative location/identity. Retain optional text
-            # from the search response only where the detail omitted it.
-            candidates.append({**poi, **detail})
-        return {'pois': candidates, 'total_matched': len(pois)}
+    pois = payload.get('pois')
+    if not isinstance(pois, list):
+        raise AmapMCPError('高德MCP地点列表无效')
+    candidates, seen = [], set()
+    for poi in pois:
+        remaining_budget()
+        if len(seen) >= limit or monotonic() >= deadline:
+            break
+        if not isinstance(poi, dict) or not isinstance(poi.get('id'), str) or not poi['id'].strip() or poi['id'] in seen:
+            continue
+        seen.add(poi['id'])  # Failures count too; never fan out to fill successes.
+        try:
+            detail = amap_rest.detail(poi['id'], deadline=deadline)
+        except amap_rest.AmapRESTError:
+            continue
+        if detail.get('id') == poi['id']:
+            # Search summaries cannot supply coordinates or missing detail fields.
+            candidates.append(detail)
+    remaining_budget()
+    return {'pois': candidates, 'total_matched': len(pois), 'transport': 'amap_rest'}
 
 
 def call(name, arguments):

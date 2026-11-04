@@ -1,0 +1,63 @@
+[
+  {
+    "time": "2026-11-04T15:00:13.227575+08:00",
+    "name": "registered",
+    "data": {
+      "synthetic": true,
+      "user_id": "u100"
+    }
+  },
+  {
+    "time": "2026-11-04T15:00:14.125764+08:00",
+    "name": "lodging_lookup",
+    "data": {
+      "status": "choices_required",
+      "choice_token": "[REDACTED]",
+      "candidates": [
+        {
+          "poi_id": "B000A82FYT",
+          "name": "北京国际饭店",
+          "address": "建国门内大街9号",
+          "longitude": 116.428434,
+          "latitude": 39.909665,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:00:13+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        },
+        {
+          "poi_id": "B0FFHEPNJ4",
+          "name": "北京新侨饭店",
+          "address": "崇文门西大街1号(崇文门地铁站B1东北口旁)",
+          "longitude": 116.416707,
+          "latitude": 39.901687,
+          "city": "北京市",
+          "district": "东城区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:00:13+00:00",
+          "place_type": "住宿服务;宾馆酒店;四星级宾馆|餐饮服务;餐饮相关场所;餐饮相关"
+        },
+        {
+          "poi_id": "B000A7BRUO",
+          "name": "北京昆仑饭店",
+          "address": "新源南路2号(亮马桥地铁站A西北口步行210米)",
+          "longitude": 116.459941,
+          "latitude": 39.948334,
+          "city": "北京市",
+          "district": "朝阳区",
+          "source": "高德地图 POI",
+          "fetched_at": "2026-11-04T07:00:13+00:00",
+          "place_type": "住宿服务;宾馆酒店;五星级宾馆|餐饮服务;中餐厅;中餐厅"
+        }
+      ],
+      "values": {
+        "day_count": "1",
+        "start_date": "2026-11-05",
+        "lodging_address": "北京饭店",
+        "transport_mode": "transit",
+        "revision": ""
+      }
+    }
+  }
+]

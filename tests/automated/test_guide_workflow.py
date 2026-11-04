@@ -36,7 +36,7 @@ def response(content=None, **changes):
     calls = []
     if changes:
         calls = [SimpleNamespace(id='submit', type='function', function=SimpleNamespace(
-            name='submit_changes', arguments=json.dumps(changes, ensure_ascii=False)))]
+            name='save_trip_changes', arguments=json.dumps(changes, ensure_ascii=False)))]
     return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content, tool_calls=calls))])
 
 

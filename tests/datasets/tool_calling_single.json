@@ -316,7 +316,7 @@
       },
       "prior_calls": [],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "请把需求正文完整设为“不吃辣。”，只记录，不生成行程。",
           "requirements_text": "不吃辣。"
@@ -341,7 +341,7 @@
       },
       "prior_calls": [],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "把需求正文设为“每天九点出门。”，只保存这句。",
           "requirements_text": "每天九点出门。"
@@ -366,7 +366,7 @@
       },
       "prior_calls": [],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "原有“不吃辣。”保留，换行追加“少走路。”，只记录。",
           "requirements_text": "不吃辣。\n少走路。"
@@ -391,7 +391,7 @@
       },
       "prior_calls": [],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "原有“带老人。”保留，换行追加“不爬山。”，只记录。",
           "requirements_text": "带老人。\n不爬山。"
@@ -416,7 +416,7 @@
       },
       "prior_calls": [],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "只把需求正文中的“少走路”改为“多步行”，其余不变，不生成。",
           "requirements_text": "多步行。\n不吃辣。"
@@ -441,7 +441,7 @@
       },
       "prior_calls": [],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "只删除需求正文里的“想喝茶。”这一行，保留其他要求。",
           "requirements_text": "不吃辣。"
@@ -466,7 +466,7 @@
       },
       "prior_calls": [],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "明确清空全部自由需求正文，不清空行程。",
           "requirements_text": ""
@@ -491,7 +491,7 @@
       },
       "prior_calls": [],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "请清除所有已记录的自由需求，不动已保存行程。",
           "requirements_text": ""
@@ -517,7 +517,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "在当前行程末尾精确追加一行“晚上早点休息。”，不要润色，不改其他字。",
           "itinerary": {
@@ -557,7 +557,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "在当前行程末尾精确追加一行“带好雨伞。”，不要润色，不改其他字。",
           "itinerary": {
@@ -597,7 +597,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "在当前行程末尾精确追加一行“出门前检查天气。”，不要润色，不改其他字。",
           "itinerary": {
@@ -637,7 +637,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "在当前行程末尾精确追加一行“带上水杯。”，不要润色，不改其他字。",
           "itinerary": {
@@ -677,7 +677,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "精确把当前行程中的“西湖散步”替换成“西湖慢走”，其他内容逐字不变。",
           "itinerary": {
@@ -708,7 +708,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "精确把当前行程中的“清淡”替换成“不辣”，其他内容逐字不变。",
           "itinerary": {
@@ -739,7 +739,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "精确把当前行程中的“喝茶”替换成“休息”，其他内容逐字不变。",
           "itinerary": {
@@ -770,7 +770,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "精确把当前行程中的“上午”替换成“早上”，其他内容逐字不变。",
           "itinerary": {
@@ -801,7 +801,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "确认当前看到的行程。",
           "itinerary": {
@@ -829,7 +829,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "这份当前方案我确认了，不改内容。",
           "itinerary": {
@@ -857,7 +857,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "就按眼前这份行程，正式确认。",
           "itinerary": {
@@ -885,7 +885,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "我已看完当前方案，请确认，不重排。",
           "itinerary": {
@@ -913,7 +913,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "明确清空当前全部行程，不动需求。",
           "itinerary": {
@@ -941,7 +941,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "删除已保存的整份行程，需求保留。",
           "itinerary": {
@@ -969,7 +969,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "整份行程不要了，请清空，不是取消单个景点。",
           "itinerary": {
@@ -997,7 +997,7 @@
         }
       ],
       "expected": {
-        "tool": "submit_changes",
+        "tool": "save_trip_changes",
         "arguments": {
           "user_quote": "清空当前行程正文，其他资料都别动。",
           "itinerary": {
@@ -1481,84 +1481,70 @@
       }
     },
     {
-      "id": "search-13",
-      "input": "搜索杭州的“无障碍公园”地点候选，只限该市范围。先搜候选，不查详情。",
+      "id": "around-01",
+      "input": "查询已确认住宿周边的餐饮候选，只搜一次，不查详情，不指定半径。",
       "context": {},
       "prior_calls": [],
       "expected": {
-        "tool": "maps_text_search",
+        "tool": "maps_around_search",
         "arguments": {
-          "keywords": "无障碍公园",
-          "city": "杭州",
-          "citylimit": true
+          "keywords": "餐饮",
+          "location": "120.1,30.2"
         },
-        "alternatives": {
-          "city": [
-            "杭州市"
-          ]
-        },
-        "optional": {}
-      }
-    },
-    {
-      "id": "search-14",
-      "input": "搜索杭州的“药店”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
-      "context": {},
-      "prior_calls": [],
-      "expected": {
-        "tool": "maps_text_search",
-        "arguments": {
-          "keywords": "药店",
-          "city": "杭州"
-        },
-        "alternatives": {
-          "city": [
-            "杭州市"
-          ]
-        },
+        "alternatives": {},
         "optional": {
-          "citylimit": false
+          "strategy": 0
         }
       }
     },
     {
-      "id": "search-15",
-      "input": "搜索杭州的“停车场”地点候选，只限该市范围。先搜候选，不查详情。",
+      "id": "around-02",
+      "input": "查询已确认住宿周边的便利店候选，只搜一次，不查详情，不指定半径。",
       "context": {},
       "prior_calls": [],
       "expected": {
-        "tool": "maps_text_search",
+        "tool": "maps_around_search",
         "arguments": {
-          "keywords": "停车场",
-          "city": "杭州",
-          "citylimit": true
+          "keywords": "便利店",
+          "location": "120.1,30.2"
         },
-        "alternatives": {
-          "city": [
-            "杭州市"
-          ]
-        },
-        "optional": {}
+        "alternatives": {},
+        "optional": {
+          "strategy": 0
+        }
       }
     },
     {
-      "id": "search-16",
-      "input": "搜索杭州的“书店”地点候选，不限制城市范围，也可返回附近城市。先搜候选，不查详情。",
+      "id": "around-03",
+      "input": "查询已确认住宿周边的休息点候选，只搜一次，不查详情，不指定半径。",
       "context": {},
       "prior_calls": [],
       "expected": {
-        "tool": "maps_text_search",
+        "tool": "maps_around_search",
         "arguments": {
-          "keywords": "书店",
-          "city": "杭州"
+          "keywords": "休息点",
+          "location": "120.1,30.2"
         },
-        "alternatives": {
-          "city": [
-            "杭州市"
-          ]
-        },
+        "alternatives": {},
         "optional": {
-          "citylimit": false
+          "strategy": 0
+        }
+      }
+    },
+    {
+      "id": "around-04",
+      "input": "查询已确认住宿周边的咖啡候选，只搜一次，不查详情，不指定半径。",
+      "context": {},
+      "prior_calls": [],
+      "expected": {
+        "tool": "maps_around_search",
+        "arguments": {
+          "keywords": "咖啡",
+          "location": "120.1,30.2"
+        },
+        "alternatives": {},
+        "optional": {
+          "strategy": 0
         }
       }
     },

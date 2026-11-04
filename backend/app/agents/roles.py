@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import os
 
 from app.agents.prompts import load_prompt
+from app.agents.skills import skill_catalog_prompt
 from app.agents.tools.registry import agent_tool_specs
 
 
@@ -37,7 +38,8 @@ def _check_mode(mode):
 
 def travel_role(mode='city'):
     _check_mode(mode)
-    return AgentRole('travel_agent', load_prompt('travel.txt'), agent_tool_specs(),
+    prompt = load_prompt('travel.txt') + '\n\n' + skill_catalog_prompt()
+    return AgentRole('travel_agent', prompt, agent_tool_specs(),
                      max_steps=16, reasoning_effort='medium')
 
 

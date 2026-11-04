@@ -59,7 +59,7 @@ def test_main_prompt_context_and_plain_finish():
     result = runner.run()
     assert not result.failed and not result.changes and not result.changes
     assert result.answer == '可以帮你查询同城交通。'
-    assert len(runner.registry) == 8 and 'submit_changes' in runner.registry
+    assert len(runner.registry) == 10 and 'save_trip_changes' in runner.registry
     context = json.loads(script.transcripts[0][1]['content'])
     assert context['requirements']['missing_for_generation']
     assert context['current_date'] == '2030-01-01'
@@ -91,7 +91,7 @@ def test_scope_policy_is_injected_for_food_and_travel_auxiliary_requests(body):
     assert '番茄炒蛋' in prompt and '先结合上下文澄清用途' in prompt
     assert '旅行费用计算、外国餐馆菜单翻译' in prompt
     assert '混合请求只处理旅行部分' in prompt
-    assert '普通文字、工具查询与转述、submit_changes 的全部字段' in prompt
+    assert '普通文字、工具查询与转述、save_trip_changes 的全部字段' in prompt
     assert '不把纯菜谱或其他越界内容保存为需求正文' in prompt
     assert json.loads(script.transcripts[0][1]['content'])['message']['text'] == body
 
@@ -109,12 +109,15 @@ def test_scope_policy_is_injected_for_food_and_travel_auxiliary_requests(body):
     '不把默认假设写入 requirements_text，不推断人数、预算或健康状况',
 ])
 def test_default_planning_policy_reaches_real_model_boundary_without_filling_user_facts(policy):
-    """Checks real prompt injection only; the scripted reply proves no semantics."""
-    script = Script('离线占位，不代表真实模型规划。')
+    """Checks loaded method delivery only; a scripted reply proves no semantics."""
+    script = Script([call('read_skill', {'name': 'travel-planning'})],
+                    '离线占位，不代表真实模型规划。')
     runner = runtime(script, body='请生成同城路线。')
     runner.run()
     prompt = script.transcripts[0][0]['content']
-    assert policy in prompt
+    assert policy not in prompt
+    loaded = [json.loads(row['content'])['content'] for row in script.transcripts[1] if row['role'] == 'tool']
+    assert any(policy in content for content in loaded)
     context = json.loads(script.transcripts[0][1]['content'])
     known = context['requirements']['known']
     assert known['text'] == ''
@@ -166,7 +169,7 @@ def test_main_allows_long_query_loop_but_stops_repeated_invalid_writes():
     result = runner.run()
     assert not result.failed and not result.changes
     assert runner.budget.model_calls == 21 and runner.budget.tool_calls == 20
-    invalid = runtime(Script(*[[call('submit_changes', {'user_quote': 'ignored'}, f'bad-{i}')]
+    invalid = runtime(Script(*[[call('save_trip_changes', {'user_quote': 'ignored'}, f'bad-{i}')]
                                for i in range(2)]))
     assert invalid.run().failed
 
@@ -236,7 +239,7 @@ def test_chat_keeps_serial_contract_and_correction_limit():
                        call('read_context', {'section': 'ideas'}, f'{i}b')] for i in range(2)])
     runner = runtime(script, entry='main')
     assert runner.run().failed and runner.budget.tool_calls == 0
-    assert runner.budget.max_models is None and 'submit_changes' in runner.registry
+    assert runner.budget.max_models is None and 'save_trip_changes' in runner.registry
     assert runner.config.max_steps == 16
     assert 'generation_question' not in runner._initial_context()
     for entry in ('planning', 'revision'):

@@ -112,6 +112,13 @@ def amap_timeout() -> float:
     return positive_timeout('AMAP_MCP_TIMEOUT_SECONDS', maximum=120)
 
 
+def amap_rest_timeout() -> float:
+    # New additive setting: existing deployments need not rewrite their .env.
+    if 'AMAP_REST_TIMEOUT_SECONDS' not in os.environ:
+        return 10.0
+    return positive_timeout('AMAP_REST_TIMEOUT_SECONDS', maximum=120)
+
+
 def amap_api_key() -> str:
     name = 'AMAP_MAPS_API_KEY' if os.getenv('AMAP_MAPS_API_KEY', '').strip() else 'AMAP_MAP_KEY'
     try:
@@ -142,7 +149,7 @@ def validate_configuration(scope: str = 'web') -> None:
               model_timeout, wire_api, store_responses, fallback_model_name]
     if scope in {'system', 'web'}:
         checks += [database_path, lambda: boolean('TRAVEL_PERSISTENCE'),
-                   lambda: boolean('TRAVEL_DISPLAY_ENABLED'), amap_api_key, amap_url, amap_timeout]
+                   lambda: boolean('TRAVEL_DISPLAY_ENABLED'), amap_api_key, amap_url, amap_timeout, amap_rest_timeout]
         if os.getenv('TRAVEL_DISPLAY_ENABLED', '').strip().lower() in _TRUE:
             checks.append(display_timeout)
     if scope == 'web':
